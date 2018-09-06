@@ -1,2 +1,2 @@
 mkdir ../bin
-gcc win32-watchtogether.c -o ../bin/watchtogether.exe
+gcc watchtogether.c -o ../bin/watchtogether.exe
