@@ -1,1 +1,1 @@
-gcc win32-watchtogether.c -o watchtogether.exe
+gcc win32-watchtogether.c -o ../bin/watchtogether.exe
