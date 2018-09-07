@@ -1,18 +1,21 @@
+#define UNICODE
+#define _UNICODE
+
 #include <windows.h>
 #include <stdio.h>
 #include <tchar.h>
 
 #include "version.h"
 
-static TCHAR win_class_title[] = "watchtogether";
+static TCHAR win_class_title[] = _T("watchtogether");
 //static TCHAR window_title[] = _T("WatchTogether " WT_FULL_VERSION);
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
-int CALLBACK WinMain(  
+int CALLBACK wWinMain(  
 HINSTANCE hInstance,  
 HINSTANCE hPrevInstance,  
-LPSTR     lpCmdLine,  
+LPWSTR     lpCmdLine,  
 int       nCmdShow  
 )
 {
@@ -27,14 +30,14 @@ int       nCmdShow
     window_class.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_APPLICATION));  
     window_class.hCursor        = LoadCursor(NULL, IDC_ARROW);  
     window_class.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);  
-    window_class.lpszMenuName   = NULL;  
+    window_class.lpszMenuName   = NULL;
     window_class.lpszClassName  = win_class_title;  
-    window_class.hIconSm        = LoadIcon(window_class.hInstance, MAKEINTRESOURCE(IDI_APPLICATION));  
+    window_class.hIconSm        = NULL;  
     
     //registering window class
     if(!RegisterClassEx(&window_class))
     {
-        MessageBox(NULL, "RegisterClassEx failed.", WT_WINDOW_TITLE, 0);
+        MessageBoxW(NULL, _T("RegisterClassEx failed."), WT_WINDOW_TITLE, 0);
         return 1;
     }
     
@@ -53,12 +56,19 @@ int       nCmdShow
     
     if(!window_handle)
     {
-        MessageBox(NULL, "CreateWindow() failed.", WT_WINDOW_TITLE, 0);
+        MessageBoxW(NULL, _T("CreateWindow() failed."), WT_WINDOW_TITLE, 0);
         return 1;
     }
     
     ShowWindow(window_handle, nCmdShow);
     UpdateWindow(window_handle);
+    
+    MSG msg;  
+    while (GetMessage(&msg, NULL, 0, 0))  
+    {  
+        TranslateMessage(&msg);  
+        DispatchMessage(&msg);  
+    } 
     
     return 0;
 }
@@ -66,17 +76,33 @@ int       nCmdShow
 
 LRESULT CALLBACK WndProc(  
 HWND   hwnd,  
-UINT   uMsg,  
+UINT   msg,  
 WPARAM wParam,  
 LPARAM lParam  
 )
 {
-    MSG msg;
-    while(GetMessage(&msg, NULL, 0, 0))
+    PAINTSTRUCT ps;
+    HDC hdc;
+    
+    switch(msg)
     {
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
+        case WM_PAINT:
+        hdc = BeginPaint(hwnd, &ps);
+        
+        // lay out UI 
+        TextOutW(hdc,  
+                 5, 5,  
+                 text, 4*sizeof(TCHAR)); 
+        
+        EndPaint(hwnd, &ps);
+        break;
+        case WM_DESTROY:
+        PostQuitMessage(0);
+        break;
+        default: 
+        return DefWindowProc(hwnd, msg, wParam, lParam);
+        break;
     }
     
-    return (int) msg.wParam;
+    return 0;
 }

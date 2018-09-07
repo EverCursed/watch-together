@@ -9,7 +9,7 @@ Version information
 #define WT_REV_NUM 1
 
 
-#ifdef UNICODE
+#ifdef _UNICODE
 #define _VN(maj,min,rev) #maj L"." #min L"." #rev
 #define __VN(maj,min,rev) _VN(maj,min,rev)
 #define WT_FULL_VERSION L""__VN(WT_MAJ_VER,WT_MIN_VER,WT_REV_NUM)
