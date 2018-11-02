@@ -1,3 +1,31 @@
+#include "defines.h"
+/*
+
+List of things the platform code must provide:
+
+Menu:
+- File
+ - | Open
+ - | Quit
+ - Connection
+ - | Host
+ - | Connect to Partner
+ - | Statistics
+ - Settings
+ - | Preferences
+ - Help
+ - | Check updates
+  - | About
+  
+  Following services the platform code must provide: 
+  
+  - Sending/Receiving UDP packets
+  - Opening file
+  ~ Displaying video
+  - Interpreting controls
+  
+*/
+
 #include <gtk/gtk.h>
 
 #include "version.h"
@@ -23,8 +51,7 @@ main (int    argc,
     GtkApplication *app;
     int status;
     
-    // TODO(Val): Figure out how to properly define an id for the app
-    app = gtk_application_new ("com.github.EverCursed.watch-together", G_APPLICATION_FLAGS_NONE);
+    app = gtk_application_new ("com.github.EverCursed.watchtogether", G_APPLICATION_FLAGS_NONE);
     g_signal_connect (app, "activate", G_CALLBACK (activate), NULL);
     status = g_application_run (G_APPLICATION (app), argc, argv);
     g_object_unref (app);
