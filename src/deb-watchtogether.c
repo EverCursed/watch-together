@@ -30,9 +30,14 @@ Menu:
 
 #include "version.h"
 
+void menuitem_quit(GtkMenuItem *menuitem, gpointer data)
+{
+    g_application_quit(G_APPLICATION(data));
+}
+
 
 // initialize the menu bar
-static GtkWidget* init_menubar()
+static GtkWidget* init_menubar(GtkApplication *app)
 {
     GtkWidget *menubar;
     GtkWidget *sep;
@@ -115,41 +120,10 @@ static GtkWidget* init_menubar()
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(menu_settings), menu_settings_menu);
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(menu_help), menu_help_menu);
     
-    
-    /*
-    gtk_menu_set_submenu(GTK_MENU_ITEM(menu_file), menuitem_file);
-    gtk_menu_shell_append(GTK_MENU_SHELL(menuitem_file), 
-                          menu_file_open);
-    gtk_menu_shell_append(GTK_MENU_SHELL(menuitem_file), 
-                          menu_file_quit);
-    */
-    /*
-    GtkMenu *menu,
-                 GtkWidget *child,
-                 guint left_attach,
-                 guint right_attach,
-                 guint top_attach,
-                 guint bottom_attach);
-                 
-                 
-  menubar = gtk_menu_bar_new();
-  fileMenu = gtk_menu_new();
-  
-  fileMi = gtk_menu_item_new_with_label("File");
-  quitMi = gtk_menu_item_new_with_label("Quit");
-  
-  gtk_menu_item_set_submenu(GTK_MENU_ITEM(fileMi), fileMenu);
-  gtk_menu_shell_append(GTK_MENU_SHELL(fileMenu), quitMi);
-  gtk_menu_shell_append(GTK_MENU_SHELL(menubar), fileMi);
-  gtk_box_pack_start(GTK_BOX(vbox), menubar, FALSE, FALSE, 0);
-  
-  g_signal_connect(G_OBJECT(window), "destroy",
-        G_CALLBACK(gtk_main_quit), NULL);
-        
-  g_signal_connect(G_OBJECT(quitMi), "activate",
-        G_CALLBACK(gtk_main_quit), NULL);
-    */
-    
+    g_signal_connect(G_OBJECT(menu_file_quit),
+                     "activate",
+                     G_CALLBACK(menuitem_quit),
+                     app);
     
     return menubar;
 }
@@ -169,7 +143,7 @@ activate (GtkApplication* app,
     vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_container_add(GTK_CONTAINER(window), vbox);
     
-    GtkWidget *menubar = init_menubar();
+    GtkWidget *menubar = init_menubar(app);
     
     gtk_box_pack_start(GTK_BOX(vbox), menubar, FALSE, FALSE, 0);
     
