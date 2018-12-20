@@ -1,4 +1,5 @@
 #include "defines.h"
+#include <stdlib.h>
 /*
 
 List of things the platform code must provide:
@@ -30,6 +31,9 @@ Menu:
 
 #include "version.h"
 
+// TODO(Val): give structure to the runtime data
+FILE *file = NULL;
+
 void menuitem_quit(GtkMenuItem *menuitem, gpointer data)
 {
     g_application_quit(G_APPLICATION(data));
@@ -42,6 +46,30 @@ void menuitem_display_about(GtkMenuItem *menuitem, gpointer data)
                           "program-name", "WatchTogether",
                           "version", WT_FULL_VERSION,
                           NULL);
+}
+
+void menuitem_open_file(GtkMenuItem *menuitem, gpointer data)
+{
+    GtkWidget *dialog = gtk_file_chooser_dialog_new ("Open File",
+                                                     GTK_WINDOW(data),
+                                                     GTK_FILE_CHOOSER_ACTION_OPEN,
+                                                     "_Cancel",
+                                                     GTK_RESPONSE_CANCEL,
+                                                     "_Open",
+                                                     GTK_RESPONSE_ACCEPT,
+                                                     NULL);
+    
+    gint res = gtk_dialog_run(GTK_DIALOG(dialog));
+    if (res == GTK_RESPONSE_ACCEPT)
+    {
+        char *filename;
+        GtkFileChooser *chooser = GTK_FILE_CHOOSER (dialog);
+        filename = gtk_file_chooser_get_filename (chooser);
+        file = fopen(filename, "r");
+        g_free (filename);
+    }
+    
+    gtk_widget_destroy (dialog);
 }
 
 // initialize the menu bar
@@ -136,6 +164,10 @@ static GtkWidget* init_menubar(GtkApplication *app, GtkWindow *window)
                      "activate",
                      G_CALLBACK(menuitem_display_about),
                      window);
+    g_signal_connect(G_OBJECT(menu_file_open),
+                     "activate",
+                     G_CALLBACK(menuitem_open_file),
+                     window);
     
     return menubar;
 }
@@ -178,6 +210,6 @@ int main (int argc, char **argv)
     
     
     g_object_unref (app);
-    
+    fclose(file);
     return status;
 }
