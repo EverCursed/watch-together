@@ -1,5 +1,16 @@
+/*
+TODO:
+
+Add pixel buffer and display it
+Give main code access to pixel buffer
+Add thread to process streamed data
+
+*/
+
 #define UNICODE
 #define _UNICODE
+
+#define WIN32_LEAN_AND_MEAN
 
 #include <windows.h>
 #include <stdio.h>
@@ -9,6 +20,12 @@
 
 static TCHAR win_class_title[] = _T("watchtogether");
 //static TCHAR window_title[] = _T("WatchTogether " WT_FULL_VERSION);
+
+typedef struct pixel_buffers {
+    internal void* pixel_buffer[2];
+}
+
+pixel_buffers buffers;
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
@@ -86,21 +103,30 @@ LPARAM lParam
     
     switch(msg)
     {
+        case WM_SIZE:
+        {
+            fprintf(stderr, "WM_SIZE\n");
+        }
+        break;
         case WM_PAINT:
-        hdc = BeginPaint(hwnd, &ps);
-        
-        // lay out UI 
-        TextOutW(hdc,  
-                 5, 5,  
-                 text, 4*sizeof(TCHAR)); 
-        
-        EndPaint(hwnd, &ps);
+        {
+            fprintf(stderr, "WM_PAINT\n");
+            hdc = BeginPaint(hwnd, &ps);
+            
+            // lay out UI
+            
+            EndPaint(hwnd, &ps);
+        }
         break;
         case WM_DESTROY:
-        PostQuitMessage(0);
+        {
+            PostQuitMessage(0);
+        }
         break;
         default: 
-        return DefWindowProc(hwnd, msg, wParam, lParam);
+        {
+            return DefWindowProc(hwnd, msg, wParam, lParam);
+        }
         break;
     }
     
