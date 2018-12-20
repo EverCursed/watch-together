@@ -36,6 +36,8 @@ FILE *file = NULL;
 
 void menuitem_quit(GtkMenuItem *menuitem, gpointer data)
 {
+    //g_object_unref(G_APPLICATION(data));
+    if(file) fclose(file);
     g_application_quit(G_APPLICATION(data));
 }
 
@@ -53,9 +55,9 @@ void menuitem_open_file(GtkMenuItem *menuitem, gpointer data)
     GtkWidget *dialog = gtk_file_chooser_dialog_new ("Open File",
                                                      GTK_WINDOW(data),
                                                      GTK_FILE_CHOOSER_ACTION_OPEN,
-                                                     "_Cancel",
+                                                     "Cancel",
                                                      GTK_RESPONSE_CANCEL,
-                                                     "_Open",
+                                                     "Open",
                                                      GTK_RESPONSE_ACCEPT,
                                                      NULL);
     
@@ -66,7 +68,7 @@ void menuitem_open_file(GtkMenuItem *menuitem, gpointer data)
         GtkFileChooser *chooser = GTK_FILE_CHOOSER (dialog);
         filename = gtk_file_chooser_get_filename (chooser);
         file = fopen(filename, "r");
-        g_free (filename);
+        //g_free (filename);
     }
     
     gtk_widget_destroy (dialog);
@@ -210,6 +212,9 @@ int main (int argc, char **argv)
     
     
     g_object_unref (app);
-    fclose(file);
+    
+    if(file)
+        fclose(file);
+    
     return status;
 }
