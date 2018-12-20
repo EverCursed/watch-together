@@ -35,9 +35,17 @@ void menuitem_quit(GtkMenuItem *menuitem, gpointer data)
     g_application_quit(G_APPLICATION(data));
 }
 
+void menuitem_display_about(GtkMenuItem *menuitem, gpointer data)
+{
+    GtkWindow *window = data;
+    gtk_show_about_dialog(window,
+                          "program-name", "WatchTogether",
+                          "version", WT_FULL_VERSION,
+                          NULL);
+}
 
 // initialize the menu bar
-static GtkWidget* init_menubar(GtkApplication *app)
+static GtkWidget* init_menubar(GtkApplication *app, GtkWindow *window)
 {
     GtkWidget *menubar;
     GtkWidget *sep;
@@ -124,6 +132,10 @@ static GtkWidget* init_menubar(GtkApplication *app)
                      "activate",
                      G_CALLBACK(menuitem_quit),
                      app);
+    g_signal_connect(G_OBJECT(menu_help_about),
+                     "activate",
+                     G_CALLBACK(menuitem_display_about),
+                     window);
     
     return menubar;
 }
@@ -143,9 +155,11 @@ activate (GtkApplication* app,
     vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_container_add(GTK_CONTAINER(window), vbox);
     
-    GtkWidget *menubar = init_menubar(app);
+    GtkWidget *menubar = init_menubar(app, GTK_WINDOW(window));
     
     gtk_box_pack_start(GTK_BOX(vbox), menubar, FALSE, FALSE, 0);
+    
+    g_assert(GTK_IS_WINDOW(window));
     
     // TODO(Val): Make this use stored values in .ini
     gtk_window_set_default_size(GTK_WINDOW (window), 1024, 576);
@@ -153,9 +167,7 @@ activate (GtkApplication* app,
     
 }
 
-int
-main (int    argc,
-      char **argv)
+int main (int argc, char **argv)
 {
     GtkApplication *app;
     int status;

@@ -17,6 +17,6 @@ Version information
 #else
 #define _VN(maj,min,rev) #maj "." #min "." #rev
 #define __VN(maj,min,rev) _VN(maj,min,rev)
-#define WT_FULL_VERSION __VN(WT_MAJ_VER,WT_MIN_VER,WT_REV_NUM)
+#define WT_FULL_VERSION "v"__VN(WT_MAJ_VER,WT_MIN_VER,WT_REV_NUM)
 #define WT_WINDOW_TITLE APP_TITLE " v" WT_FULL_VERSION 
 #endif
