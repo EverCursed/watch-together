@@ -14,7 +14,9 @@ typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
 
-#define MSG_INVALID 0
+#define FOLDER_NAME ".watchtogether"
+
+#define MSG_INVALID           0
 #define MSG_PLAY              52489
 #define MSG_STOP              52490
 #define MSG_PAUSE             52491

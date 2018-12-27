@@ -1,5 +1,10 @@
 #include "defines.h"
-#include <stdlib.h>
+#include "version.h"
+#include <stdio.h>
+#include <gtk/gtk.h>
+
+#include "settings.h"
+
 /*
 
 List of things the platform code must provide:
@@ -26,10 +31,6 @@ Menu:
   - Interpreting controls
   
 */
-
-#include <gtk/gtk.h>
-
-#include "version.h"
 
 // TODO(Val): give structure to the runtime data
 FILE *file = NULL;
@@ -179,6 +180,8 @@ static void
 activate (GtkApplication* app,
           gpointer        user_data)
 {
+    wt_settings* settings = init_settings();
+    
     GtkWidget *window;
     GtkWidget *vbox;
     
@@ -189,14 +192,17 @@ activate (GtkApplication* app,
     vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_container_add(GTK_CONTAINER(window), vbox);
     
-    GtkWidget *menubar = init_menubar(app, GTK_WINDOW(window));
+    GtkWidget *menubar = 
+        init_menubar(app, GTK_WINDOW(window));
     
     gtk_box_pack_start(GTK_BOX(vbox), menubar, FALSE, FALSE, 0);
     
     g_assert(GTK_IS_WINDOW(window));
     
     // TODO(Val): Make this use stored values in .ini
-    gtk_window_set_default_size(GTK_WINDOW (window), 1024, 576);
+    gtk_window_set_default_size(GTK_WINDOW (window), 
+                                settings->window_width,
+                                settings->window_height);
     gtk_widget_show_all(window);
     
 }
