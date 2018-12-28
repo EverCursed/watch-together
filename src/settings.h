@@ -20,9 +20,4 @@ typedef struct wt_settings {
     char username[64];
 } wt_settings;
 
-
-
-wt_settings* init_settings();
-int save_settings(wt_settings* settings);
-
 #endif
