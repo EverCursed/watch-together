@@ -1,6 +1,8 @@
 /*
 Version information
 */
+#ifndef WT_VERSION_H
+#define WT_VERSION_H
 
 #define APP_TITLE "WatchTogether"
 
@@ -19,4 +21,6 @@ Version information
 #define __VN(maj,min,rev) _VN(maj,min,rev)
 #define WT_FULL_VERSION "v"__VN(WT_MAJ_VER,WT_MIN_VER,WT_REV_NUM)
 #define WT_WINDOW_TITLE APP_TITLE " " WT_FULL_VERSION 
+#endif
+
 #endif

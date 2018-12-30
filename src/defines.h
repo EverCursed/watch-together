@@ -1,3 +1,8 @@
+#ifndef WT_DEFINES_H
+#define WT_DEFINES_H
+
+#define DEBUG
+
 #include <stdint.h>
 
 #define internal              static
@@ -14,8 +19,6 @@ typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
 
-#define FOLDER_NAME ".watchtogether"
-
 #define MSG_INVALID           0
 #define MSG_PLAY              52489
 #define MSG_STOP              52490
@@ -28,3 +31,10 @@ typedef uint64_t uint64;
 #define MSG_PREVIOUS          52497
 #define MSG_CONNECT_TO_HOST   52498
 #define MSG_INVITE_PARTNER    52499
+
+#ifdef DEBUG
+#define debug() printf("%s\t%s:%d\n", __FILE__, __FUNCTION__, __LINE__)
+#else
+#define debug() {}
+#endif
+#endif

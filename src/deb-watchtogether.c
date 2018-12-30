@@ -1,12 +1,13 @@
 #include <sys/stat.h>
 #include <gtk/gtk.h>
 #include <stdio.h>
+#include "deb-defines.h"
 #include "defines.h"
 #include "version.h"
 #include "settings.h"
+#include "errno.h"
 
 /*
-
 List of things the platform code must provide:
 
 Menu:
@@ -36,100 +37,79 @@ Menu:
 internal
 char* home_path() { return getenv("HOME"); }
 
-
 /************************************************
 
 Settings Saving/Reading
 
 ************************************************/
-#define SETTINGS_MAX_LENGTH 512
 
-// save settings to file
-int save_settings(wt_settings* settings)
+int save_file_raw(char* filename, char* raw_text)
 {
-    char dat[SETTINGS_MAX_LENGTH];
-    struct stat st = {0};
-    
-    char path_settings[256]; 
-    sprintf(path_settings, "%s/%s", home_path(), "settings.ini");
-    
-    // probe save folder, if doesn't exist, create it.
-    int ret;
-    char temp[256];
-    sprintf(temp, "%s/%s", home_path(), FOLDER_NAME);
-    if (stat(temp, &st) == -1) {
-        ret = mkdir(path_home, 0700);
-    }
-    
-    if(ret == 0)
+    FILE* f = fopen(filename, "w");
+    debug();
+    if(f)
     {
-        FILE* file = fopen(path_settings, "w");
-        if(file)
-        {
-            sprintf(dat, "%s:%d\n%s:%d\n%s:%d\n%s:%s\n", 
-                    SETTINGS_WIDTH_TITLE, settings->window_width,
-                    SETTINGS_HEIGHT_TITLE, settings->window_height,
-                    SETTINGS_PORT_TITLE, settings->port,
-                    SETTINGS_USERNAME_TITLE, settings->username
-                    );
-            fwrite(dat, sizeof(char), strlen(dat), file);
-            fclose(file);
-            return 1;
-        }
-        else
-        {
-            printf("Failed creating save file.");
-            return 0;
-        }
+        fwrite(raw_text, sizeof(char), strlen(raw_text), f);
+        fclose(f);
+        debug();
+        return 1;
     }
-    else 
+    else
+    {
+        debug();
         return 0;
+    }
 }
 
-// settings initialize / create settings file
-wt_settings init_settings()
+int save_settings_raw(char* raw_text)
+{
+    char path_settings[256]; 
+    sprintf(path_settings, "%s/%s/%s", home_path(), FOLDER_NAME, "settings.ini");
+    debug();
+    return save_file_raw(path_settings, raw_text);
+}
+
+// returns the loaded file to the caller
+// caller is responsible for freeing later
+char* load_settings_raw()
 {
     char settings_file[256];
     sprintf(settings_file, "%s/%s/%s", home_path(), FOLDER_NAME, "settings.ini");
     
     FILE *f = fopen(settings_file, "r");
-    wt_settings settings = {0};
-    if(f)
-    {
-        char dat[SETTINGS_MAX_LENGTH];
-        int n = fread(dat, sizeof(char), SETTINGS_MAX_LENGTH-1, f);
-        dat[n] = '\0';
-        
-        char* tmp = strtok(dat, ":");
-        while(tmp != NULL)
-        {
-            if(!strcmp(tmp, SETTINGS_PORT_TITLE))
-                settings.port = atoi(strtok(NULL, "\n"));
-            else if(!strcmp(tmp, SETTINGS_WIDTH_TITLE))
-                settings.window_width = atoi(strtok(NULL, "\n"));
-            else if(!strcmp(tmp, SETTINGS_HEIGHT_TITLE))
-                settings.window_height = atoi(strtok(NULL, "\n"));
-            else if(!strcmp(tmp, SETTINGS_USERNAME_TITLE))
-                strcpy(settings.username, strtok(NULL, "\n"));
-            
-            tmp = strtok(NULL, ":");
-        }
-        
-        fclose(f);
-    }
-    else
-    {
-        settings.window_width = SETTINGS_DEFAULT_WIDTH;
-        settings.window_height = SETTINGS_DEFAULT_HEIGHT;
-        settings.port = SETTINGS_DEFAULT_PORT;
-        strcpy(settings.username, SETTINGS_DEFAULT_USERNAME);
-        
-        save_settings(&settings);
-    }
+    debug();
+    if(!f)
+        return NULL;
     
-    return settings;
+    char* settings_raw = malloc(sizeof(char) * SETTINGS_MAX_LENGTH);
+    
+    debug();
+    
+    int n = fread(settings_raw, sizeof(char), SETTINGS_MAX_LENGTH-1, f);
+    *(settings_raw + n)= '\0';
+    
+    fclose(f);
+    debug();
+    return settings_raw;
 }
 
+int check_folder_exists()
+{
+    struct stat st = {0};
+    
+    char save_folder[256];
+    sprintf(save_folder, "%s/%s", home_path(), FOLDER_NAME);
+    if (stat(save_folder, &st) == -1) {
+        int ret;
+        ret = mkdir(save_folder, 0700);
+        printf("mkdir() returned %d, errno: %d\n", ret, errno);
+        debug();
+        return ret + 1;
+    }
+    printf("stat() returned 0\n");
+    debug();
+    return 1;
+}
 
 /************************************************
 
@@ -170,7 +150,6 @@ void menuitem_open_file(GtkMenuItem *menuitem, gpointer data)
         char *filename;
         GtkFileChooser *chooser = GTK_FILE_CHOOSER (dialog);
         filename = gtk_file_chooser_get_filename (chooser);
-        
         // TODO(Val): Open file
     }
     
@@ -282,7 +261,7 @@ activate (GtkApplication* app,
           gpointer        user_data)
 {
     
-    wt_settings settings = init_settings();
+    wt_settings* settings = init_settings();
     
     GtkWidget *window;
     GtkWidget *vbox;
@@ -301,12 +280,11 @@ activate (GtkApplication* app,
     
     g_assert(GTK_IS_WINDOW(window));
     
-    // TODO(Val): Make this use stored values in .ini
     gtk_window_set_default_size(GTK_WINDOW (window), 
-                                settings.window_width,
-                                settings.window_height);
+                                atoi(settings_get(settings, SETTINGS_WIDTH)),
+                                atoi(settings_get(settings, SETTINGS_HEIGHT))
+                                );
     gtk_widget_show_all(window);
-    
 }
 
 int main (int argc, char **argv)
