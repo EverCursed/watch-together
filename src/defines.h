@@ -33,8 +33,8 @@ typedef uint64_t uint64;
 #define MSG_INVITE_PARTNER    52499
 
 #ifdef DEBUG
-#define debug() printf("%s\t%s:%d\n", __FILE__, __FUNCTION__, __LINE__)
+#define debug(s, ...) printf("%s|%s|%d\t" s "\n", __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
 #else
-#define debug() {}
+#define debug(s, ...) {}
 #endif
 #endif
