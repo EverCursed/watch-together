@@ -280,10 +280,10 @@ activate (GtkApplication* app,
     
     g_assert(GTK_IS_WINDOW(window));
     
-    gtk_window_set_default_size(GTK_WINDOW (window), 
-                                atoi(settings_get(settings, SETTINGS_WIDTH)),
-                                atoi(settings_get(settings, SETTINGS_HEIGHT))
-                                );
+    gtk_window_set_default_size(
+        GTK_WINDOW (window), 
+        atoi(settings_get(settings, SETTINGS_WIDTH)),
+        atoi(settings_get(settings, SETTINGS_HEIGHT)));
     gtk_widget_show_all(window);
 }
 
