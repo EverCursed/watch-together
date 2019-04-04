@@ -1,3 +1,3 @@
 mkdir -p ../bin
 
-gcc `pkg-config --cflags gtk+-3.0` -g -o ../bin/watchtogether watchtogether.c settings.c `pkg-config --libs gtk+-3.0` -no-pie 
+gcc -ggdb -o ../bin/watchtogether deb-watchtogether-v2.c -lSDL2 -no-pie #`pkg-config --cflags --libs 
