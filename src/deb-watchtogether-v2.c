@@ -2,82 +2,33 @@
 
 #include "defines.h"
 #include "version.h"
-#include "deb-watchtogether.h"
+//#include "deb-watchtogether.h"
 #include "utils.h"
+
+#define GenColor(R,G,B,A) ((R << 16) | (G << 8) | (B) | (A << 24))
+
+#include "deb-watchtogether-v2.h"
+#include "watchtogether.c"
 
 global bool32 GlobalRunning;
 
-
-struct pixel {
-    union{
-        struct {
-            uint8 blue;
-            uint8 green;
-            uint8 red;
-            uint8 alpha;
-        };
-        uint32 color;
-    };
-};
-
-
-void draw_gradient(SDL_Surface *surface)
+SDL_Surface* Deb_ResizePixelBuffer(SDL_Window *window)
 {
-    uint32 gradient[] = {
-        0x00FF0000,
-        0x00FFFF00,
-        0x0000FF00,
-        0x0000FFFF,
-        0x000000FF,
-        //0x00FF00FF,
-        //0x00FF0000,
-    };
-    SDL_LockSurface(surface);
-    for(int x = 0; x < surface->w; x++)
-    {
-        real32 grad = (real32)surface->w / (ArrayCount(gradient)-1);
-        uint32 color = (uint32)(x / grad);
-        real32 pct1 = (real32)(x - color*grad ) / (real32)grad; 
-        real32 pct2 = 1.0f - pct1; 
-        for(int y = 0; y < surface->h; y++)
-        {
-            struct pixel *p = (struct pixel *)((uint32 *)surface->pixels + surface->w*y + x);
-            
-            struct pixel color1 = {};
-            color1.color = (uint32)gradient[color+1]; 
-            color1.red *= pct1;
-            color1.green *= pct1;
-            color1.blue *= pct1;
-            
-            color1.red *= ((real32)(surface->h-y) / (real32)surface->h);
-            color1.green *= ((real32)(surface->h-y) / (real32)surface->h);
-            color1.blue *= ((real32)(surface->h-y) / (real32)surface->h);
-            
-            struct pixel color2 = {};
-            color2.color = (real32)gradient[color]; 
-            color2.red *= pct2;
-            color2.green *= pct2;
-            color2.blue *= pct2;
-            
-            color2.red *= ((real32)(surface->h-y) / (real32)surface->h);
-            color2.green *= ((real32)(surface->h-y) / (real32)surface->h);
-            color2.blue *= ((real32)(surface->h-y) / (real32)surface->h);
-            
-            
-            p->color = (color1.color + color2.color);
-            //((uint32)( + (real32)gradient[color+1]*pct2)) * (1.0f - (real32)y/(real32)surface->h);
-            
-        }
-    }
-    SDL_UnlockSurface(surface);
+    int width, height = 0;
+    SDL_GetWindowSize(window, &width, &height);
+    
+    // NOTE(Val): Using 0, 0, 0, 0 
+    // NOTE(Val): This causes the pixel format to be RRGGBBAA
+    return SDL_CreateRGBSurface(0, width, height, 32, 0, 0, 0, 0); 
 }
 
 int main(int argv, char** argc)
 {
+    int ret = 0;
     // initialize all the necessary SDL stuff
     if (SDL_Init(SDL_INIT_VIDEO) != 0){
-		return 1;
-	}
+        return 1;
+    }
     
     SDL_Window *window = SDL_CreateWindow(WT_WINDOW_TITLE, 100, 100, 640, 480, SDL_WINDOW_SHOWN|SDL_WINDOW_RESIZABLE);
     if(window == NULL)
@@ -85,10 +36,9 @@ int main(int argv, char** argc)
         SDL_Quit();
     }
     
-    int width, height;
-    SDL_GetWindowSize(window, &width, &height);
+    SDL_Surface *surface = Deb_ResizePixelBuffer(window);
     
-    SDL_Surface *surface = SDL_CreateRGBSurface(0, width, height, 32, 0, 0, 0, 0);
+    game_data data = {};
     
     GlobalRunning = 1;
     while(GlobalRunning)
@@ -111,11 +61,22 @@ int main(int argv, char** argc)
                         case SDL_WINDOWEVENT_RESIZED:
                         {
                             SDL_FreeSurface(surface);
+                            surface = Deb_ResizePixelBuffer(window);
+                        } break;
+                        default:
+                        {
                             
-                            int width, height;
-                            SDL_GetWindowSize(window, &width, &height);
-                            
-                            surface = SDL_CreateRGBSurface(0, event.window.data1, event.window.data2, 32, 0, 0, 0, 0);
+                        } break;
+                    }
+                } break;
+                case SDL_KEYDOWN:
+                {
+                    // NOTE(Val): Keypress events here
+                    switch(event.key.keysym.sym)
+                    {
+                        case SDLK_SPACE:
+                        {
+                            gradient_index = (gradient_index + 1) % ArrayCount(gradient);
                         } break;
                         default:
                         {
@@ -131,18 +92,17 @@ int main(int argv, char** argc)
         }
         
         // render
-        draw_gradient(surface);
-        /* Create a 32-bit surface with the bytes of each pixel in R,G,B,A order,
-       as expected by OpenGL for textures */
-        
         
         // write audio
         
+        data.Pixels.buffer = surface->pixels;
+        data.Pixels.width = surface->w;
+        data.Pixels.height = surface->h;
         
+        Processing(&data);
         
         // display
         SDL_Surface *win_surface = SDL_GetWindowSurface(window);
-        
         SDL_BlitSurface(surface, NULL, win_surface, NULL);
         SDL_UpdateWindowSurface(window);
     }

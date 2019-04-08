@@ -1,3 +1,3 @@
 mkdir -p ../bin
 
-gcc -ggdb -o ../bin/watchtogether deb-watchtogether-v2.c -lSDL2 -no-pie #`pkg-config --cflags --libs 
+gcc -g -o bin/watchtogether src/deb-watchtogether-v2.c -lSDL2 -no-pie 
