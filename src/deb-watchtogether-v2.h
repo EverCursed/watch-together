@@ -9,9 +9,22 @@ typedef struct {
 } pixel_buffer;
 
 typedef struct {
+    uint32 old_x;
+    uint32 old_y;
+    uint32 x;
+    uint32 y;
+    bool32 left_button_was_pressed;
+    bool32 right_button_was_pressed;
+    bool32 left_button_is_pressed;
+    bool32 right_button_is_pressed;
+} mouse_info;
+
+typedef struct {
     pixel_buffer Pixels;
+    mouse_info Mouse;
     // audio_buffer Audio;
     uint32 gradient_index;
+    
     /*
     uint32 gradient[][5] = {
         {

@@ -43,8 +43,7 @@ int main(int argv, char** argc)
     GlobalRunning = 1;
     while(GlobalRunning)
     {
-        // process events
-        
+        // NOTE(Val): Process events
         SDL_Event event = {};
         while(SDL_PollEvent(&event))
         {
@@ -90,6 +89,28 @@ int main(int argv, char** argc)
                 } break;
             }
         }
+        
+        // NOTE(Val): Process mouse
+        
+        data.Mouse.old_x = data.Mouse.x;
+        data.Mouse.old_y = data.Mouse.y;
+        data.Mouse.left_button_was_pressed = data.Mouse.left_button_is_pressed;
+        data.Mouse.right_button_was_pressed = data.Mouse.right_button_is_pressed;
+        
+        
+        
+        uint32 mouse_state = SDL_GetMouseState(&data.Mouse.x, &data.Mouse.y);
+        if(mouse_state & SDL_BUTTON(SDL_BUTTON_LEFT))
+            data.Mouse.left_button_is_pressed = 1;
+        else
+            data.Mouse.left_button_is_pressed = 0;
+        
+        if(mouse_state & SDL_BUTTON(SDL_BUTTON_RIGHT))
+            data.Mouse.right_button_is_pressed = 1;
+        else
+            data.Mouse.right_button_is_pressed = 0;
+        
+        printf("Mouse:\tx: %d\n\t\ty:%d\n", data.Mouse.x, data.Mouse.y);
         
         // render
         
