@@ -20,36 +20,24 @@ typedef struct {
 } mouse_info;
 
 typedef struct {
+    void *Data;
+    uint32 Size;
+    uint32 CurrentIndex;
+    uint32 Frequency;
+    uint16 Channels;
+    uint16 BitsPerSample;
+} sound_sample;
+
+typedef struct {
     pixel_buffer Pixels;
     mouse_info Mouse;
-    // audio_buffer Audio;
+    // TODO(Val): Remove this stuff, it's temporary
     uint32 gradient_index;
-    
-    /*
-    uint32 gradient[][5] = {
-        {
-            GenColor(255, 255, 0, 0),
-            GenColor(0, 0, 0, 0),
-            GenColor(255, 255, 255, 0),
-            GenColor(0, 0, 0, 0),
-            GenColor(255, 0, 255, 0),
-        },
-        {
-            GenColor(255, 0, 0, 0),
-            GenColor(255, 255, 0, 0),
-            GenColor(0, 255, 0, 0),
-            GenColor(0, 255, 255, 0),
-            GenColor(0, 0, 255, 0),
-        },
-        {
-            GenColor(52, 188, 2, 0),
-            GenColor(244, 126, 56, 0),
-            GenColor(210, 52, 186, 0),
-            GenColor(24, 71, 22, 0),
-            GenColor(61, 222, 81, 0),
-        },
-    };*/
-} game_data;
+    sound_sample *SoundSample;
+} program_data;
 
+
+internal void
+PlatformEnqueueAudio(sound_sample *SoundSample);
 
 #endif

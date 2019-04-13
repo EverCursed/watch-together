@@ -1,3 +1,9 @@
+#define GenColor(R,G,B,A) ((R << 16) | (G << 8) | (B) | (A << 24))
+
+// TODO(Val): ffmpeg decoding/encoding
+// TODO(Val): NAT-T implementation, see how it works
+// TODO(Val): Encryption
+
 struct pixel {
     union {
         struct __attribute__ ((packed)){
@@ -181,18 +187,18 @@ void draw_selection(pixel_buffer Buffer, mouse_info Mouse)
 }
 
 internal void
-Processing(game_data *data)
+Processing(program_data *data)
 {
     // process input
     
     // draw
-    //clear_surface(data->Pixels);
+    //     draw video frame
+    //     draw UI
     draw_gradient(data->Pixels);
-    
     draw_selection(data->Pixels, data->Mouse);
-    //draw_dot(surface, 75, 50, GenColor(255, 255, 255, 0));
     
-    // sound
+    // Audio
+    PlatformEnqueueAudio(data->SoundSample);
     
     //
 }

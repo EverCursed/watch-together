@@ -2,29 +2,35 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libavformat/avio.h>
+#include <libavutil/file.h>
+
 #include "defines.h"
 #include "version.h"
-//#include "deb-watchtogether.h"
 #include "utils.h"
-
-#define GenColor(R,G,B,A) ((R << 16) | (G << 8) | (B) | (A << 24))
 
 #include "deb-watchtogether-v2.h"
 #include "watchtogether.c"
 
+/* TODO(Val): A list of things that still must be done 
+ --- Provide TCP/UDP support
+ --- Touchscreen support
+ --- Rewrite audio pushing so that I can push arbitrary 
+ ---     lengths of audio into queue
+ */
+
 global bool32 GlobalRunning;
+global bool32 AudioID;
 
-typedef struct {
-    uint32 Frequency;
-    uint16 Channels;
-    uint16 BitsPerSample;
-    uint32 Size;
-    void *data;
-    uint32 CurrentIndex;
-} WAV_descriptor;
+internal int
+load_ffmpeg()
+{
+    
+}
 
-
-WAV_descriptor load_WAV(const char* filename)
+sound_sample load_WAV(const char* filename)
 {
     FILE *f = fopen(filename, "rb");
     fseek(f, 0, SEEK_END);
@@ -32,11 +38,11 @@ WAV_descriptor load_WAV(const char* filename)
     fseek(f, 0, SEEK_SET);
     void* data_old = malloc(fsize);
     void* data = data_old;
-    fread(data , 1, fsize, f);
+    size_t data_read = fread(data , 1, fsize, f);
     fclose(f);
     
-    WAV_descriptor descriptor = {};
-    WAV_descriptor empty = {};
+    sound_sample descriptor = {};
+    sound_sample empty = {};
     
     char riff[] = "RIFF";
     char wave[] = "WAVE";
@@ -127,16 +133,17 @@ WAV_descriptor load_WAV(const char* filename)
     memcpy(final_data, data, Subchunk2Size);
     free(data_old);
     
+    descriptor.Data = final_data;
+    descriptor.Size = Subchunk2Size;
     descriptor.Frequency = SampleRate;
     descriptor.Channels = NumChannels;
     descriptor.BitsPerSample = BitsPerSample;
-    descriptor.data = final_data;
-    descriptor.Size = Subchunk2Size;
     
     return descriptor;
 }
 
-SDL_Surface* Deb_ResizePixelBuffer(SDL_Window *window)
+internal SDL_Surface* 
+Deb_ResizePixelBuffer(SDL_Window *window)
 {
     int width, height = 0;
     SDL_GetWindowSize(window, &width, &height);
@@ -146,40 +153,122 @@ SDL_Surface* Deb_ResizePixelBuffer(SDL_Window *window)
     return SDL_CreateRGBSurface(0, width, height, 32, 0, 0, 0, 0); 
 }
 
-
-
-void AudioCallback(void*  userdata,
-                   Uint8* stream,
-                   int    len)
+internal void
+EnqueueAudio(SDL_AudioDeviceID AudioID,
+             sound_sample *SoundSample)
 {
-    // TODO(Val): Need this to loop until one buffer 
-    // and continue filling with another buffer;
-    WAV_descriptor *descriptor = (WAV_descriptor *)userdata;
-    uint8* buffer = descriptor->data;
+    uint32 CurrentQueuedAudioSize = 
+        SDL_GetQueuedAudioSize(AudioID);
     
-    uint32 size = descriptor->Size;
-    uint32 index = descriptor->CurrentIndex;
+    // NOTE(Val): Queue up 0.5secs of audio.
+    uint32 BytesPerSec =
+        SoundSample->Frequency * \
+        (SoundSample->BitsPerSample/8) * \
+        SoundSample->Channels;
+    uint32 BytesToHaveQueued = BytesPerSec / 2;
     
-    if(size - index >= len)
+    if(CurrentQueuedAudioSize < BytesToHaveQueued)
     {
-        memcpy(stream, (buffer+index), len);
-        descriptor->CurrentIndex =
-            (descriptor->CurrentIndex + len) % descriptor->Size;
+        printf("%d\n", BytesToHaveQueued);
+        printf("%d\n", CurrentQueuedAudioSize);
+        uint32 len = (BytesToHaveQueued - CurrentQueuedAudioSize);
+        
+        // NOTE(Val): This is split into two parts because 
+        // it currently loops the audio non-stop
+        if(SoundSample->CurrentIndex + len <= SoundSample->Size)
+        {
+            printf("CurrentIndex = %d\n", SoundSample->CurrentIndex);
+            SDL_QueueAudio(
+                AudioID,
+                (SoundSample->Data + SoundSample->CurrentIndex),
+                len);
+            
+            SoundSample->CurrentIndex += len;
+        }
+        else
+        {
+            int Part1Size = SoundSample->Size - SoundSample->CurrentIndex;
+            int Part2Size = len - Part1Size;
+            
+            printf("Part1Size\t= %d\n"
+                   "Part2Size\t= %d\n"
+                   "Size\t\t= %d\n"
+                   "CurrentIndex\t= %d\n"
+                   "Buffer\t\t= %p\n"
+                   "Buffer1\t= %p\n",
+                   Part1Size,
+                   Part2Size,
+                   SoundSample->Size,
+                   SoundSample->CurrentIndex,
+                   SoundSample->Data,
+                   (SoundSample->Data + SoundSample->CurrentIndex)
+                   );
+            SDL_QueueAudio(
+                AudioID,
+                (SoundSample->Data + SoundSample->CurrentIndex),
+                Part1Size);
+            SDL_QueueAudio(
+                AudioID,
+                SoundSample->Data,
+                Part2Size);
+            
+            SoundSample->CurrentIndex = Part2Size;
+        }
+        
     }
-    else
-    {
-        uint32 bytes = size - index;
-        memcpy(stream, (buffer+index), bytes);
-        memcpy((stream+bytes), buffer, len-bytes);
-        descriptor->CurrentIndex = 
-            (descriptor->CurrentIndex + len) % descriptor->Size;
-    }
+}
+
+internal void
+PlatformEnqueueAudio(sound_sample *SoundSample)
+{
+    EnqueueAudio(AudioID, SoundSample);
+}
+
+internal void 
+InitializeAudioDevice(sound_sample SoundSample,
+                      SDL_AudioDeviceID *AudioID,
+                      SDL_AudioSpec *AudioSpec)
+{
+    SDL_AudioSpec DesiredAudioSpec = {};
     
+    DesiredAudioSpec.freq = SoundSample.Frequency;
+    // NOTE(Val): Should depend on source audio
+    if(SoundSample.BitsPerSample == 8)
+        DesiredAudioSpec.format = AUDIO_U8;
+    else if(SoundSample.BitsPerSample == 16)
+        DesiredAudioSpec.format = AUDIO_U16;
+    else if(SoundSample.BitsPerSample == 32)
+        DesiredAudioSpec.format = AUDIO_S32;
+    
+    DesiredAudioSpec.channels = SoundSample.Channels;
+    
+    // NOTE(Val): Sending a number of samples to the audio device
+    // prevents you from immediately closing the app until the
+    // entire buffer is played. Therefore this is small.
+    // TODO(Val): Test to see what the smallest value we can set 
+    // to and how that would affect performance.
+    DesiredAudioSpec.samples = 1024;
+    DesiredAudioSpec.callback = NULL;
+    DesiredAudioSpec.userdata = NULL;
+    
+    // TODO(Val): See if there's a different way to do this 
+    // other than closing and reopening the same sound device
+    if(*AudioID != 0)
+        SDL_CloseAudioDevice(*AudioID);
+    
+    *AudioID = 
+        SDL_OpenAudioDevice(NULL,
+                            0,
+                            &DesiredAudioSpec,
+                            AudioSpec,
+                            SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+    //printf("%s\n", SDL_GetError());
 }
 
 int main(int argv, char** argc)
 {
     int ret = 0;
+    
     // initialize all the necessary SDL stuff
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0){
         return 1;
@@ -191,55 +280,18 @@ int main(int argv, char** argc)
         SDL_Quit();
     }
     
-    WAV_descriptor wav_descriptor = load_WAV("data/audio_test/audio.wav");
-    
-    SDL_AudioSpec DesiredAudioSpec = {};
-    /*
-    AudioSpec
-    -------------
-    freq
-    format
-    channels
-    silence
-    samples
-    size
-    callback
-    userdata
-    */
-    DesiredAudioSpec.freq = wav_descriptor.Frequency;
-    // NOTE(Val): Should depend on source audio
-    DesiredAudioSpec.format = AUDIO_U16;
-    DesiredAudioSpec.channels = wav_descriptor.Channels;
-    
-    // NOTE(Val): Sending a number of samples to the audio device
-    // prevents you from immediately closing the app until the
-    // entire buffer is played. 
-    DesiredAudioSpec.samples = 4096; //(uint32)(wav_descriptor.Frequency);
-    DesiredAudioSpec.callback = (SDL_AudioCallback)AudioCallback;
-    DesiredAudioSpec.userdata = &wav_descriptor;
-    
+    sound_sample SoundSample = load_WAV("data/audio_test/audio.wav");
     SDL_AudioSpec AudioSpec = {};
-    SDL_AudioDeviceID AudioID = 
-        SDL_OpenAudioDevice(NULL,
-                            0,
-                            &DesiredAudioSpec,
-                            &AudioSpec,
-                            SDL_AUDIO_ALLOW_ANY_CHANGE);
-    printf("Freq\t\t%d\n"
-           "Channels\t%d\n"
-           "Samples\t\t%d\n", 
-           AudioSpec.freq,
-           AudioSpec.channels,
-           AudioSpec.samples
-           );
+    InitializeAudioDevice(SoundSample,
+                          &AudioID,
+                          &AudioSpec);
     
     SDL_PauseAudioDevice(AudioID, 0); /* start audio playing. */
-    printf("%s\n", SDL_GetError());
     
     
     SDL_Surface *surface = Deb_ResizePixelBuffer(window);
     
-    game_data data = {};
+    program_data data = {};
     
     GlobalRunning = 1;
     while(GlobalRunning)
@@ -280,8 +332,15 @@ int main(int argv, char** argc)
                         } break;
                         case SDLK_ESCAPE:
                         {
-                            SDL_UnlockAudioDevice(AudioID);
                             GlobalRunning = 0;
+                        } break;
+                        case SDLK_RETURN:
+                        {
+                            SoundSample = load_WAV("data/audio_test/audio2.wav");
+                            InitializeAudioDevice(SoundSample,
+                                                  &AudioID,
+                                                  &AudioSpec);
+                            SDL_PauseAudioDevice(AudioID, 0);
                         } break;
                         default:
                         {
@@ -294,10 +353,14 @@ int main(int argv, char** argc)
                     
                 } break;
             }
+            
+            if(!GlobalRunning)
+                break;
         }
         
         if(!GlobalRunning)
             break;
+        
         
         // NOTE(Val): Process mouse
         
@@ -322,11 +385,13 @@ int main(int argv, char** argc)
         // render
         
         // write audio
+        // EnqueueAudio(AudioID, &SoundSample);
         
         data.Pixels.buffer = surface->pixels;
         data.Pixels.width = surface->w;
         data.Pixels.height = surface->h;
         
+        data.SoundSample = &SoundSample;
         Processing(&data);
         
         // display
@@ -335,15 +400,11 @@ int main(int argv, char** argc)
         SDL_UpdateWindowSurface(window);
     }
     
-    free(wav_descriptor.data);
+    free(SoundSample.Data);
     
-    SDL_PauseAudioDevice(AudioID, 1);
     SDL_CloseAudioDevice(AudioID);
     SDL_FreeSurface(surface);
     
     SDL_Quit();
     return 0;
 }
-
-
-
