@@ -1,3 +1,5 @@
+#include "video.c"
+
 #define GenColor(R,G,B,A) ((R << 16) | (G << 8) | (B) | (A << 24))
 
 // TODO(Val): ffmpeg decoding/encoding
@@ -43,7 +45,8 @@ global uint32 gradient[][5] =
 };
 
 
-void clear_surface(pixel_buffer buffer)
+static void 
+clear_surface(pixel_buffer buffer)
 {
     int w = buffer.width;
     int h = buffer.height;
@@ -57,7 +60,8 @@ void clear_surface(pixel_buffer buffer)
     }
 }
 
-void draw_gradient(pixel_buffer buffer)
+static void
+draw_gradient(pixel_buffer buffer)
 {
     for(int x = 0; x < buffer.width; x++)
     {
@@ -106,7 +110,7 @@ global uint32 end_y = 0;
 global struct pixel outline_color;
 global struct pixel fill_color;
 
-internal inline
+static inline
 struct pixel invert_color(struct pixel color)
 {
     struct pixel p = {};
@@ -117,7 +121,7 @@ struct pixel invert_color(struct pixel color)
     return p;
 }
 
-internal inline
+static inline
 void mix_color(struct pixel *dst_color, struct pixel src_color)
 {
     struct pixel src = src_color;
@@ -130,7 +134,8 @@ void mix_color(struct pixel *dst_color, struct pixel src_color)
     dst->alpha = 0;
 }
 
-void draw_selection(pixel_buffer Buffer, mouse_info Mouse)
+static void
+draw_selection(pixel_buffer Buffer, mouse_info Mouse)
 {
     outline_color.color = GenColor(0x00, 0x80, 0xFF, 102);
     fill_color.color = GenColor(0x24, 0x24, 0x24, 102);
@@ -186,16 +191,19 @@ void draw_selection(pixel_buffer Buffer, mouse_info Mouse)
     }
 }
 
-internal void
+static void
 Processing(program_data *data)
 {
     // process input
-    
     // draw
+    AVFrame frame = {};
+    video_get_next_frame(&frame);
+    //printf("width: %d\theight: %d\n", frame.width, frame.height);
+    blit_frame(&frame);
     //     draw video frame
     //     draw UI
-    draw_gradient(data->Pixels);
-    draw_selection(data->Pixels, data->Mouse);
+    //draw_gradient(data->Pixels);
+    //draw_selection(data->Pixels, data->Mouse);
     
     // Audio
     PlatformEnqueueAudio(data->SoundSample);

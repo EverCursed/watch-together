@@ -1,20 +1,21 @@
 #include <SDL2/SDL.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <math.h>
 
 #include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-#include <libavformat/avio.h>
-#include <libavutil/file.h>
+
 
 #include "defines.h"
-#include "version.h"
+#include "wt_version.h"
 #include "utils.h"
 
 #include "deb-watchtogether-v2.h"
 #include "watchtogether.c"
 
 /* TODO(Val): A list of things that still must be done 
+ --- I guess add ffmpeg stuff here
  --- Provide TCP/UDP support
  --- Touchscreen support
  --- Rewrite audio pushing so that I can push arbitrary 
@@ -23,11 +24,64 @@
 
 global bool32 GlobalRunning;
 global bool32 AudioID;
+global float ms_target = 33.0f;
+global SDL_Renderer *renderer = NULL;
+global SDL_Texture *texture;
+global SDL_Texture *background_texture;
+global SDL_Texture *ui_texture;
 
-internal int
-load_ffmpeg()
+// TODO(Val): remove this, just temporary
+static void
+set_FPS(float value)
 {
+    ms_target = value;
+}
+
+static void
+blit_frame(AVFrame *frame)
+{
+    printf("width: %d\nheight: %d\n", frame->width, frame->height);
     
+    SDL_Surface *image = SDL_CreateRGBSurfaceWithFormatFrom(
+        frame->data[0],
+        frame->width,
+        frame->height,
+        24,
+        frame->linesize[0],
+        SDL_PIXELFORMAT_RGB24
+        );
+    
+    
+    if(background_texture)
+    {
+        SDL_DestroyTexture(background_texture);
+        background_texture = NULL;
+    }
+    
+    
+    background_texture = SDL_CreateTextureFromSurface(
+        renderer,
+        image
+        );
+    
+    printf("Error: %s\n", SDL_GetError()); SDL_ClearError();
+    /*
+    uint8 *dst = surface->pixels;
+    uint8 *src = frame->data[0];
+    uint32 line = frame->linesize[0];
+    uint32 width = frame->width;
+    uint32 height = frame->height;
+    
+    for(int y = 0; y < height; y++)
+    {
+    for(int x = 0; x < width*3; x++)
+    {
+    //printf("%d", *(src + y*width + x));
+    *(dst + y*line + x) = *(src + y*width + x);
+    }
+    //printf("\n");
+    }
+    */
 }
 
 sound_sample load_WAV(const char* filename)
@@ -142,18 +196,20 @@ sound_sample load_WAV(const char* filename)
     return descriptor;
 }
 
-internal SDL_Surface* 
-Deb_ResizePixelBuffer(SDL_Window *window)
+/*
+static SDL_Texture* 
+Deb_ResizePixelBuffer(SDL_Window *window, SDL_Renderer *renderer)
 {
-    int width, height = 0;
-    SDL_GetWindowSize(window, &width, &height);
-    
-    // NOTE(Val): Using 0, 0, 0, 0 
-    // NOTE(Val): This causes the pixel format to be RRGGBBAA
-    return SDL_CreateRGBSurface(0, width, height, 32, 0, 0, 0, 0); 
+SDL_GetWindowSize(window, &width, &height);
+return SDL_CreateTexture(renderer,
+SDL_PIXELFORMAT_RGB24, // TODO(Val): confirm this
+SDL_TEXTUREACCESS_STREAMING,
+,
+height,
+); 
 }
-
-internal void
+*/
+static void
 EnqueueAudio(SDL_AudioDeviceID AudioID,
              sound_sample *SoundSample)
 {
@@ -169,15 +225,12 @@ EnqueueAudio(SDL_AudioDeviceID AudioID,
     
     if(CurrentQueuedAudioSize < BytesToHaveQueued)
     {
-        printf("%d\n", BytesToHaveQueued);
-        printf("%d\n", CurrentQueuedAudioSize);
         uint32 len = (BytesToHaveQueued - CurrentQueuedAudioSize);
         
         // NOTE(Val): This is split into two parts because 
         // it currently loops the audio non-stop
         if(SoundSample->CurrentIndex + len <= SoundSample->Size)
         {
-            printf("CurrentIndex = %d\n", SoundSample->CurrentIndex);
             SDL_QueueAudio(
                 AudioID,
                 (SoundSample->Data + SoundSample->CurrentIndex),
@@ -218,13 +271,13 @@ EnqueueAudio(SDL_AudioDeviceID AudioID,
     }
 }
 
-internal void
+static void
 PlatformEnqueueAudio(sound_sample *SoundSample)
 {
     EnqueueAudio(AudioID, SoundSample);
 }
 
-internal void 
+static void 
 InitializeAudioDevice(sound_sample SoundSample,
                       SDL_AudioDeviceID *AudioID,
                       SDL_AudioSpec *AudioSpec)
@@ -270,15 +323,22 @@ int main(int argv, char** argc)
     int ret = 0;
     
     // initialize all the necessary SDL stuff
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0){
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_NOPARACHUTE) != 0){
         return 1;
     }
     
-    SDL_Window *window = SDL_CreateWindow(WT_WINDOW_TITLE, 100, 100, 640, 480, SDL_WINDOW_SHOWN|SDL_WINDOW_RESIZABLE);
-    if(window == NULL)
-    {
+    SDL_Window *window = NULL;
+    SDL_CreateWindowAndRenderer(/*WT_WINDOW_TITLE, */1280,
+                                720,
+                                SDL_WINDOW_RESIZABLE,
+                                &window,
+                                &renderer);
+    
+    if(window == NULL || renderer == NULL)
         SDL_Quit();
-    }
+    
+    SDL_SetWindowTitle(window, WT_WINDOW_TITLE);
+    SDL_ShowWindow(window);
     
     sound_sample SoundSample = load_WAV("data/audio_test/audio.wav");
     SDL_AudioSpec AudioSpec = {};
@@ -286,16 +346,26 @@ int main(int argv, char** argc)
                           &AudioID,
                           &AudioSpec);
     
+    av_register_all();
+    
+    if(video_open("data/video2.mp4"))
+        return -1;
+    
     SDL_PauseAudioDevice(AudioID, 0); /* start audio playing. */
     
-    
-    SDL_Surface *surface = Deb_ResizePixelBuffer(window);
+    //texture = Deb_ResizePixelBuffer(window, renderer);
     
     program_data data = {};
+    
+    struct timespec TimeStart, TimeEnd;
+    
     
     GlobalRunning = 1;
     while(GlobalRunning)
     {
+        // NOTE(Val): Start timer
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &TimeStart);
+        
         // NOTE(Val): Process events
         SDL_Event event = {};
         while(SDL_PollEvent(&event))
@@ -312,8 +382,8 @@ int main(int argv, char** argc)
                     {
                         case SDL_WINDOWEVENT_RESIZED:
                         {
-                            SDL_FreeSurface(surface);
-                            surface = Deb_ResizePixelBuffer(window);
+                            //SDL_FreeSurface(surface);
+                            //surface = Deb_ResizePixelBuffer(window);
                         } break;
                         default:
                         {
@@ -380,30 +450,72 @@ int main(int argv, char** argc)
         else
             data.Mouse.right_button_is_pressed = 0;
         
-        // printf("Mouse:\tx: %d\n\t\ty:%d\n", data.Mouse.x, data.Mouse.y);
         
         // render
         
         // write audio
         // EnqueueAudio(AudioID, &SoundSample);
         
-        data.Pixels.buffer = surface->pixels;
-        data.Pixels.width = surface->w;
-        data.Pixels.height = surface->h;
+        data.Pixels.buffer = NULL; //surface->pixels;
+        data.Pixels.width = 0; //surface->w;
+        data.Pixels.height = 0; //surface->h;
         
         data.SoundSample = &SoundSample;
         Processing(&data);
         
+        
+        SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
+        SDL_SetTextureBlendMode(ui_texture, SDL_BLENDMODE_BLEND);
+        
+        
+        SDL_RenderCopy(renderer, background_texture, NULL, NULL);
+        
+        SDL_RenderPresent(renderer);
+        
+        //SDL_Surface *win_surface = SDL_GetWindowSurface(window);
+        //SDL_UpdateWindowSurface(window);
         // display
-        SDL_Surface *win_surface = SDL_GetWindowSurface(window);
-        SDL_BlitSurface(surface, NULL, win_surface, NULL);
-        SDL_UpdateWindowSurface(window);
+        //SDL_BlitSurface(surface, NULL, win_surface, NULL);
+        
+        // NOTE(Val): Wait here until the end of this frame's time
+        // slot to begin next frame processing.
+        // TODO(Val): At best, this can be said to be the absolute
+        // fucking worst way to do this. This will need to be redone 
+        // since only updating the video frame at a certain 
+        // framerate is necessary. Redrawing the buffer with
+        // appropriate scaling will still need to happen without
+        // framerate in consideration
+        // Maybe do this in a separate thread? Just sleep until
+        // it's time to flip buffers and then sleep again?
+        struct timespec TimeDifference = {};
+        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &TimeEnd);
+        TimeDifference.tv_nsec = TimeEnd.tv_nsec - TimeStart.tv_nsec;
+        TimeDifference.tv_sec = TimeEnd.tv_sec - TimeStart.tv_sec;
+        
+        struct timespec sleep_duration;
+        sleep_duration.tv_nsec =
+            (uint64)(ms_target * 1000000.0f) -
+            TimeDifference.tv_nsec;
+        sleep_duration.tv_sec =
+            (uint64)(ms_target / 1000.0f) -
+            TimeDifference.tv_sec +
+            (sleep_duration.tv_nsec/1000000000);
+        if(sleep_duration.tv_nsec >= 1000000000)
+        {
+            sleep_duration.tv_sec -= (uint64)sleep_duration.tv_nsec/1000000000.0f;
+            sleep_duration.tv_nsec = fmod(sleep_duration.tv_nsec, 1000000000.0f);
+        }
+        //printf("sec: %ld\tnsec: %ld\n", sleep_duration.tv_sec, sleep_duration.tv_nsec);
+        // sleep
+        nanosleep(&sleep_duration, NULL);
     }
+    
+    video_close();
     
     free(SoundSample.Data);
     
     SDL_CloseAudioDevice(AudioID);
-    SDL_FreeSurface(surface);
+    //SDL_FreeSurface(surface);
     
     SDL_Quit();
     return 0;

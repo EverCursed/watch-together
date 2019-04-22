@@ -2,13 +2,13 @@
 #define WT_V2
 
 
-typedef struct {
+typedef struct _pixel_buffer {
     uint32 width;
     uint32 height;
     void *buffer;
 } pixel_buffer;
 
-typedef struct {
+typedef struct _mouse_info {
     uint32 old_x;
     uint32 old_y;
     uint32 x;
@@ -19,7 +19,7 @@ typedef struct {
     bool32 right_button_is_pressed;
 } mouse_info;
 
-typedef struct {
+typedef struct _sound_sample {
     void *Data;
     uint32 Size;
     uint32 CurrentIndex;
@@ -28,7 +28,12 @@ typedef struct {
     uint16 BitsPerSample;
 } sound_sample;
 
-typedef struct {
+typedef struct _video_data {
+    uint32 framerate;
+    // TODO(Val): Add the relevant information
+} video_data;
+
+typedef struct _program_data {
     pixel_buffer Pixels;
     mouse_info Mouse;
     // TODO(Val): Remove this stuff, it's temporary
@@ -37,7 +42,10 @@ typedef struct {
 } program_data;
 
 
-internal void
+static void
 PlatformEnqueueAudio(sound_sample *SoundSample);
+
+static void
+blit_frame(AVFrame *frame);
 
 #endif
