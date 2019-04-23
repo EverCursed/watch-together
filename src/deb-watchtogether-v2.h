@@ -46,6 +46,9 @@ static void
 PlatformEnqueueAudio(sound_sample *SoundSample);
 
 static void
-blit_frame(AVFrame *frame);
+blit_frame(pixel_buffer buffer);
+
+static void
+set_FPS(float value);
 
 #endif

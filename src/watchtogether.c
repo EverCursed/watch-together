@@ -194,16 +194,11 @@ draw_selection(pixel_buffer Buffer, mouse_info Mouse)
 static void
 Processing(program_data *data)
 {
-    // process input
-    // draw
-    AVFrame frame = {};
-    video_get_next_frame(&frame);
-    //printf("width: %d\theight: %d\n", frame.width, frame.height);
-    blit_frame(&frame);
+    pixel_buffer buf = {};
+    video_get_next_frame(&buf);
+    blit_frame(buf);
     //     draw video frame
     //     draw UI
-    //draw_gradient(data->Pixels);
-    //draw_selection(data->Pixels, data->Mouse);
     
     // Audio
     PlatformEnqueueAudio(data->SoundSample);

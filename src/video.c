@@ -4,19 +4,17 @@
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavutil/imgutils.h>
+#include <libswscale/swscale.h>
 
 #include "defines.h"
 #include "deb-watchtogether-v2.h"
-
-
 
 #define INBUF_SIZE 4096
 
 typedef struct _frame_buffer {
     
 } frame_buffer;
-
-global FILE *video_file;
 
 global AVCodec *audio_codec;
 global AVCodec *video_codec;
@@ -28,6 +26,17 @@ global AVFrame *frame;
 global uint8_t inbuf[INBUF_SIZE + AV_INPUT_BUFFER_PADDING_SIZE];
 global int video_stream = -1;
 global int audio_stream = -1;
+
+static void
+video_close()
+{
+    
+    av_parser_close(parser);
+    avcodec_free_context(&codec_context);
+    avformat_close_input(&format_context);
+    av_frame_free(&frame);
+    av_packet_free(&pkt);
+}
 
 static void
 video_encode()
@@ -53,10 +62,15 @@ video_decode(AVCodecContext *dec_ctx, AVFrame *frame, AVPacket *pkt)
     
     while((ret = avcodec_receive_frame(dec_ctx, frame)))
     {
-        printf("Error during decoding\n");
-        printf("%s\n", av_err2str(ret));
-        
-        if (ret == AVERROR_EOF) {
+        //printf("Error during decoding\n");
+        //printf("%s\n", av_err2str(ret));
+        if(ret == 0)
+        {
+            // NOTE(Val): All good
+            // TODO(Val): Do something here?
+            return 0;
+        }
+        else if (ret == AVERROR_EOF) {
             //printf("ret == AVERROR(EAGAIN) || ret == AVERROR_EOF\n");
             fprintf(stderr, "%s\n", av_err2str(ret));
             
@@ -87,8 +101,8 @@ video_decode(AVCodecContext *dec_ctx, AVFrame *frame, AVPacket *pkt)
         /* the picture is allocated by the decoder. no need to
            free it */
     }
-    printf("Error during decoding\n");
-    printf("%s\n", av_err2str(ret));
+    //printf("Error during decoding\n");
+    //printf("%s\n", av_err2str(ret));
     
 }
 
@@ -102,14 +116,18 @@ copy_context(AVCodecContext *dst, const AVCodecContext *src)
     if((ret = avcodec_parameters_from_context(params, src)) < 0)
     {
         printf("avcodec_parameters_from_context() failed!");
+        avcodec_parameters_free(&params);
         return ret;
     }
     
     if((ret = avcodec_parameters_to_context(dst, params)) < 0)
     {
         printf("avcodec_parameters_to_context() failed!");
+        avcodec_parameters_free(&params);
         return ret;
     }
+    
+    avcodec_parameters_free(&params);
     
     return 0;
 }
@@ -187,7 +205,7 @@ video_open(const char *filename)
     }
     
     pkt = av_packet_alloc();
-    //av_init_packet(pkt);
+    av_init_packet(pkt);
     if (!pkt)
     {
         printf("av_packet_alloc() failed!\n");
@@ -214,41 +232,79 @@ memset(inbuf + INBUF_SIZE, 0, AV_INPUT_BUFFER_PADDING_SIZE);
     av_log(codec_context, AV_LOG_INFO, "Codec Context\n");
     av_log(format_context, AV_LOG_INFO, "Format Context\n");
     
+    printf("%d/%d\n", codec_context->framerate.num, codec_context->framerate.den);
+    set_FPS((real32)codec_context->framerate.den/(real32)codec_context->framerate.num);
     
     return 0;
 }
 
-static void
-video_close()
-{
-    /* flush the decoder */
-    //video_decode(codec_context, frame, NULL);
-    
-    //fclose(video_file);
-    
-    av_parser_close(parser);
-    avcodec_free_context(&codec_context);
-    //avcodec_free_context(&codec_context_copy);
-    av_frame_free(&frame);
-    av_packet_free(&pkt);
-}
 
-static void
-video_get_next_frame(AVFrame *frame)
+struct SwsContext* modifContext = NULL;
+
+static void*
+video_get_next_frame(pixel_buffer *buffer)
 {
-    uint8_t *data;
-    size_t data_size;
-    int ret;
-    
     /* read raw data from the input file */
     //data_size = fread(inbuf, 1, INBUF_SIZE, video_file);
     //if (!data_size)
     //return;
     
-    ret = av_read_frame(format_context, pkt);
-    if (pkt->size && pkt->stream_index == video_stream)
-        video_decode(codec_context, frame, pkt);
+    int ret = 0;
+    do {
+        if(pkt)
+            av_packet_unref(pkt);
+        ret = av_read_frame(format_context, pkt);
+    } while(!(pkt->size && pkt->stream_index == video_stream));
     
+    video_decode(codec_context, frame, pkt);
+    av_packet_unref(pkt);
+    
+    /*
+    AVFrame *secondary_frame = av_frame_alloc();
+    secondary_frame->width = frame->width;
+    secondary_frame->height = frame->height;
+    secondary_frame->format = AV_PIX_FMT_RGB24;
+    secondary_frame->
+    */
+    
+    buffer->width = frame->width;
+    buffer->height = frame->height;
+    modifContext = sws_getCachedContext(modifContext,
+                                        frame->width,
+                                        frame->height,
+                                        frame->format,
+                                        buffer->width,
+                                        buffer->height,
+                                        AV_PIX_FMT_RGB24,
+                                        SWS_BICUBIC,
+                                        NULL, NULL, NULL);
+    
+    //avpicture_fill((AVPicture*)secondary_frame, frame2_buffer, AV_PIX_FMT_RGB24, width2, height2);
+    
+    uint8_t *ptr = calloc(3 * frame->width * frame->height, sizeof(uint8_t));
+    uint8_t *ptrs[1] = { ptr };
+    int stride[1] = { 3 * frame->width };
+    
+    int ret_slices = sws_scale(modifContext,
+                               (uint8_t const* const*)frame->data,
+                               frame->linesize,
+                               0,
+                               buffer->height,
+                               (uint8 *const *const)ptrs,
+                               stride);
+    //uint32 size = 3*frame->width*frame->height;
+    //buffer->buffer = malloc(size);
+    //ret = av_image_copy_to_buffer(buffer->buffer, size, (uint8_t const* const*)(secondary_frame->data), secondary_frame->linesize, AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
+    /*
+    for (int i = 0; i < buffer->width * buffer->height; i++ )
+    {
+        *(ptr+(i * 3)) = 0;
+    }
+    */
+    buffer->buffer = ptr;
+    //av_frame_free(&secondary_frame);
+    
+    return buffer;
     //blit_frame(frame);
     
     /*

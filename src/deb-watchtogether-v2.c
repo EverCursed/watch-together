@@ -38,33 +38,36 @@ set_FPS(float value)
 }
 
 static void
-blit_frame(AVFrame *frame)
+blit_frame(pixel_buffer buffer)
 {
-    printf("width: %d\nheight: %d\n", frame->width, frame->height);
-    
+    printf("FPS: %f\n", ms_target);
+    printf("width: %d\nheight: %d\n", buffer.width, buffer.height);
     SDL_Surface *image = SDL_CreateRGBSurfaceWithFormatFrom(
-        frame->data[0],
-        frame->width,
-        frame->height,
+        buffer.buffer,
+        buffer.width,
+        buffer.height,
         24,
-        frame->linesize[0],
+        buffer.width*3,
         SDL_PIXELFORMAT_RGB24
         );
     
+    if(!image)
+        printf("SDL_CreateRGBSurfaceWithFormatFrom failed!");
     
     if(background_texture)
     {
         SDL_DestroyTexture(background_texture);
         background_texture = NULL;
     }
-    
-    
     background_texture = SDL_CreateTextureFromSurface(
         renderer,
         image
         );
+    if(!background_texture)
+        printf("Error: %s\n", SDL_GetError()); SDL_ClearError();
     
-    printf("Error: %s\n", SDL_GetError()); SDL_ClearError();
+    SDL_FreeSurface(image);
+    free(buffer.buffer);
     /*
     uint8 *dst = surface->pixels;
     uint8 *src = frame->data[0];
@@ -330,7 +333,7 @@ int main(int argv, char** argc)
     SDL_Window *window = NULL;
     SDL_CreateWindowAndRenderer(/*WT_WINDOW_TITLE, */1280,
                                 720,
-                                SDL_WINDOW_RESIZABLE,
+                                SDL_WINDOW_BORDERLESS,
                                 &window,
                                 &renderer);
     
@@ -514,9 +517,15 @@ int main(int argv, char** argc)
     
     free(SoundSample.Data);
     
+    global SDL_Renderer *renderer = NULL;
+    
+    SDL_DestroyTexture(texture);
+    SDL_DestroyTexture(background_texture);
+    SDL_DestroyTexture(ui_texture);
+    
     SDL_CloseAudioDevice(AudioID);
-    //SDL_FreeSurface(surface);
     
     SDL_Quit();
     return 0;
 }
+
