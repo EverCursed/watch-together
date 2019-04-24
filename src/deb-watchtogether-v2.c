@@ -2,10 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <math.h>
-
-#include <libavcodec/avcodec.h>
-
 
 #include "defines.h"
 #include "wt_version.h"
@@ -20,10 +16,13 @@
  --- Touchscreen support
  --- Rewrite audio pushing so that I can push arbitrary 
  ---     lengths of audio into queue
+ --- Write an allocator to handle all allocations instead of 
+ ---     malloc/av_malloc
  */
 
 global bool32 GlobalRunning;
-global bool32 AudioID;
+global uint32 AudioID;
+global bool32 is_fullscreen;
 global float ms_target = 33.0f;
 global SDL_Renderer *renderer = NULL;
 global SDL_Texture *texture;
@@ -31,27 +30,29 @@ global SDL_Texture *background_texture;
 global SDL_Texture *ui_texture;
 
 // TODO(Val): remove this, just temporary
+// NOTE(Val): sets the length of a frame in ms
 static void
 set_FPS(float value)
 {
     ms_target = value;
+    printf("FPS set to: %f\n", value);
 }
 
 static void
 blit_frame(pixel_buffer buffer)
 {
+    /*
     SDL_Surface *image = SDL_CreateRGBSurfaceWithFormatFrom(
         buffer.buffer,
         buffer.width,
         buffer.height,
-        24,
-        buffer.width*3,
-        SDL_PIXELFORMAT_RGB24
+        32,
+        buffer.width*4,
+        SDL_PIXELFORMAT_BGRA32
         );
-    
+        
     if(!image)
         printf("SDL_CreateRGBSurfaceWithFormatFrom failed!");
-    
     if(background_texture)
     {
         SDL_DestroyTexture(background_texture);
@@ -66,8 +67,11 @@ blit_frame(pixel_buffer buffer)
         printf("Error: %s\n", SDL_GetError()); SDL_ClearError();
     }
     
-    SDL_FreeSurface(image);
-    free(buffer.buffer);
+SDL_FreeSurface(image);
+    */
+    SDL_UpdateTexture(background_texture, NULL, buffer.buffer, buffer.pitch);
+    
+    //av_free(buffer.buffer);
 }
 
 // TODO(Val): Remove this function and use ffmpeg to get sound data
@@ -181,22 +185,40 @@ sound_sample load_WAV(const char* filename)
     descriptor.BitsPerSample = BitsPerSample;
     
     return descriptor;
+}
+
+#define BYTE_ALIGN 16
+
+static void 
+Deb_ResizePixelBuffer(SDL_Renderer *renderer, pixel_buffer *pixels)
+{
+    int width, height, pitch;
+    
+    SDL_GetRendererOutputSize(renderer,
+                              &width,
+                              &height);
+    
+    pitch = width*4 + (BYTE_ALIGN - ((width*4) % BYTE_ALIGN));
+    
+    pixels->width = width;
+    pixels->height = height;
+    pixels->pitch = pitch;
+    
+    if(pixels->buffer)
+        free(pixels->buffer);
+    pixels->buffer = malloc(pixels->height * pitch * 4);
+    
+    if(background_texture)
+        SDL_DestroyTexture(background_texture);
+    
+    background_texture = SDL_CreateTexture(renderer, 
+                                           SDL_PIXELFORMAT_BGRA32,
+                                           SDL_TEXTUREACCESS_STREAMING,
+                                           width,
+                                           height);
     
 }
 
-/*
-static SDL_Texture* 
-Deb_ResizePixelBuffer(SDL_Window *window, SDL_Renderer *renderer)
-{
-SDL_GetWindowSize(window, &width, &height);
-return SDL_CreateTexture(renderer,
-SDL_PIXELFORMAT_RGB24, // TODO(Val): confirm this
-SDL_TEXTUREACCESS_STREAMING,
-,
-height,
-); 
-}
-*/
 static void
 EnqueueAudio(SDL_AudioDeviceID AudioID,
              sound_sample *SoundSample)
@@ -309,14 +331,14 @@ InitializeAudioDevice(sound_sample SoundSample,
 int main()
 {
     // initialize all the necessary SDL stuff
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_NOPARACHUTE) != 0){
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0){
         return 1;
     }
     
     SDL_Window *window = NULL;
-    SDL_CreateWindowAndRenderer(/*WT_WINDOW_TITLE, */1280,
-                                720,
-                                SDL_WINDOW_BORDERLESS,
+    SDL_CreateWindowAndRenderer(1024,
+                                576,
+                                SDL_WINDOW_RESIZABLE,
                                 &window,
                                 &renderer);
     
@@ -334,7 +356,7 @@ int main()
     
     av_register_all();
     
-    if(video_open("data/video2.mp4"))
+    if(video_open("data/video.mp4"))
         return -1;
     
     SDL_PauseAudioDevice(AudioID, 0); /* start audio playing. */
@@ -342,9 +364,9 @@ int main()
     //texture = Deb_ResizePixelBuffer(window, renderer);
     
     program_data data = {};
-    
     struct timespec TimeStart, TimeEnd;
     
+    Deb_ResizePixelBuffer(renderer, &data.Pixels);
     
     GlobalRunning = 1;
     while(GlobalRunning)
@@ -368,6 +390,7 @@ int main()
                     {
                         case SDL_WINDOWEVENT_RESIZED:
                         {
+                            Deb_ResizePixelBuffer(renderer, &data.Pixels);
                             //SDL_FreeSurface(surface);
                             //surface = Deb_ResizePixelBuffer(window);
                         } break;
@@ -392,11 +415,30 @@ int main()
                         } break;
                         case SDLK_RETURN:
                         {
-                            SoundSample = load_WAV("data/audio_test/audio2.wav");
-                            InitializeAudioDevice(SoundSample,
-                                                  &AudioID,
-                                                  &AudioSpec);
-                            SDL_PauseAudioDevice(AudioID, 0);
+                            SDL_Keymod mod = SDL_GetModState();
+                            
+                            if(mod & KMOD_ALT)
+                            {
+                                if(is_fullscreen)
+                                {
+                                    SDL_SetWindowFullscreen(window, 0);
+                                    is_fullscreen = 0;
+                                }
+                                else
+                                {
+                                    SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+                                    is_fullscreen = 1;
+                                }
+                                //Deb_ResizePixelBuffer(renderer, &data.Pixels);
+                            }
+                            else
+                            {
+                                SoundSample = load_WAV("data/audio_test/audio2.wav");
+                                InitializeAudioDevice(SoundSample,
+                                                      &AudioID,
+                                                      &AudioSpec);
+                                SDL_PauseAudioDevice(AudioID, 0);
+                            }
                         } break;
                         default:
                         {
@@ -442,9 +484,6 @@ int main()
         // write audio
         // EnqueueAudio(AudioID, &SoundSample);
         
-        data.Pixels.buffer = NULL; //surface->pixels;
-        data.Pixels.width = 0; //surface->w;
-        data.Pixels.height = 0; //surface->h;
         
         data.SoundSample = &SoundSample;
         Processing(&data);
@@ -499,13 +538,14 @@ int main()
     
     video_close();
     
-    free(SoundSample.Data);
-    
     SDL_DestroyTexture(texture);
     SDL_DestroyTexture(background_texture);
     SDL_DestroyTexture(ui_texture);
     
     SDL_CloseAudioDevice(AudioID);
+    
+    free(data.Pixels.buffer);
+    free(SoundSample.Data);
     
     SDL_Quit();
     return 0;

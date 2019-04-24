@@ -7,10 +7,6 @@
 #include "deb-watchtogether-v2.h"
 #include "watchtogether.h"
 
-typedef struct _frame_buffer {
-    
-} frame_buffer;
-
 global AVCodec *audio_codec;
 global AVCodec *video_codec;
 global AVCodecParserContext *parser;
@@ -65,6 +61,10 @@ video_decode(AVCodecContext *dec_ctx, AVFrame *frame, AVPacket *pkt)
             //printf("ret == AVERROR(EAGAIN) || ret == AVERROR_EOF\n");
             fprintf(stderr, "%s\n", av_err2str(ret));
             
+            int seek_target= av_rescale_q(0, AV_TIME_BASE_Q,
+                                          format_context->streams[video_stream]->time_base);
+            
+            av_seek_frame(format_context, video_stream, 0, AVSEEK_FLAG_ANY);
             return 0;
         }
         else if (ret == AVERROR(EAGAIN))
@@ -185,17 +185,20 @@ video_open(const char *filename)
     //av_log(codec_context, AV_LOG_INFO, "Codec Context\n");
     //av_log(format_context, AV_LOG_INFO, "Format Context\n");
     
-    printf("%d/%d\n", codec_context->framerate.num, codec_context->framerate.den);
-    set_FPS((real32)codec_context->framerate.den/(real32)codec_context->framerate.num);
+    AVRational time;
+    time = format_context->streams[video_stream]->avg_frame_rate;
+    printf("%d/%d\n", time.num, time.den);
+    set_FPS((real32)time.den/(real32)time.num * 1000.0f);
     
     return 0;
 }
 
-struct SwsContext* modifContext = NULL;
 
 static void*
 video_get_next_frame(pixel_buffer *buffer)
 {
+    static struct SwsContext* modifContext = NULL;
+    
     do {
         if(pkt)
             av_packet_unref(pkt);
@@ -205,60 +208,33 @@ video_get_next_frame(pixel_buffer *buffer)
     video_decode(codec_context, frame, pkt);
     av_packet_unref(pkt);
     
-    buffer->width = frame->width;
-    buffer->height = frame->height;
     modifContext = sws_getCachedContext(modifContext,
-                                        frame->width,
-                                        frame->height,
+                                        codec_context->width,
+                                        codec_context->height,
                                         frame->format,
                                         buffer->width,
                                         buffer->height,
-                                        AV_PIX_FMT_RGB24,
+                                        AV_PIX_FMT_RGB32,
                                         SWS_BICUBIC,
                                         NULL, NULL, NULL);
     
-    uint8_t *ptr = calloc(3 * frame->width * frame->height, sizeof(uint8_t));
-    uint8_t *ptrs[1] = { ptr };
-    int stride[1] = { 3 * frame->width };
+    uint8_t *ptrs[1] = { buffer->buffer };
+    int stride[] = { buffer->pitch };
     
+    /*
+    printf("Pointer: %p\nWidth: %d\nHeight: %d\nPitch: %d\n",
+           buffer->buffer,
+           buffer->width,
+           buffer->height,
+           buffer->pitch);
+    */
     sws_scale(modifContext,
               (uint8_t const* const*)frame->data,
               frame->linesize,
               0,
-              buffer->height,
+              codec_context->height,
               (uint8 *const *const)ptrs,
               stride);
-    //uint32 size = 3*frame->width*frame->height;
-    //buffer->buffer = malloc(size);
-    //ret = av_image_copy_to_buffer(buffer->buffer, size, (uint8_t const* const*)(secondary_frame->data), secondary_frame->linesize, AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
-    /*
-    for (int i = 0; i < buffer->width * buffer->height; i++ )
-    {
-        *(ptr+(i * 3)) = 0;
-    }
-    */
-    buffer->buffer = ptr;
-    //av_frame_free(&secondary_frame);
     
     return buffer;
-    //blit_frame(frame);
-    
-    /*
-     // use the parser to split the data into frames 
-    data = inbuf;
-    while (data_size > 0) {
-        ret = av_parser_parse2(parser, codec_context, &pkt->data, &pkt->size,
-                               data, data_size, AV_NOPTS_VALUE, AV_NOPTS_VALUE, 0);
-        if (ret < 0) {
-            fprintf(stderr, "Error while parsing\n");
-            exit(1);
-        }
-        else
-        {
-            printf("%d\n", pkt->size);
-        }
-        data      += ret;
-        data_size -= ret;
-        }
-    */
 }

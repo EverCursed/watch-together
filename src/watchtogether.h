@@ -5,6 +5,7 @@ typedef struct _pixel_buffer {
     void* buffer;
     uint32 width;
     uint32 height;
+    uint32 pitch;
 } pixel_buffer;
 
 typedef struct _mouse_info {
