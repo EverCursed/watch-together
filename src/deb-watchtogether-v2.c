@@ -40,8 +40,6 @@ set_FPS(float value)
 static void
 blit_frame(pixel_buffer buffer)
 {
-    printf("FPS: %f\n", ms_target);
-    printf("width: %d\nheight: %d\n", buffer.width, buffer.height);
     SDL_Surface *image = SDL_CreateRGBSurfaceWithFormatFrom(
         buffer.buffer,
         buffer.width,
@@ -64,29 +62,15 @@ blit_frame(pixel_buffer buffer)
         image
         );
     if(!background_texture)
+    {
         printf("Error: %s\n", SDL_GetError()); SDL_ClearError();
+    }
     
     SDL_FreeSurface(image);
     free(buffer.buffer);
-    /*
-    uint8 *dst = surface->pixels;
-    uint8 *src = frame->data[0];
-    uint32 line = frame->linesize[0];
-    uint32 width = frame->width;
-    uint32 height = frame->height;
-    
-    for(int y = 0; y < height; y++)
-    {
-    for(int x = 0; x < width*3; x++)
-    {
-    //printf("%d", *(src + y*width + x));
-    *(dst + y*line + x) = *(src + y*width + x);
-    }
-    //printf("\n");
-    }
-    */
 }
 
+// TODO(Val): Remove this function and use ffmpeg to get sound data
 sound_sample load_WAV(const char* filename)
 {
     FILE *f = fopen(filename, "rb");
@@ -95,7 +79,7 @@ sound_sample load_WAV(const char* filename)
     fseek(f, 0, SEEK_SET);
     void* data_old = malloc(fsize);
     void* data = data_old;
-    size_t data_read = fread(data , 1, fsize, f);
+    fread(data , 1, fsize, f);
     fclose(f);
     
     sound_sample descriptor = {};
@@ -106,7 +90,7 @@ sound_sample load_WAV(const char* filename)
     char fmt[] = "fmt ";
     char dat[] = "data";
     
-    for(int i = 0; i < ArrayCount(riff)-1; i++)
+    for(uint32 i = 0; i < ArrayCount(riff)-1; i++)
     {
         if(riff[i] != *((char *)data++))
         {
@@ -118,10 +102,10 @@ sound_sample load_WAV(const char* filename)
         }
     }
     
-    uint32 chunk_size = *((uint32 *)data);
+    //uint32 chunk_size = *((uint32 *)data);
     data += 4;
     
-    for(int i = 0; i < ArrayCount(wave)-1; i++)
+    for(uint32 i = 0; i < ArrayCount(wave)-1; i++)
     {
         if(wave[i] != *((char *)data++))
         {
@@ -133,7 +117,7 @@ sound_sample load_WAV(const char* filename)
         }
     }
     
-    for(int i = 0; i < ArrayCount(fmt)-1; i++)
+    for(uint32 i = 0; i < ArrayCount(fmt)-1; i++)
     {
         if(fmt[i] != *((char *)data++))
         {
@@ -151,7 +135,7 @@ sound_sample load_WAV(const char* filename)
     data += 4;
     void* saved_data = data;
     
-    uint16 AudioFormat = *((uint16 *)data);
+    //uint16 AudioFormat = *((uint16 *)data);
     data += 2;
     
     uint16 NumChannels = *((uint16 *)data);
@@ -160,10 +144,10 @@ sound_sample load_WAV(const char* filename)
     uint32 SampleRate = *((uint32 *)data);
     data += 4;
     
-    uint32 ByteRate = *((uint32 *)data);
+    //uint32 ByteRate = *((uint32 *)data);
     data += 4;
     
-    uint16 BlockAlign = *((uint16 *)data);
+    //uint16 BlockAlign = *((uint16 *)data);
     data += 2;
     
     uint16 BitsPerSample = *((uint16 *)data);
@@ -171,7 +155,7 @@ sound_sample load_WAV(const char* filename)
     
     data = saved_data + Subchunk1Size;
     
-    for(int i = 0; i < ArrayCount(dat)-1; i++)
+    for(uint32 i = 0; i < ArrayCount(dat)-1; i++)
     {
         if(dat[i] != *((char *)data++))
         {
@@ -197,6 +181,7 @@ sound_sample load_WAV(const char* filename)
     descriptor.BitsPerSample = BitsPerSample;
     
     return descriptor;
+    
 }
 
 /*
@@ -321,10 +306,8 @@ InitializeAudioDevice(sound_sample SoundSample,
     //printf("%s\n", SDL_GetError());
 }
 
-int main(int argv, char** argc)
+int main()
 {
-    int ret = 0;
-    
     // initialize all the necessary SDL stuff
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER | SDL_INIT_NOPARACHUTE) != 0){
         return 1;
@@ -401,7 +384,7 @@ int main(int argv, char** argc)
                     {
                         case SDLK_SPACE:
                         {
-                            gradient_index = (gradient_index + 1) % ArrayCount(gradient);
+                            
                         } break;
                         case SDLK_ESCAPE:
                         {
@@ -466,6 +449,7 @@ int main(int argv, char** argc)
         data.SoundSample = &SoundSample;
         Processing(&data);
         
+        blit_frame(data.Pixels);
         
         SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
         SDL_SetTextureBlendMode(ui_texture, SDL_BLENDMODE_BLEND);
@@ -516,8 +500,6 @@ int main(int argv, char** argc)
     video_close();
     
     free(SoundSample.Data);
-    
-    global SDL_Renderer *renderer = NULL;
     
     SDL_DestroyTexture(texture);
     SDL_DestroyTexture(background_texture);

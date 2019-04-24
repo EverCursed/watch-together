@@ -1,7 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libavutil/imgutils.h>
@@ -9,8 +5,7 @@
 
 #include "defines.h"
 #include "deb-watchtogether-v2.h"
-
-#define INBUF_SIZE 4096
+#include "watchtogether.h"
 
 typedef struct _frame_buffer {
     
@@ -23,7 +18,6 @@ global AVCodecContext *codec_context = NULL;
 global AVFormatContext *format_context = NULL;
 global AVPacket *pkt;
 global AVFrame *frame;
-global uint8_t inbuf[INBUF_SIZE + AV_INPUT_BUFFER_PADDING_SIZE];
 global int video_stream = -1;
 global int audio_stream = -1;
 
@@ -44,13 +38,10 @@ video_encode()
     
 }
 
-static uint32
+static int32
 video_decode(AVCodecContext *dec_ctx, AVFrame *frame, AVPacket *pkt)
 {
-    char buf[1024];
     int ret;
-    
-    printf("Packet size: %d\n", pkt->size);
     
     ret = avcodec_send_packet(dec_ctx, pkt);
     if (ret < 0) {
@@ -90,7 +81,7 @@ video_decode(AVCodecContext *dec_ctx, AVFrame *frame, AVPacket *pkt)
         else if (ret < 0) {
             fprintf(stderr, "Error during decoding\n");
             fprintf(stderr, "%s\n", av_err2str(ret));
-            exit(1);
+            return -1;
         }
         else
         {
@@ -104,6 +95,7 @@ video_decode(AVCodecContext *dec_ctx, AVFrame *frame, AVPacket *pkt)
     //printf("Error during decoding\n");
     //printf("%s\n", av_err2str(ret));
     
+    return 0;
 }
 
 static uint32
@@ -143,44 +135,16 @@ video_open(const char *filename)
         printf("Error: %d\n", ret);
         return -1; // Couldn't open file
     }
-    else
-        printf("av_format_open_input() succeeded!\n");
     
     // Retrieve stream information
     if(avformat_find_stream_info(format_context, NULL) < 0)
         return -1; // Couldn't find stream information
-    else
-        printf("avformat_find_stream_info() succeeded!\n");
     
     // Dump information about file onto standard error
     av_dump_format(format_context, 0, filename, 0);
     
-    /*
-    // Find the first video stream
-    int videoStream = -1;
-    for(int i = 0; i < format_context->nb_streams; i++)
-        if(format_context->video_codec_id==AVMEDIA_TYPE_VIDEO) {
-        videoStream = i;
-        break;
-    }
-    if(videoStream == -1)
-        return -1; // Didn't find a video stream
-    */
-    // Get a pointer to the codec context for the video stream
-    
-    
-    // codec_context = 
     video_stream = av_find_best_stream(format_context, AVMEDIA_TYPE_VIDEO, -1, -1, &video_codec, 0);
     audio_stream = av_find_best_stream(format_context, AVMEDIA_TYPE_AUDIO, -1, -1, &audio_codec, 0);
-    
-    //avcodec_parameters_to_context(codec_context, format_context->streams[video_stream]->codecpar);
-    /*
-        codec = avcodec_find_decoder(format_context->streams[video_stream]->codecpar->codec_id);
-    if(!codec)
-        printf("avcodec_find_decoder() failed!\n");
-    else
-        printf("avcodec_find_decoder() succeeded!\n");
-    */
     
     codec_context = avcodec_alloc_context3(video_codec);
     if(!codec_context)
@@ -188,20 +152,14 @@ video_open(const char *filename)
         av_log(NULL, AV_LOG_TRACE, "avcodec_alloc_context3() failed!\n");
         return -1;
     }
-    else
-    {
-        printf("avcodec_alloc_context3() succeeded!\n");
-        avcodec_parameters_to_context(codec_context, format_context->streams[video_stream]->codecpar);
-        av_log(codec_context, AV_LOG_INFO, NULL);
-    }
+    avcodec_parameters_to_context(codec_context, format_context->streams[video_stream]->codecpar);
+    //av_log(codec_context, AV_LOG_INFO, NULL);
+    
     
     if(avcodec_open2(codec_context, video_codec, NULL) < 0)
     {
         printf("acvodec_open2() failed!\n");
-    }
-    else
-    {
-        printf("acvodec_open2() succeeded!\n");
+        return -1;
     }
     
     pkt = av_packet_alloc();
@@ -224,13 +182,8 @@ video_open(const char *filename)
         return -1;
     }
     
-    /*
-// set end of buffer to 0 (this ensures that no overreading happens for damaged MPEG streams) 
-memset(inbuf + INBUF_SIZE, 0, AV_INPUT_BUFFER_PADDING_SIZE);
-*/
-    
-    av_log(codec_context, AV_LOG_INFO, "Codec Context\n");
-    av_log(format_context, AV_LOG_INFO, "Format Context\n");
+    //av_log(codec_context, AV_LOG_INFO, "Codec Context\n");
+    //av_log(format_context, AV_LOG_INFO, "Format Context\n");
     
     printf("%d/%d\n", codec_context->framerate.num, codec_context->framerate.den);
     set_FPS((real32)codec_context->framerate.den/(real32)codec_context->framerate.num);
@@ -238,34 +191,19 @@ memset(inbuf + INBUF_SIZE, 0, AV_INPUT_BUFFER_PADDING_SIZE);
     return 0;
 }
 
-
 struct SwsContext* modifContext = NULL;
 
 static void*
 video_get_next_frame(pixel_buffer *buffer)
 {
-    /* read raw data from the input file */
-    //data_size = fread(inbuf, 1, INBUF_SIZE, video_file);
-    //if (!data_size)
-    //return;
-    
-    int ret = 0;
     do {
         if(pkt)
             av_packet_unref(pkt);
-        ret = av_read_frame(format_context, pkt);
+        av_read_frame(format_context, pkt);
     } while(!(pkt->size && pkt->stream_index == video_stream));
     
     video_decode(codec_context, frame, pkt);
     av_packet_unref(pkt);
-    
-    /*
-    AVFrame *secondary_frame = av_frame_alloc();
-    secondary_frame->width = frame->width;
-    secondary_frame->height = frame->height;
-    secondary_frame->format = AV_PIX_FMT_RGB24;
-    secondary_frame->
-    */
     
     buffer->width = frame->width;
     buffer->height = frame->height;
@@ -279,19 +217,17 @@ video_get_next_frame(pixel_buffer *buffer)
                                         SWS_BICUBIC,
                                         NULL, NULL, NULL);
     
-    //avpicture_fill((AVPicture*)secondary_frame, frame2_buffer, AV_PIX_FMT_RGB24, width2, height2);
-    
     uint8_t *ptr = calloc(3 * frame->width * frame->height, sizeof(uint8_t));
     uint8_t *ptrs[1] = { ptr };
     int stride[1] = { 3 * frame->width };
     
-    int ret_slices = sws_scale(modifContext,
-                               (uint8_t const* const*)frame->data,
-                               frame->linesize,
-                               0,
-                               buffer->height,
-                               (uint8 *const *const)ptrs,
-                               stride);
+    sws_scale(modifContext,
+              (uint8_t const* const*)frame->data,
+              frame->linesize,
+              0,
+              buffer->height,
+              (uint8 *const *const)ptrs,
+              stride);
     //uint32 size = 3*frame->width*frame->height;
     //buffer->buffer = malloc(size);
     //ret = av_image_copy_to_buffer(buffer->buffer, size, (uint8_t const* const*)(secondary_frame->data), secondary_frame->linesize, AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
