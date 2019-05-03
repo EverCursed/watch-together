@@ -1,8 +1,6 @@
 #ifndef WT_DEFINES_H
 #define WT_DEFINES_H
 
-#define DEBUG
-
 #include <stdint.h>
 
 //#define internal        static
@@ -22,12 +20,6 @@ typedef uint64_t uint64;
 typedef float real32;
 typedef double real64;
 
-typedef uint32 bool32;
-
-#ifdef DEBUG
-#define debug(s, ...) printf("%s|%s|%d\t" s "\n", __FILE__, __FUNCTION__, __LINE__, ##__VA_ARGS__)
-#else
-#define debug(s, ...) {}
-#endif
+typedef uint32_t bool32;
 
 #endif

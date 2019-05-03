@@ -1,16 +1,19 @@
-#ifndef WT_V2
-#define WT_V2
+#ifndef DEB_WT
+#define DEB_WT
 
-// NOTE(Val): Forward declaration, declared in watchtogether.h
-typedef struct _pixel_buffer pixel_buffer;
-typedef struct _mouse_info mouse_info;
-typedef struct _sound_sample sound_sample;
+typedef struct _platform_data {
+    
+} platform_data;
+
+typedef struct _thread_info {
+    SDL_Thread *thread;
+} thread_info;
+
+//static void
+//EnqueueAudio(sound_sample *SoundSample);
 
 static void
-PlatformEnqueueAudio(sound_sample *SoundSample);
-
-static void
-blit_frame(pixel_buffer buffer);
+blit_frame();
 
 static void
 set_FPS(float value);

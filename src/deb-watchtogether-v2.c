@@ -11,7 +11,6 @@
 #include "watchtogether.c"
 
 /* TODO(Val): A list of things that still must be done 
- --- I guess add ffmpeg stuff here
  --- Provide TCP/UDP support
  --- Touchscreen support
  --- Rewrite audio pushing so that I can push arbitrary 
@@ -20,14 +19,21 @@
  ---     malloc/av_malloc
  */
 
-global bool32 GlobalRunning;
-global uint32 AudioID;
-global bool32 is_fullscreen;
-global float ms_target = 33.0f;
+global SDL_AudioDeviceID AudioID = 0;
+global bool32 audio_initialized = 0;
+global float ms_target = 33.33333333333333333333f;
+global SDL_Window *window = NULL;
 global SDL_Renderer *renderer = NULL;
 global SDL_Texture *texture;
 global SDL_Texture *background_texture;
 global SDL_Texture *ui_texture;
+global uint8 silence;
+global uint32 texture_width;
+global uint32 texture_height;
+
+global program_data *pdata;
+
+#define TESTING_FILE "data/video4.avi"
 
 // TODO(Val): remove this, just temporary
 // NOTE(Val): sets the length of a frame in ms
@@ -35,468 +41,387 @@ static void
 set_FPS(float value)
 {
     ms_target = value;
-    printf("FPS set to: %f\n", value);
 }
 
 static void
-blit_frame(pixel_buffer buffer)
+blit_frame(program_data *pdata)
 {
-    /*
-    SDL_Surface *image = SDL_CreateRGBSurfaceWithFormatFrom(
-        buffer.buffer,
-        buffer.width,
-        buffer.height,
-        32,
-        buffer.width*4,
-        SDL_PIXELFORMAT_BGRA32
-        );
-        
-    if(!image)
-        printf("SDL_CreateRGBSurfaceWithFormatFrom failed!");
-    if(background_texture)
-    {
-        SDL_DestroyTexture(background_texture);
-        background_texture = NULL;
-    }
-    background_texture = SDL_CreateTextureFromSurface(
-        renderer,
-        image
-        );
-    if(!background_texture)
-    {
-        printf("Error: %s\n", SDL_GetError()); SDL_ClearError();
-    }
+    // TODO(Val): this is temporary, should get these values properly
+    dbg_info("blit_frame\n");
+    void* buffer = malloc(pdata->vq_data.video_queue_frame_size);
     
-SDL_FreeSurface(image);
-    */
-    SDL_UpdateTexture(background_texture, NULL, buffer.buffer, buffer.pitch);
+    dequeue_frame(&pdata->vq_data, buffer);
     
-    //av_free(buffer.buffer);
-}
-
-// TODO(Val): Remove this function and use ffmpeg to get sound data
-sound_sample load_WAV(const char* filename)
-{
-    FILE *f = fopen(filename, "rb");
-    fseek(f, 0, SEEK_END);
-    long fsize = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    void* data_old = malloc(fsize);
-    void* data = data_old;
-    fread(data , 1, fsize, f);
-    fclose(f);
+    SDL_UpdateTexture(background_texture, NULL, buffer, pdata->vq_data.video_queue_pitch);
     
-    sound_sample descriptor = {};
-    sound_sample empty = {};
-    
-    char riff[] = "RIFF";
-    char wave[] = "WAVE";
-    char fmt[] = "fmt ";
-    char dat[] = "data";
-    
-    for(uint32 i = 0; i < ArrayCount(riff)-1; i++)
-    {
-        if(riff[i] != *((char *)data++))
-        {
-            printf("Not RIFF.\n");
-            
-            free(data_old);
-            
-            return empty;
-        }
-    }
-    
-    //uint32 chunk_size = *((uint32 *)data);
-    data += 4;
-    
-    for(uint32 i = 0; i < ArrayCount(wave)-1; i++)
-    {
-        if(wave[i] != *((char *)data++))
-        {
-            printf("Not WAVE.\n");
-            
-            free(data_old);
-            
-            return empty;
-        }
-    }
-    
-    for(uint32 i = 0; i < ArrayCount(fmt)-1; i++)
-    {
-        if(fmt[i] != *((char *)data++))
-        {
-            printf("Not fmt.\n");
-            
-            free(data_old);
-            
-            return empty;
-        }
-    }
-    
-    
-    
-    uint32 Subchunk1Size = *((uint32 *)data);
-    data += 4;
-    void* saved_data = data;
-    
-    //uint16 AudioFormat = *((uint16 *)data);
-    data += 2;
-    
-    uint16 NumChannels = *((uint16 *)data);
-    data += 2;
-    
-    uint32 SampleRate = *((uint32 *)data);
-    data += 4;
-    
-    //uint32 ByteRate = *((uint32 *)data);
-    data += 4;
-    
-    //uint16 BlockAlign = *((uint16 *)data);
-    data += 2;
-    
-    uint16 BitsPerSample = *((uint16 *)data);
-    data += 2;
-    
-    data = saved_data + Subchunk1Size;
-    
-    for(uint32 i = 0; i < ArrayCount(dat)-1; i++)
-    {
-        if(dat[i] != *((char *)data++))
-        {
-            printf("Not data.\n");
-            
-            free(data_old);
-            
-            return empty;
-        }
-    }
-    
-    uint32 Subchunk2Size = *((uint32 *)data);
-    data += 4;
-    
-    void* final_data = malloc(Subchunk2Size);
-    memcpy(final_data, data, Subchunk2Size);
-    free(data_old);
-    
-    descriptor.Data = final_data;
-    descriptor.Size = Subchunk2Size;
-    descriptor.Frequency = SampleRate;
-    descriptor.Channels = NumChannels;
-    descriptor.BitsPerSample = BitsPerSample;
-    
-    return descriptor;
+    free(buffer);
 }
 
 #define BYTE_ALIGN 16
 
 static void 
-Deb_ResizePixelBuffer(SDL_Renderer *renderer, pixel_buffer *pixels)
+Deb_ResizePixelBuffer(SDL_Renderer *renderer)
 {
-    int width, height, pitch;
+    int width, height;
     
     SDL_GetRendererOutputSize(renderer,
                               &width,
                               &height);
     
-    pitch = width*4 + (BYTE_ALIGN - ((width*4) % BYTE_ALIGN));
+    texture_height = height;
+    texture_width = width;
     
-    pixels->width = width;
-    pixels->height = height;
-    pixels->pitch = pitch;
-    
-    if(pixels->buffer)
-        free(pixels->buffer);
-    pixels->buffer = malloc(pixels->height * pitch * 4);
+    dbg_print("Renderer width: %d,\theight: %d\n", width, height);
     
     if(background_texture)
         SDL_DestroyTexture(background_texture);
     
-    background_texture = SDL_CreateTexture(renderer, 
-                                           SDL_PIXELFORMAT_BGRA32,
-                                           SDL_TEXTUREACCESS_STREAMING,
-                                           width,
-                                           height);
+    
+    
+    //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
     
 }
 
 static void
-EnqueueAudio(SDL_AudioDeviceID AudioID,
-             sound_sample *SoundSample)
+AudioCallback(void*  userdata,
+              Uint8* stream,
+              int    len)
 {
-    uint32 CurrentQueuedAudioSize = 
-        SDL_GetQueuedAudioSize(AudioID);
+    //dbg_info("AudioCallback executed.\n");
+    int ret = dequeue_audio_bytes(&pdata->aq_data, stream, len);
     
-    // NOTE(Val): Queue up 0.5secs of audio.
-    uint32 BytesPerSec =
-        SoundSample->Frequency * \
-        (SoundSample->BitsPerSample/8) * \
-        SoundSample->Channels;
-    uint32 BytesToHaveQueued = BytesPerSec / 2;
-    
-    if(CurrentQueuedAudioSize < BytesToHaveQueued)
+    if(ret)
     {
-        uint32 len = (BytesToHaveQueued - CurrentQueuedAudioSize);
-        
-        // NOTE(Val): This is split into two parts because 
-        // it currently loops the audio non-stop
-        if(SoundSample->CurrentIndex + len <= SoundSample->Size)
-        {
-            SDL_QueueAudio(
-                AudioID,
-                (SoundSample->Data + SoundSample->CurrentIndex),
-                len);
-            
-            SoundSample->CurrentIndex += len;
-        }
-        else
-        {
-            int Part1Size = SoundSample->Size - SoundSample->CurrentIndex;
-            int Part2Size = len - Part1Size;
-            
-            printf("Part1Size\t= %d\n"
-                   "Part2Size\t= %d\n"
-                   "Size\t\t= %d\n"
-                   "CurrentIndex\t= %d\n"
-                   "Buffer\t\t= %p\n"
-                   "Buffer1\t= %p\n",
-                   Part1Size,
-                   Part2Size,
-                   SoundSample->Size,
-                   SoundSample->CurrentIndex,
-                   SoundSample->Data,
-                   (SoundSample->Data + SoundSample->CurrentIndex)
-                   );
-            SDL_QueueAudio(
-                AudioID,
-                (SoundSample->Data + SoundSample->CurrentIndex),
-                Part1Size);
-            SDL_QueueAudio(
-                AudioID,
-                SoundSample->Data,
-                Part2Size);
-            
-            SoundSample->CurrentIndex = Part2Size;
-        }
-        
+        dbg_error("Something happened to audio\n");
+        dbg_print("ret: %d\n", ret);
+        memset(stream, silence, len); 
+    }
+    else
+    {
+        //dbg_success("AudioCallback was successful\n");
     }
 }
 
-static void
-PlatformEnqueueAudio(sound_sample *SoundSample)
-{
-    EnqueueAudio(AudioID, SoundSample);
-}
 
-static void 
-InitializeAudioDevice(sound_sample SoundSample,
-                      SDL_AudioDeviceID *AudioID,
-                      SDL_AudioSpec *AudioSpec)
+static void
+set_audio_properties(uint32 freq,
+                     uint32 channels,
+                     uint32 bytes_per_sample)
 {
+    SDL_AudioSpec spec = {};
+    spec.callback = AudioCallback;
+    spec.freq = freq;
+    if(channels == 1 || channels == 2 || channels == 4 || channels == 6)
+        spec.channels = channels;
+    else
+        dbg_error("Improper number of channels when initializing audio.\n");
+    spec.samples = 4096;
+    
+    if(bytes_per_sample == SAMPLE_U8)
+        spec.format = AUDIO_U8;
+    else if(bytes_per_sample == SAMPLE_S16)
+        spec.format = AUDIO_S16;
+    else if(bytes_per_sample == SAMPLE_S32)
+        spec.format = AUDIO_S32;
+    else if(bytes_per_sample == SAMPLE_FLOAT)
+        spec.format = AUDIO_F32;
+    else
+        dbg_error("Audio format not handled.\n");
+    
+    // TODO(Val): Make this the determining factor for what
+    // audio to push
+    SDL_AudioSpec received = {};
+    if(spec.format)
+    {
+        AudioID = SDL_OpenAudioDevice(NULL,
+                                      0,
+                                      &spec,
+                                      &received,
+                                      SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+        
+        if(received.freq == spec.freq &&
+           received.channels == spec.channels &&
+           received.format == spec.format)
+        {
+            silence = received.silence;
+            SDL_PauseAudioDevice(AudioID, 0);
+            dbg_success("Successfully created audio device\n");
+        }
+        else
+        {
+            dbg_error("Audio device opened with differing properties.\n");
+        }
+    }
+}
+/*
+static void
+EnqueueAudio(sound_sample *SoundSample)
+{
+    // NOTE(Val): This is split into two parts because 
+    // it currently loops the audio non-stop
+    if(SoundSample->Size)
+    {
+        uint32 ret = SDL_QueueAudio(AudioID,
+                                    SoundSample->Data,
+                                    SoundSample->Size);
+        if(ret < 0)
+            dbg_error("Audio queueing failed!\n");
+    }
+    //dbg_print("EnqueueAudio: %s\n", SDL_GetError());
+    //dbg_print("Current queue size: %d\n", SDL_GetQueuedAudioSize(AudioID));
+}
+*/
+static void 
+PlatformInitAudio(program_data *pdata)
+{
+    open_file_info *file = &pdata->file;
+    output_audio *output = &pdata->audio;
+    
     SDL_AudioSpec DesiredAudioSpec = {};
+    SDL_AudioSpec ReceivedAudioSpec = {};
+    uint32 bytes_per_sample = 0;
     
-    DesiredAudioSpec.freq = SoundSample.Frequency;
+    DesiredAudioSpec.freq = file->sample_rate;
+    
     // NOTE(Val): Should depend on source audio
-    if(SoundSample.BitsPerSample == 8)
+    if(file->sample_format == SAMPLE_U8)
+    {
         DesiredAudioSpec.format = AUDIO_U8;
-    else if(SoundSample.BitsPerSample == 16)
-        DesiredAudioSpec.format = AUDIO_U16;
-    else if(SoundSample.BitsPerSample == 32)
+        bytes_per_sample = 1;
+    }
+    else if(file->sample_format == SAMPLE_S16)
+    {
+        DesiredAudioSpec.format = AUDIO_S16;
+        bytes_per_sample = 2;
+    }
+    else if(file->sample_format == SAMPLE_S32)
+    {
         DesiredAudioSpec.format = AUDIO_S32;
+        bytes_per_sample = 4;
+    }
+    else if(file->sample_format == SAMPLE_FLOAT)
+    {
+        DesiredAudioSpec.format = AUDIO_F32;
+        bytes_per_sample = 4;
+    }
+    else
+    {
+        dbg_error("An unhandled audio format was passed.\n");
+        return;
+    }
     
-    DesiredAudioSpec.channels = SoundSample.Channels;
+    DesiredAudioSpec.channels = file->channels;
     
     // NOTE(Val): Sending a number of samples to the audio device
     // prevents you from immediately closing the app until the
     // entire buffer is played. Therefore this is small.
     // TODO(Val): Test to see what the smallest value we can set 
     // to and how that would affect performance.
-    DesiredAudioSpec.samples = 1024;
-    DesiredAudioSpec.callback = NULL;
+    DesiredAudioSpec.samples = 4096;
+    DesiredAudioSpec.callback = AudioCallback;
     DesiredAudioSpec.userdata = NULL;
     
     // TODO(Val): See if there's a different way to do this 
     // other than closing and reopening the same sound device
-    if(*AudioID != 0)
-        SDL_CloseAudioDevice(*AudioID);
-    
-    *AudioID = 
-        SDL_OpenAudioDevice(NULL,
-                            0,
-                            &DesiredAudioSpec,
-                            AudioSpec,
-                            SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+    AudioID = SDL_OpenAudioDevice(NULL,
+                                  0,
+                                  &DesiredAudioSpec,
+                                  &ReceivedAudioSpec,
+                                  SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+    if(AudioID)
+    {
+        audio_initialized = 1;
+        
+        output->sample_rate = ReceivedAudioSpec.freq;
+        output->channels = ReceivedAudioSpec.channels;
+        
+        // TODO(Val): This doesnt check what audio device params we received.
+        output->bytes_per_sample = bytes_per_sample;
+        output->sample_format = file->sample_format;
+        
+        SDL_PauseAudioDevice(AudioID, 0);
+    }
     //printf("%s\n", SDL_GetError());
 }
 
-int main()
+static void
+PlatformSleep(uint32 ms)
 {
-    // initialize all the necessary SDL stuff
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0){
-        return 1;
-    }
+    SDL_Delay(ms);
+}
+
+/// Platform create thread
+static thread_info
+PlatformCreateThread(int32 (*f)(void *), void *data, char* name)
+{
+    thread_info info = {};
+    char* title = name == NULL ? "" : name;
     
-    SDL_Window *window = NULL;
-    SDL_CreateWindowAndRenderer(1024,
-                                576,
-                                SDL_WINDOW_RESIZABLE,
-                                &window,
-                                &renderer);
+    info.thread = SDL_CreateThread(f,
+                                   title,
+                                   data);
     
-    if(window == NULL || renderer == NULL)
-        SDL_Quit();
+    return info;
+}
+
+static int32
+PlatformWaitThread(thread_info thread, int32 *ret)
+{
+    SDL_WaitThread(thread.thread, ret);
+}
+
+static int32
+ProcessInput(void *arg)
+{
+    program_data *pdata = arg;
+    input_struct *input = &pdata->input;
     
-    SDL_SetWindowTitle(window, WT_WINDOW_TITLE);
-    SDL_ShowWindow(window);
-    
-    sound_sample SoundSample = load_WAV("data/audio_test/audio.wav");
-    SDL_AudioSpec AudioSpec = {};
-    InitializeAudioDevice(SoundSample,
-                          &AudioID,
-                          &AudioSpec);
-    
-    av_register_all();
-    
-    if(video_open("data/video.mp4"))
-        return -1;
-    
-    SDL_PauseAudioDevice(AudioID, 0); /* start audio playing. */
-    
-    //texture = Deb_ResizePixelBuffer(window, renderer);
-    
-    program_data data = {};
-    struct timespec TimeStart, TimeEnd;
-    
-    Deb_ResizePixelBuffer(renderer, &data.Pixels);
-    
-    GlobalRunning = 1;
-    while(GlobalRunning)
+    // TODO(Val): aggregate input, as we don't know how often the application
+    // will check it
+    SDL_Event event = {};
+    while(pdata->running && SDL_WaitEvent(&event))
     {
-        // NOTE(Val): Start timer
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &TimeStart);
-        
-        // NOTE(Val): Process events
-        SDL_Event event = {};
-        while(SDL_PollEvent(&event))
+        dbg_info("Event received.\n");
+        switch(event.type)
         {
-            switch(event.type)
+            case SDL_QUIT:
             {
-                case SDL_QUIT:
+                pdata->running = 0;
+            } break;
+            case SDL_WINDOWEVENT:
+            {
+                switch(event.window.event)
                 {
-                    GlobalRunning = 0;
-                } break;
-                case SDL_WINDOWEVENT:
-                {
-                    switch(event.window.event)
+                    case SDL_WINDOWEVENT_RESIZED:
                     {
-                        case SDL_WINDOWEVENT_RESIZED:
-                        {
-                            Deb_ResizePixelBuffer(renderer, &data.Pixels);
-                            //SDL_FreeSurface(surface);
-                            //surface = Deb_ResizePixelBuffer(window);
-                        } break;
-                        default:
-                        {
-                            
-                        } break;
-                    }
-                } break;
-                case SDL_KEYDOWN:
-                {
-                    // NOTE(Val): Keypress events here
-                    switch(event.key.keysym.sym)
+                        //Deb_ResizePixelBuffer(renderer);
+                        
+                        
+                        //dbg_print("Texture width: %d\theight: %d\n", texture_width, texture_height);
+                        //dbg_print("Scale x: %f\t y: %f\n", scaleX, scaleY);
+                        
+                        
+                        //SDL_FreeSurface(surface);
+                        //surface = Deb_ResizePixelBuffer(window);
+                    } break;
+                    default:
                     {
-                        case SDLK_SPACE:
+                        
+                    } break;
+                }
+            } break;
+            case SDL_KEYDOWN:
+            {
+                // NOTE(Val): Keypress events here
+                switch(event.key.keysym.sym)
+                {
+                    case SDLK_SPACE:
+                    {
+                        
+                    } break;
+                    case SDLK_ESCAPE:
+                    {
+                        pdata->running = 0;
+                    } break;
+                    case SDLK_RETURN:
+                    {
+                        SDL_Keymod mod = SDL_GetModState();
+                        
+                        if(mod & KMOD_ALT)
                         {
-                            
-                        } break;
-                        case SDLK_ESCAPE:
-                        {
-                            GlobalRunning = 0;
-                        } break;
-                        case SDLK_RETURN:
-                        {
-                            SDL_Keymod mod = SDL_GetModState();
-                            
-                            if(mod & KMOD_ALT)
+                            if(pdata->client.fullscreen)
                             {
-                                if(is_fullscreen)
-                                {
-                                    SDL_SetWindowFullscreen(window, 0);
-                                    is_fullscreen = 0;
-                                }
-                                else
-                                {
-                                    SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
-                                    is_fullscreen = 1;
-                                }
-                                //Deb_ResizePixelBuffer(renderer, &data.Pixels);
+                                SDL_SetWindowFullscreen(window, 0);
+                                pdata->client.fullscreen = 0;
                             }
                             else
                             {
-                                SoundSample = load_WAV("data/audio_test/audio2.wav");
-                                InitializeAudioDevice(SoundSample,
-                                                      &AudioID,
-                                                      &AudioSpec);
-                                SDL_PauseAudioDevice(AudioID, 0);
+                                SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+                                pdata->client.fullscreen = 1;
                             }
-                        } break;
-                        default:
+                        }
+                        else if(mod & KMOD_CTRL)
                         {
                             
-                        } break;
-                    }
-                } break;
-                default: 
+                        }
+                        else if(mod & KMOD_SHIFT)
+                        {
+                            
+                        }
+                    } break;
+                    default:
+                    {
+                        
+                    } break;
+                }
+            } break;
+            case SDL_MOUSEMOTION:
+            {
+                input->mouse.old_x = input->mouse.x;
+                input->mouse.old_y = input->mouse.y;
+                
+                input->mouse.x = event.motion.x;
+                input->mouse.y = event.motion.y;
+            } break;
+            case SDL_MOUSEBUTTONDOWN:
+            case SDL_MOUSEBUTTONUP:
+            {
+                if(event.button.button == SDL_BUTTON_LEFT)
                 {
-                    
-                } break;
-            }
-            
-            if(!GlobalRunning)
-                break;
+                    input->mouse.left_button_was_pressed = input->mouse.left_button_is_pressed;
+                    input->mouse.left_button_is_pressed = event.button.state == SDL_PRESSED ? 1 : 0;
+                }
+                else if(event.button.button == SDL_BUTTON_RIGHT)
+                {
+                    input->mouse.right_button_was_pressed = input->mouse.right_button_is_pressed;
+                    input->mouse.right_button_is_pressed = event.button.state == SDL_PRESSED ? 1 : 0;
+                }
+                else if(event.button.button == SDL_BUTTON_MIDDLE)
+                {
+                    input->mouse.middle_button_was_pressed = input->mouse.middle_button_is_pressed;
+                    input->mouse.middle_button_is_pressed = event.button.state == SDL_PRESSED ? 1 : 0;
+                }
+                else
+                {
+                    dbg_info("Unhandled mouse button input.\n");
+                }
+            } break;
+            default: 
+            {
+                
+            } break;
         }
+    }
+    
+    return 0;
+}
+
+static struct timespec
+time_diff(struct timespec t2, struct timespec t1)
+{
+    struct timespec ret = {};
+    if ((t2.tv_nsec - t1.tv_nsec) < 0) {
+        ret.tv_sec = t2.tv_sec - t1.tv_sec - 1;
+        ret.tv_nsec = t2.tv_nsec - t1.tv_nsec + 1000000000;
+    } else {
+        ret.tv_sec = t2.tv_sec - t1.tv_sec;
+        ret.tv_nsec = t2.tv_nsec - t1.tv_nsec;
+    }
+    return ret;
+}
+
+// TODO(Val): This still needs to be redone, as the UI should probably
+// update outside of the video fps target
+static int32
+PlatformFrameUpdater(void *data)
+{
+    program_data *pdata = data;
+    
+    while(pdata->running)
+    {
+        dbg_info("PlatformFrameUpdater loop start.\n");
         
-        if(!GlobalRunning)
-            break;
-        
-        
-        // NOTE(Val): Process mouse
-        
-        data.Mouse.old_x = data.Mouse.x;
-        data.Mouse.old_y = data.Mouse.y;
-        data.Mouse.left_button_was_pressed = data.Mouse.left_button_is_pressed;
-        data.Mouse.right_button_was_pressed = data.Mouse.right_button_is_pressed;
-        
-        uint32 mouse_state = SDL_GetMouseState(&data.Mouse.x, &data.Mouse.y);
-        if(mouse_state & SDL_BUTTON(SDL_BUTTON_LEFT))
-            data.Mouse.left_button_is_pressed = 1;
-        else
-            data.Mouse.left_button_is_pressed = 0;
-        
-        if(mouse_state & SDL_BUTTON(SDL_BUTTON_RIGHT))
-            data.Mouse.right_button_is_pressed = 1;
-        else
-            data.Mouse.right_button_is_pressed = 0;
-        
-        
-        // render
-        
-        // write audio
-        // EnqueueAudio(AudioID, &SoundSample);
-        
-        
-        data.SoundSample = &SoundSample;
-        Processing(&data);
-        
-        blit_frame(data.Pixels);
-        
-        SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
-        SDL_SetTextureBlendMode(ui_texture, SDL_BLENDMODE_BLEND);
-        
-        
-        SDL_RenderCopy(renderer, background_texture, NULL, NULL);
-        
-        SDL_RenderPresent(renderer);
+        struct timespec TimeStart, TimeEnd;
         
         //SDL_Surface *win_surface = SDL_GetWindowSurface(window);
         //SDL_UpdateWindowSurface(window);
@@ -513,30 +438,124 @@ int main()
         // framerate in consideration
         // Maybe do this in a separate thread? Just sleep until
         // it's time to flip buffers and then sleep again?
-        struct timespec TimeDifference = {};
-        clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &TimeEnd);
-        TimeDifference.tv_nsec = TimeEnd.tv_nsec - TimeStart.tv_nsec;
-        TimeDifference.tv_sec = TimeEnd.tv_sec - TimeStart.tv_sec;
         
-        struct timespec sleep_duration;
-        sleep_duration.tv_nsec =
+        
+        clock_gettime(CLOCK_REALTIME, &TimeStart);
+        
+        blit_frame(pdata);
+        
+        //SDL_RenderSetScale(renderer, texture_width, texture_height);
+        SDL_RenderCopy(renderer, background_texture, NULL, NULL);
+        //SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
+        
+        SDL_RenderPresent(renderer);
+        
+        clock_gettime(CLOCK_REALTIME, &TimeEnd);
+        
+        // TODO(Val): Rewrite the sleep for frame updater, maybe use SDL stuff somehow?
+        struct timespec TimeDifference = time_diff(TimeEnd, TimeStart);
+        dbg_print("TimeDiff: tv_sec = %ld\ttv_nsec = %ld\n", TimeDifference.tv_sec, TimeDifference.tv_nsec);
+        
+        struct timespec target = {};
+        target.tv_sec = (uint64)(ms_target / 1000.0f);
+        target.tv_nsec = (uint64)(ms_target * 1000000.0f);
+        
+        dbg_print("Target: tv_sec = %ld\ttv_nsec = %ld\n", target.tv_sec, target.tv_nsec);
+        
+        struct timespec SleepDuration = time_diff(target, TimeDifference);
+        /*
+            struct timespec sleep_duration;
+            sleep_duration.tv_nsec =
             (uint64)(ms_target * 1000000.0f) -
             TimeDifference.tv_nsec;
-        sleep_duration.tv_sec =
+            sleep_duration.tv_sec =
             (uint64)(ms_target / 1000.0f) -
             TimeDifference.tv_sec +
-            (sleep_duration.tv_nsec/1000000000);
-        if(sleep_duration.tv_nsec >= 1000000000)
-        {
+            (sleep_duration.tv_nsec / 1000000000);
+            if(sleep_duration.tv_nsec >= 1000000000)
+            {
             sleep_duration.tv_sec -= (uint64)sleep_duration.tv_nsec/1000000000.0f;
             sleep_duration.tv_nsec = fmod(sleep_duration.tv_nsec, 1000000000.0f);
-        }
-        //printf("sec: %ld\tnsec: %ld\n", sleep_duration.tv_sec, sleep_duration.tv_nsec);
-        // sleep
-        nanosleep(&sleep_duration, NULL);
+            }
+            //printf("sec: %ld\tnsec: %ld\n", sleep_duration.tv_sec, sleep_duration.tv_nsec);
+            // sleep
+            
+*/
+        
+        dbg_print("Nanosleep: tv_sec = %ld\ttv_nsec = %ld\n", SleepDuration.tv_sec, SleepDuration.tv_nsec);
+        nanosleep(&SleepDuration, NULL);
     }
     
-    video_close();
+    return 0;
+}
+
+static void
+PlatformInitVideo(program_data *pdata)
+{
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+    
+    background_texture = SDL_CreateTexture(renderer, 
+                                           SDL_PIXELFORMAT_BGRA32,
+                                           SDL_TEXTUREACCESS_STREAMING,
+                                           pdata->file.width,
+                                           pdata->file.height);
+    
+    SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
+    
+    SDL_RenderSetViewport(renderer, NULL);
+}
+
+int main(int argc, const char** argv)
+{
+    // initialize all the necessary SDL stuff
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0){
+        return 1;
+    }
+    
+    SDL_Window *window = NULL;
+    SDL_CreateWindowAndRenderer(1024,
+                                576,
+                                SDL_WINDOW_RESIZABLE,
+                                &window,
+                                &renderer);
+    
+    if(window == NULL || renderer == NULL)
+    {
+        dbg_error("Creating window failed!\n");
+        SDL_Quit();
+        return -1;
+    }
+    SDL_SetWindowTitle(window, WT_WINDOW_TITLE);
+    SDL_ShowWindow(window);
+    
+    //sound_sample SoundSample = load_WAV("data/audio_test/audio.wav");
+    
+    // NOTE(Val): av_register_all();
+    
+    //SDL_PauseAudioDevice(AudioID, 0); /* start audio playing. */
+    
+    //texture = Deb_ResizePixelBuffer(window, renderer);
+    
+    pdata = calloc(sizeof(program_data), 1);
+    pdata->running = 1;
+    
+    if(argc > 1)
+        pdata->file.filename = (char *)*(argv+1);
+    else
+        pdata->file.filename = TESTING_FILE;
+    
+    Deb_ResizePixelBuffer(renderer);
+    
+    pdata->threads.main_thread = PlatformCreateThread(MainLoop, pdata, "main");
+    
+    ProcessInput(pdata);
+    
+    // TODO(Val): Close everything properly here
+    PlatformWaitThread(pdata->threads.main_thread, NULL);
+    
+    dbg_info("Cleaning up.\n");
+    
+    free(pdata);
     
     SDL_DestroyTexture(texture);
     SDL_DestroyTexture(background_texture);
@@ -544,10 +563,6 @@ int main()
     
     SDL_CloseAudioDevice(AudioID);
     
-    free(data.Pixels.buffer);
-    free(SoundSample.Data);
-    
     SDL_Quit();
     return 0;
 }
-
