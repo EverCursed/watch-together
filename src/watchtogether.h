@@ -111,6 +111,8 @@ typedef struct _open_file_info {
     uint32 width;
     uint32 height;
     uint32 pitch;
+    real32 fps;
+    real32 target_time;
     
     uint32 sample_rate;
     uint32 bytes_per_sample;

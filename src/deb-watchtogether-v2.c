@@ -33,13 +33,14 @@ global uint32 texture_height;
 
 global program_data *pdata;
 
-#define TESTING_FILE "data/video4.avi"
+#define TESTING_FILE "data/5cm.mkv"
 
 // TODO(Val): remove this, just temporary
 // NOTE(Val): sets the length of a frame in ms
 static void
 set_FPS(float value)
 {
+    dbg_print("ms target set to: %f\n", value);
     ms_target = value;
 }
 
@@ -47,12 +48,19 @@ static void
 blit_frame(program_data *pdata)
 {
     // TODO(Val): this is temporary, should get these values properly
-    dbg_info("blit_frame\n");
+    //dbg_info("blit_frame\n");
     void* buffer = malloc(pdata->vq_data.video_queue_frame_size);
-    
     dequeue_frame(&pdata->vq_data, buffer);
     
+    void* pixels;
+    int32 pitch;
+    
+    //SDL_LockTexture(background_texture, NULL, &pixels, &pitch);
     SDL_UpdateTexture(background_texture, NULL, buffer, pdata->vq_data.video_queue_pitch);
+    
+    
+    
+    //SDL_UnlockTexture(background_texture);
     
     free(buffer);
 }
@@ -281,7 +289,7 @@ ProcessInput(void *arg)
     SDL_Event event = {};
     while(pdata->running && SDL_WaitEvent(&event))
     {
-        dbg_info("Event received.\n");
+        //dbg_info("Event received.\n");
         switch(event.type)
         {
             case SDL_QUIT:
@@ -329,6 +337,7 @@ ProcessInput(void *arg)
                         
                         if(mod & KMOD_ALT)
                         {
+                            dbg_error("ALT + Enter pressed.\n");
                             if(pdata->client.fullscreen)
                             {
                                 SDL_SetWindowFullscreen(window, 0);
@@ -419,7 +428,7 @@ PlatformFrameUpdater(void *data)
     
     while(pdata->running)
     {
-        dbg_info("PlatformFrameUpdater loop start.\n");
+        //dbg_info("PlatformFrameUpdater loop start.\n");
         
         struct timespec TimeStart, TimeEnd;
         
@@ -460,7 +469,7 @@ PlatformFrameUpdater(void *data)
         target.tv_sec = (uint64)(ms_target / 1000.0f);
         target.tv_nsec = (uint64)(ms_target * 1000000.0f);
         
-        dbg_print("Target: tv_sec = %ld\ttv_nsec = %ld\n", target.tv_sec, target.tv_nsec);
+        //dbg_print("Target: tv_sec = %ld\ttv_nsec = %ld\n", target.tv_sec, target.tv_nsec);
         
         struct timespec SleepDuration = time_diff(target, TimeDifference);
         /*
@@ -512,7 +521,6 @@ int main(int argc, const char** argv)
         return 1;
     }
     
-    SDL_Window *window = NULL;
     SDL_CreateWindowAndRenderer(1024,
                                 576,
                                 SDL_WINDOW_RESIZABLE,
