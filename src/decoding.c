@@ -34,92 +34,92 @@ struct frame_info {
 
 // returns an AVFrame. if the frame var is NULL,
 // then something went wrong
-static struct frame_info
-decode()
+static int32
+wt_decode(struct frame_info *info)
 {
-    struct frame_info info = {};
-    
     AVPacket *pkt = av_packet_alloc();
     if (!pkt)
     {
         dbg_error("av_packet_alloc() failed!\n");
-        return info;
+        return -1;
     }
     
     AVFrame *frame = av_frame_alloc();
     if (!frame) {
         dbg_error("av_frame_alloc() failed!\n");
-        return info;
+        return -1;
     }
     
     int32 ret = 0;
-    do {
-        AVCodecContext *dec_ctx = NULL;
-        
-        av_read_frame(format_context, pkt);
-        
-        // set the type of frame only once
-        if(!info.type &&
-           pkt->stream_index == video_stream)
-        {
-            info.type = FRAME_VIDEO;
-            dec_ctx = video_codec_context;
-        }
-        else if(!info.type &&
-                pkt->stream_index == audio_stream)
-        {
-            info.type = FRAME_AUDIO;
-            dec_ctx = audio_codec_context;
-        }
-        else
-        {
-            info.type = FRAME_UNKNOWN;
-            return info;
-        }
-        
-        
-        if(!pkt->size)
-        {
-            dbg_error("pkt empty\n");
-            return info;
-        }
-        
-        avcodec_send_packet(dec_ctx, pkt);
-        if (ret < 0) {
-            dbg_error("Error sending a packet for decoding\n");
-            return info;
-        }
-        
-        ret = avcodec_receive_frame(dec_ctx, frame);
-        if(ret == AVERROR(EINVAL))
-        {
-            dbg_error("AVERROR(EINVAL)\n");
-            return info;
-        }
-        else if(ret == AVERROR_EOF)
-        {
-            dbg_error("AVERROR_EOF\n");
-            // TODO(Val): End of file, do something here.
-            return info;
-        }
-        else 
-        {
-            info.frame = frame;
-        }
-    } while(ret == AVERROR(EAGAIN));
     
-    //av_packet_unref(pkt);
-    return info;
+    AVCodecContext *dec_ctx = NULL;
+    
+    ret = av_read_frame(format_context, pkt);
+    if(ret < 0)
+    {
+        dbg_error("End of file.\n");
+        return -1;
+    }
+    
+    // set the type of frame.
+    if(pkt->stream_index == video_stream)
+    {
+        info->type = FRAME_VIDEO;
+        dec_ctx = video_codec_context;
+    }
+    else if(pkt->stream_index == audio_stream)
+    {
+        info->type = FRAME_AUDIO;
+        dec_ctx = audio_codec_context;
+    }
+    else
+    {
+        info->type = FRAME_UNKNOWN;
+        return -1;
+    }
+    
+    receive_packet:
+    ret = avcodec_send_packet(dec_ctx, pkt);
+    if(ret == AVERROR(EAGAIN)) goto receive_packet;
+    else if (ret == AVERROR_EOF ||
+             ret == AVERROR(EINVAL) ||
+             ret == AVERROR(ENOMEM)) 
+    {
+        dbg_error("Error sending a packet for decoding\n");
+        return -1;
+    }
+    
+    ret = avcodec_receive_frame(dec_ctx, frame);
+    if(ret == AVERROR(EAGAIN)) goto receive_packet;
+    
+    if(ret == AVERROR(EINVAL))
+    {
+        dbg_error("AVERROR(EINVAL)\n");
+        return -1;
+    }
+    else if(ret == AVERROR_EOF)
+    {
+        dbg_error("AVERROR_EOF\n");
+        // TODO(Val): End of file, do something here.
+        return -1;
+    }
+    else 
+    {
+        info->frame = frame;
+    }
+    
+    av_packet_unref(pkt);
+    return 0;
 }
 
 /*
 struct decoder_properties {
-    uint32 audio_frequency;
-    uint32 audio_channels;
-    uint32 audio_bytes_per_sample;
-    uint32 video_width;
-    uint32 video_height;
-    uint32 video_bytes_per_sample;
+uint32 audio_frequency;
+uint32 audio_channels;
+uint32 audio_bytes_per_sample;
+uint32 video_width;
+uint32 video_height;
+uint32 video_bytes_per_sample;
 };
 */
 
@@ -431,22 +431,27 @@ DecodingThreadStart(void *ptr)
         
         dbg_success("Audio and video queues initialized.\n");
         
-        PlatformInitAudio(pdata);
-        PlatformInitVideo(pdata);
+        if(pdata->file.has_audio)
+            PlatformInitAudio(pdata);
+        if(pdata->file.has_video)
+            PlatformInitVideo(pdata);
         
-        bool32 finished = 0;
         struct frame_info info = {};
         
         while(pdata->running)
         {
-            info = decode();
+            int ret = wt_decode(&info);
             
-            if(info.type == FRAME_AUDIO ||
-               info.type == FRAME_VIDEO)
+            if(!ret)
             {
-                process_frame(info, pdata);
-                
-                av_frame_free(&info.frame);
+                if((info.type == FRAME_AUDIO ||
+                    info.type == FRAME_VIDEO) &&
+                   info.frame)
+                {
+                    process_frame(info, pdata);
+                    
+                    av_frame_free(&info.frame);
+                }
             }
         }
     }
