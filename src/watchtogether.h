@@ -105,6 +105,9 @@ typedef struct _ouput_video {
     uint32 pitch;
 } output_video;
 
+
+#define VIDEO_RGB 0x1
+#define VIDEO_YUV 0x2
 typedef struct _open_file_info {
     char *filename;
     
@@ -113,6 +116,7 @@ typedef struct _open_file_info {
     uint32 pitch;
     real32 fps;
     real32 target_time;
+    uint32 video_format;
     
     uint32 sample_rate;
     uint32 bytes_per_sample;
@@ -127,19 +131,45 @@ typedef struct _open_file_info {
 } open_file_info;
 
 typedef struct _video_queue_data {
+    uint32 video_queue_type;
     
     uint32 video_queue_width;
     uint32 video_queue_height;
+    uint32 video_queue_format;
     uint32 bpp;
     
     void* video_queue_buffer;
     uint32 video_queue_size;
     uint32 video_queue_maxframes;
-    uint32 video_queue_nframes;
+    _Atomic uint32 video_queue_nframes;
     uint32 video_queue_frame_size;
     uint32 video_queue_start;
     uint32 video_queue_end;
     uint32 video_queue_pitch;
+    
+    uint32 video_queue_Y_width;
+    uint32 video_queue_U_width;
+    uint32 video_queue_V_width;
+    
+    uint32 video_queue_Y_height;
+    uint32 video_queue_U_height;
+    uint32 video_queue_V_height;
+    
+    uint32 video_queue_Y_pitch;
+    uint32 video_queue_U_pitch;
+    uint32 video_queue_V_pitch;
+    
+    uint32 video_queue_Y_frame_size;
+    uint32 video_queue_U_frame_size;
+    uint32 video_queue_V_frame_size;
+    
+    uint32 video_queue_Y_size;
+    uint32 video_queue_U_size;
+    uint32 video_queue_V_size;
+    
+    void *video_queue_Y_buffer;
+    void *video_queue_U_buffer;
+    void *video_queue_V_buffer;
 } video_queue_data;
 
 typedef struct _audio_queue_data {
@@ -164,6 +194,9 @@ typedef struct _program_data {
     video_queue_data vq_data;
     
     bool32 running;
+    // TODO(Val): Does "playing" need to exist? File open already exists.
+    bool32 playing;
+    bool32 paused;
 } program_data;
 
 static int32 MainLoop(void *);

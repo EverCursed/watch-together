@@ -10,8 +10,8 @@ global AVCodec *video_codec;
 global AVCodecContext *video_codec_context = NULL;
 global AVCodecContext *audio_codec_context = NULL;
 global AVFormatContext *format_context = NULL;
-global AVPacket *pkt;
-global AVFrame *frame;
+//global AVPacket *pkt;
+//global AVFrame *frame;
 global int video_stream = -1;
 global int audio_stream = -1;
 
@@ -20,12 +20,13 @@ file_close()
 {
     avcodec_free_context(&video_codec_context);
     avformat_close_input(&format_context);
-    av_frame_free(&frame);
-    av_packet_unref(pkt);
+    //av_frame_free(&frame);
+    //av_packet_unref(pkt);
 }
 
 #define FRAME_AUDIO 1
-#define FRAME_VIDEO 2
+#define FRAME_VIDEO_RGB 2
+#define FRAME_VIDEO_YUV 3
 #define FRAME_UNKNOWN -1
 struct frame_info {
     AVFrame *frame;
@@ -64,7 +65,17 @@ wt_decode(struct frame_info *info)
     // set the type of frame.
     if(pkt->stream_index == video_stream)
     {
-        info->type = FRAME_VIDEO;
+        //printf("frame->format == %d\n", format_context->streams[video_stream]->codecpar->format);
+        if(format_context->streams[video_stream]->codecpar->format == AV_PIX_FMT_YUV420P)
+            //frame->format == )
+        {
+            info->type = FRAME_VIDEO_YUV;
+        }
+        else
+        {
+            info->type = FRAME_VIDEO_RGB;
+        }
+        
         dec_ctx = video_codec_context;
     }
     else if(pkt->stream_index == audio_stream)
@@ -192,6 +203,16 @@ file_open(open_file_info *file)
             return -1;
         }
         
+        if(format_context->streams[video_stream]->codecpar->format == AV_PIX_FMT_YUV420P)
+        {
+            file->video_format = VIDEO_YUV;
+        }
+        else //if(format_context->streams[video_stream]->codecpar->format == AV_PIX_FMT_RGB32)
+        {
+            file->video_format = VIDEO_RGB;
+        }
+        
+        
         file->width = video_codec_context->width;
         file->height = video_codec_context->height;
         
@@ -293,7 +314,7 @@ process_frame(struct frame_info info, program_data *pdata)
     uint32 ret = 0;
     AVFrame *frame = info.frame;
     
-    if(info.type == FRAME_VIDEO)
+    if(pdata->running && info.type == FRAME_VIDEO_RGB)
     {
         modifContext = sws_getCachedContext(modifContext,
                                             video_codec_context->width,
@@ -312,18 +333,41 @@ process_frame(struct frame_info info, program_data *pdata)
         int stride[1] = { pdata->vq_data.video_queue_pitch };
         
         sws_scale(modifContext,
-                  (uint8_t const* const*)frame->data,
+                  (uint8 const* const*)frame->data,
                   frame->linesize,
                   0,
                   video_codec_context->height,
                   (uint8 *const *const)ptrs,
                   stride);
         
-        while(pdata->running && (enqueue_frame(&pdata->vq_data, temp_buffer) < 0))
+        while(pdata->running && (enqueue_frame(&pdata->vq_data, temp_buffer, pdata->vq_data.video_queue_pitch) < 0))
         {
             SDL_Delay((int32)pdata->file.target_time);
         }
         free(temp_buffer);
+    }
+    else if(pdata->running && info.type  == FRAME_VIDEO_YUV)
+    {
+        dbg_print("linesize[0] = %d\n"
+                  "linesize[1] = %d\n"
+                  "linesize[2] = %d\n"
+                  "width = %d\n"
+                  "height = %d\n",
+                  frame->linesize[0],
+                  frame->linesize[1],
+                  frame->linesize[2],
+                  frame->width,
+                  frame->height);
+        while(pdata->running && (enqueue_frame_YUV(&pdata->vq_data,
+                                                   frame->data[0],
+                                                   frame->linesize[0],
+                                                   frame->data[1],
+                                                   frame->linesize[1],
+                                                   frame->data[2],
+                                                   frame->linesize[2])))
+        {
+            SDL_Delay((int32)pdata->file.target_time);
+        }
     }
     else if(info.type == FRAME_AUDIO)
     {
@@ -332,16 +376,16 @@ process_frame(struct frame_info info, program_data *pdata)
                                                  frame->nb_samples,
                                                  audio_codec_context->sample_fmt,
                                                  1);
-        dbg_print("Audio buffer size: %d\n", size);
+        //dbg_print("Audio buffer size: %d\n", size);
         
         uint32 real_size = frame->linesize[0] * audio_codec_context->channels; 
-        dbg_print("Size should be: %d\n", real_size);
+        //dbg_print("Size should be: %d\n", real_size);
         
         uint32 SampleCount = frame->nb_samples;
         uint32 Frequency = audio_codec_context->sample_rate;
         uint32 Channels = audio_codec_context->channels;
-        dbg_print("Linesize: %d - %d\n", frame->linesize[0], size);
-        dbg_print("Channels: %d\n", Channels);
+        //dbg_print("Linesize: %d - %d\n", frame->linesize[0], size);
+        //dbg_print("Channels: %d\n", Channels);
         /*
         AV_SAMPLE_FMT_U8 	unsigned 8 bits
         AV_SAMPLE_FMT_S16 	signed 16 bits
@@ -412,13 +456,27 @@ DecodingThreadStart(void *ptr)
     if(!file_open(file))
     {
         dbg_success("File opened successfully.\n");
+        pdata->playing = 1;
+        pdata->paused = 0;
+        PlatformPauseAudio(0);
         
         if(file->has_video)
         {
-            reset_video_queue(&pdata->vq_data,
-                              pdata->file.width,
-                              pdata->file.height,
-                              4);
+            if(file->video_format == VIDEO_YUV)
+            {
+                dbg_info("Initializing YUV queue.\n");
+                init_video_queue_YUV(&pdata->vq_data,
+                                     pdata->file.width,
+                                     pdata->file.height);
+            }
+            else
+            {
+                dbg_info("Initializing RGB queue.\n");
+                reset_video_queue(&pdata->vq_data,
+                                  pdata->file.width,
+                                  pdata->file.height,
+                                  4);
+            }
         }
         
         if(file->has_audio)
@@ -432,20 +490,23 @@ DecodingThreadStart(void *ptr)
         dbg_success("Audio and video queues initialized.\n");
         
         if(pdata->file.has_audio)
+        {
+            dbg_info("has_audio is set.\n");
             PlatformInitAudio(pdata);
+        }
         if(pdata->file.has_video)
+        {
             PlatformInitVideo(pdata);
+        }
         
         struct frame_info info = {};
-        
         while(pdata->running)
         {
             int ret = wt_decode(&info);
             
             if(!ret)
             {
-                if((info.type == FRAME_AUDIO ||
-                    info.type == FRAME_VIDEO) &&
+                if(info.type != FRAME_UNKNOWN &&
                    info.frame)
                 {
                     process_frame(info, pdata);

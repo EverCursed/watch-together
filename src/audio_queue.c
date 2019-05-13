@@ -42,7 +42,6 @@ enqueue_audio_bytes(audio_queue_data *data, void *src, uint32 bytes)
     if(data->audio_queue_end < new_end)
     {
         memcpy(data->audio_queue_buffer + data->audio_queue_end, src, bytes);
-        data->audio_queue_end = new_end;
     }
     else
     {
@@ -51,9 +50,8 @@ enqueue_audio_bytes(audio_queue_data *data, void *src, uint32 bytes)
         
         memcpy(data->audio_queue_buffer + data->audio_queue_end, src, size1);
         memcpy(data->audio_queue_buffer, src+size1, size2);
-        
-        data->audio_queue_end = new_end;
     }
+    data->audio_queue_end = new_end;
     data->audio_queue_used_space += bytes;
     
     return 0;
@@ -68,8 +66,9 @@ enqueue_audio_samples(audio_queue_data *data, void *src, uint32 sample_count)
 static int32
 dequeue_audio_bytes(audio_queue_data *data, void *dst, uint32 size)
 {
-    if(!((data->audio_queue_start + size) < data->audio_queue_end ||
-         (data->audio_queue_start + size) > data->audio_queue_start))
+    //if(!((data->audio_queue_start + size) < data->audio_queue_end ||
+    //(data->audio_queue_start + size) > data->audio_queue_start))
+    if(data->audio_queue_used_space < size)
     {
         dbg_print("audio_queue_start: %d\n"
                   "audio_queue_end: %d\n"
@@ -87,7 +86,6 @@ dequeue_audio_bytes(audio_queue_data *data, void *dst, uint32 size)
         memcpy(dst, data->audio_queue_buffer+data->audio_queue_start, size);
         
         data->audio_queue_start += size;
-        
     }
     else
     {

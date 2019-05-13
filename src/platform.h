@@ -1,6 +1,9 @@
 #ifndef WT_PLATFORM
 #define WT_PLATFORM
 
+static void
+PlatformPauseAudio(bool32 on);
+
 static int32
 PlatformFrameUpdater(void *data);
 

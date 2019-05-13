@@ -19,7 +19,7 @@
  ---     malloc/av_malloc
  */
 
-global SDL_AudioDeviceID AudioID = 0;
+global SDL_AudioDeviceID AudioID = -1;
 global bool32 audio_initialized = 0;
 global float ms_target = 33.33333333333333333333f;
 global SDL_Window *window = NULL;
@@ -49,24 +49,65 @@ blit_frame(program_data *pdata)
 {
     // TODO(Val): this is temporary, should get these values properly
     //dbg_info("blit_frame\n");
-    void* buffer = malloc(pdata->vq_data.video_queue_frame_size);
-    dequeue_frame(&pdata->vq_data, buffer);
     
-    void* pixels;
-    int32 pitch;
     
     //SDL_LockTexture(background_texture, NULL, &pixels, &pitch);
-    SDL_UpdateTexture(background_texture, NULL, buffer, pdata->vq_data.video_queue_pitch);
     
-    
+    if(pdata->file.video_format == VIDEO_YUV)
+    {
+        void* pixels;
+        int32 pitch;
+        
+        void *Y, *U, *V;
+        uint32 Yp, Up, Vp;
+        int ret = get_next_frame_YUV(&pdata->vq_data,
+                                     &Y, &Yp,
+                                     &U, &Up,
+                                     &V, &Vp);
+        if(!ret)
+        {
+            SDL_UpdateYUVTexture(background_texture, NULL, Y, Yp, U, Up, V, Vp);
+            if(!pdata->paused)
+            {
+                dbg_success("Discarding frame.\n");
+                int ret2 = discard_next_frame_YUV(&pdata->vq_data);
+                
+            }
+        }
+        else
+        {
+            dbg_error("get_next_frame_YUV() failed.\n");
+        }
+    }
+    else if(pdata->file.video_format == VIDEO_RGB)
+    {
+        if(!pdata->paused)
+        {
+            void* buffer; // = malloc(pdata->vq_data.video_queue_frame_size);
+            uint32 pitch;
+            int ret = get_next_frame(&pdata->vq_data, &buffer, &pitch);
+            
+            if(!ret)
+            {
+                SDL_UpdateTexture(background_texture, NULL, buffer, pitch);
+                discard_next_frame(&pdata->vq_data);
+            }
+            else
+            {
+                dbg_error("dequeue_frame() failed.\n");
+            }
+        }
+    }
+    else
+    {
+        dbg_error("Not initialized?");
+    }
     
     //SDL_UnlockTexture(background_texture);
     
-    free(buffer);
 }
 
-#define BYTE_ALIGN 16
-
+/*
 static void 
 Deb_ResizePixelBuffer(SDL_Renderer *renderer)
 {
@@ -75,7 +116,7 @@ Deb_ResizePixelBuffer(SDL_Renderer *renderer)
     SDL_GetRendererOutputSize(renderer,
                               &width,
                               &height);
-    
+                              
     texture_height = height;
     texture_width = width;
     
@@ -83,12 +124,11 @@ Deb_ResizePixelBuffer(SDL_Renderer *renderer)
     
     if(background_texture)
         SDL_DestroyTexture(background_texture);
-    
-    
-    
+        
     //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
     
 }
+*/ 
 
 static void
 AudioCallback(void*  userdata,
@@ -106,11 +146,11 @@ AudioCallback(void*  userdata,
     }
     else
     {
-        //dbg_success("AudioCallback was successful\n");
+        dbg_success("AudioCallback was successful\n");
     }
 }
 
-
+/*
 static void
 set_audio_properties(uint32 freq,
                      uint32 channels,
@@ -135,7 +175,7 @@ set_audio_properties(uint32 freq,
         spec.format = AUDIO_F32;
     else
         dbg_error("Audio format not handled.\n");
-    
+        
     // TODO(Val): Make this the determining factor for what
     // audio to push
     SDL_AudioSpec received = {};
@@ -146,7 +186,7 @@ set_audio_properties(uint32 freq,
                                       &spec,
                                       &received,
                                       SDL_AUDIO_ALLOW_FORMAT_CHANGE);
-        
+                                      
         if(received.freq == spec.freq &&
            received.channels == spec.channels &&
            received.format == spec.format)
@@ -161,6 +201,8 @@ set_audio_properties(uint32 freq,
         }
     }
 }
+*/
+
 /*
 static void
 EnqueueAudio(sound_sample *SoundSample)
@@ -179,9 +221,12 @@ EnqueueAudio(sound_sample *SoundSample)
     //dbg_print("Current queue size: %d\n", SDL_GetQueuedAudioSize(AudioID));
 }
 */
+
 static void 
 PlatformInitAudio(program_data *pdata)
 {
+    dbg_info("PlatformInitAudio called.\n");
+    
     open_file_info *file = &pdata->file;
     output_audio *output = &pdata->audio;
     
@@ -236,7 +281,7 @@ PlatformInitAudio(program_data *pdata)
                                   &DesiredAudioSpec,
                                   &ReceivedAudioSpec,
                                   SDL_AUDIO_ALLOW_FORMAT_CHANGE);
-    if(AudioID)
+    if(AudioID != -1)
     {
         audio_initialized = 1;
         
@@ -250,6 +295,12 @@ PlatformInitAudio(program_data *pdata)
         SDL_PauseAudioDevice(AudioID, 0);
     }
     //printf("%s\n", SDL_GetError());
+}
+
+static void
+PlatformPauseAudio(bool32 b)
+{
+    SDL_PauseAudioDevice(AudioID, b);
 }
 
 static void
@@ -325,6 +376,7 @@ ProcessInput(void *arg)
                 {
                     case SDLK_SPACE:
                     {
+                        TogglePlayback(pdata);
                         
                     } break;
                     case SDLK_ESCAPE:
@@ -451,7 +503,8 @@ PlatformFrameUpdater(void *data)
         
         clock_gettime(CLOCK_REALTIME, &TimeStart);
         
-        blit_frame(pdata);
+        if(pdata->playing)
+            blit_frame(pdata);
         
         //SDL_RenderSetScale(renderer, texture_width, texture_height);
         SDL_RenderCopy(renderer, background_texture, NULL, NULL);
@@ -459,11 +512,14 @@ PlatformFrameUpdater(void *data)
         
         SDL_RenderPresent(renderer);
         
+        
+        
+        
         clock_gettime(CLOCK_REALTIME, &TimeEnd);
         
         // TODO(Val): Rewrite the sleep for frame updater, maybe use SDL stuff somehow?
         struct timespec TimeDifference = time_diff(TimeEnd, TimeStart);
-        dbg_print("TimeDiff: tv_sec = %ld\ttv_nsec = %ld\n", TimeDifference.tv_sec, TimeDifference.tv_nsec);
+        //dbg_print("TimeDiff: tv_sec = %ld\ttv_nsec = %ld\n", TimeDifference.tv_sec, TimeDifference.tv_nsec);
         
         struct timespec target = {};
         target.tv_sec = (uint64)(ms_target / 1000.0f);
@@ -472,26 +528,8 @@ PlatformFrameUpdater(void *data)
         //dbg_print("Target: tv_sec = %ld\ttv_nsec = %ld\n", target.tv_sec, target.tv_nsec);
         
         struct timespec SleepDuration = time_diff(target, TimeDifference);
-        /*
-            struct timespec sleep_duration;
-            sleep_duration.tv_nsec =
-            (uint64)(ms_target * 1000000.0f) -
-            TimeDifference.tv_nsec;
-            sleep_duration.tv_sec =
-            (uint64)(ms_target / 1000.0f) -
-            TimeDifference.tv_sec +
-            (sleep_duration.tv_nsec / 1000000000);
-            if(sleep_duration.tv_nsec >= 1000000000)
-            {
-            sleep_duration.tv_sec -= (uint64)sleep_duration.tv_nsec/1000000000.0f;
-            sleep_duration.tv_nsec = fmod(sleep_duration.tv_nsec, 1000000000.0f);
-            }
-            //printf("sec: %ld\tnsec: %ld\n", sleep_duration.tv_sec, sleep_duration.tv_nsec);
-            // sleep
-            
-*/
         
-        dbg_print("Nanosleep: tv_sec = %ld\ttv_nsec = %ld\n", SleepDuration.tv_sec, SleepDuration.tv_nsec);
+        //dbg_print("Nanosleep: tv_sec = %ld\ttv_nsec = %ld\n", SleepDuration.tv_sec, SleepDuration.tv_nsec);
         nanosleep(&SleepDuration, NULL);
     }
     
@@ -503,13 +541,26 @@ PlatformInitVideo(program_data *pdata)
 {
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
     
-    background_texture = SDL_CreateTexture(renderer, 
-                                           SDL_PIXELFORMAT_BGRA32,
-                                           SDL_TEXTUREACCESS_STREAMING,
-                                           pdata->file.width,
-                                           pdata->file.height);
+    if(pdata->file.video_format == VIDEO_RGB)
+    {
+        background_texture = SDL_CreateTexture(renderer, 
+                                               SDL_PIXELFORMAT_BGRA32,
+                                               SDL_TEXTUREACCESS_STREAMING,
+                                               pdata->file.width,
+                                               pdata->file.height);
+    }
+    else if(pdata->file.video_format == VIDEO_YUV)
+    {
+        background_texture = SDL_CreateTexture(renderer, 
+                                               SDL_PIXELFORMAT_IYUV,
+                                               SDL_TEXTUREACCESS_STREAMING,
+                                               pdata->file.width,
+                                               pdata->file.height);
+    }
     
     SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
+    
+    SDL_RenderSetScale(renderer, 1.0f, 1.0f);
     
     SDL_RenderSetViewport(renderer, NULL);
 }
@@ -552,7 +603,7 @@ int main(int argc, const char** argv)
     else
         pdata->file.filename = TESTING_FILE;
     
-    Deb_ResizePixelBuffer(renderer);
+    //Deb_ResizePixelBuffer(renderer);
     
     pdata->threads.main_thread = PlatformCreateThread(MainLoop, pdata, "main");
     

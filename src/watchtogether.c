@@ -16,6 +16,13 @@ UpdateLoop(void *data)
     
 }
 
+static void
+TogglePlayback(program_data *pdata)
+{
+    pdata->paused = !pdata->paused;
+    PlatformPauseAudio(pdata->paused);
+}
+
 static int32
 MainLoop(void *data)
 {
