@@ -6,6 +6,7 @@
 #include "defines.h"
 #include "wt_version.h"
 #include "utils.h"
+#include "kbkeys.h"
 
 #include "deb-watchtogether-v2.h"
 #include "watchtogether.c"
@@ -33,7 +34,7 @@ global uint32 texture_height;
 
 global program_data *pdata;
 
-#define TESTING_FILE "data/5cm.mkv"
+#define TESTING_FILE "data/video.mp4"
 
 // TODO(Val): remove this, just temporary
 // NOTE(Val): sets the length of a frame in ms
@@ -353,6 +354,33 @@ ProcessInput(void *arg)
                 {
                     case SDL_WINDOWEVENT_RESIZED:
                     {
+                        /*
+int width = pdata->vq_data.video_queue_width;
+                        int height = pdata->vq_data.video_queue_height;
+                        
+                        SDL_Rect rect;
+                        SDL_RenderGetViewport(renderer, &rect);
+                        
+                        real32 width_ratio = 1.0f*rect.w/width;
+                        real32 height_ratio = 1.0f*rect.h/height;
+                        
+                        //real32 new_aspect = (1.0f * rect.w) / rect.h;
+                        real32 aspect = (1.0f * pdata->vq_data.video_queue_width) / pdata->vq_data.video_queue_height;
+                        
+                        if(width_ratio > height_ratio)
+                        {
+                            SDL_RenderSetLogicalSize(renderer, height_ratio*width, rect.h);
+                        }
+                        else if(height_ratio < width_ratio)
+                        {
+                            SDL_RenderSetLogicalSize(renderer, rect.w, width_ratio*height);
+                        }
+                        else
+                        {
+                            SDL_RenderSetLogicalSize(renderer, rect.w, rect.h);
+                        }
+                        */
+                        
                         //Deb_ResizePixelBuffer(renderer);
                         
                         
@@ -457,20 +485,6 @@ ProcessInput(void *arg)
     return 0;
 }
 
-static struct timespec
-time_diff(struct timespec t2, struct timespec t1)
-{
-    struct timespec ret = {};
-    if ((t2.tv_nsec - t1.tv_nsec) < 0) {
-        ret.tv_sec = t2.tv_sec - t1.tv_sec - 1;
-        ret.tv_nsec = t2.tv_nsec - t1.tv_nsec + 1000000000;
-    } else {
-        ret.tv_sec = t2.tv_sec - t1.tv_sec;
-        ret.tv_nsec = t2.tv_nsec - t1.tv_nsec;
-    }
-    return ret;
-}
-
 // TODO(Val): This still needs to be redone, as the UI should probably
 // update outside of the video fps target
 static int32
@@ -478,11 +492,10 @@ PlatformFrameUpdater(void *data)
 {
     program_data *pdata = data;
     
-    while(pdata->running)
+    if(pdata->running)
     {
         //dbg_info("PlatformFrameUpdater loop start.\n");
-        
-        struct timespec TimeStart, TimeEnd;
+        dbg_print("%s\n", SDL_GetError());
         
         //SDL_Surface *win_surface = SDL_GetWindowSurface(window);
         //SDL_UpdateWindowSurface(window);
@@ -500,37 +513,22 @@ PlatformFrameUpdater(void *data)
         // Maybe do this in a separate thread? Just sleep until
         // it's time to flip buffers and then sleep again?
         
-        
-        clock_gettime(CLOCK_REALTIME, &TimeStart);
+        int ret;
         
         if(pdata->playing)
             blit_frame(pdata);
         
         //SDL_RenderSetScale(renderer, texture_width, texture_height);
-        SDL_RenderCopy(renderer, background_texture, NULL, NULL);
+        ret = SDL_RenderCopy(renderer, background_texture, NULL, NULL);
+        if(ret)
+        {
+            dbg_error(SDL_GetError());
+            dbg_print("\n");
+        }
         //SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
         
         SDL_RenderPresent(renderer);
         
-        
-        
-        
-        clock_gettime(CLOCK_REALTIME, &TimeEnd);
-        
-        // TODO(Val): Rewrite the sleep for frame updater, maybe use SDL stuff somehow?
-        struct timespec TimeDifference = time_diff(TimeEnd, TimeStart);
-        //dbg_print("TimeDiff: tv_sec = %ld\ttv_nsec = %ld\n", TimeDifference.tv_sec, TimeDifference.tv_nsec);
-        
-        struct timespec target = {};
-        target.tv_sec = (uint64)(ms_target / 1000.0f);
-        target.tv_nsec = (uint64)(ms_target * 1000000.0f);
-        
-        //dbg_print("Target: tv_sec = %ld\ttv_nsec = %ld\n", target.tv_sec, target.tv_nsec);
-        
-        struct timespec SleepDuration = time_diff(target, TimeDifference);
-        
-        //dbg_print("Nanosleep: tv_sec = %ld\ttv_nsec = %ld\n", SleepDuration.tv_sec, SleepDuration.tv_nsec);
-        nanosleep(&SleepDuration, NULL);
     }
     
     return 0;
@@ -565,12 +563,249 @@ PlatformInitVideo(program_data *pdata)
     SDL_RenderSetViewport(renderer, NULL);
 }
 
-int main(int argc, const char** argv)
+static inline void add_key(input_struct *input,
+                           uint32 key,
+                           bool32 shift,
+                           bool32 ctrl,
+                           bool32 alt,
+                           bool32 pressed)
+{
+    if(input->keyboard.n < MAX_KEYS)
+    {
+        input->keyboard.events[input->keyboard.n].key = key;
+        input->keyboard.events[input->keyboard.n].pressed = pressed;
+        input->keyboard.events[input->keyboard.n].shift = shift;
+        input->keyboard.events[input->keyboard.n].ctrl = ctrl;
+        input->keyboard.events[input->keyboard.n].alt = alt;
+        input->keyboard.n++;
+    }
+}
+
+#ifdef _WIN32
+int resize_filter(void *userdata,
+                  SDL_Event *event)
+{
+    if(event->type == SDL_WINDOWEVENT_SIZE_CHANGED)
+    {
+        
+        
+        //SDL_Rect size;
+        //SDL_RenderSetViewport(renderer, NULL);
+        //SDL_WindowGet
+        
+        //int ret = SDL_RenderCopy(renderer, background_texture, NULL, NULL);
+        //if(ret)
+        //{
+        //dbg_error(SDL_GetError());
+        //dbg_print("\n");
+        //}
+        //SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
+        
+        //SDL_RenderPresent(renderer);
+        
+        //SDL_SetVideoMode(event->resize.w,event->resize.h,0,SDL_ANYFORMAT | SDL_RESIZABLE);
+        //draw();
+        return 0;
+    }
+    return 1; // return 1 so all events are added to queue
+}
+#endif
+
+static int PlatformGetInput(program_data *pdata)
+{
+    input_struct *input = &pdata->input;
+    
+    SDL_Event event = {};
+    
+    while(pdata->running && SDL_PollEvent(&event))
+    {
+        //dbg_info("Event received.\n");
+        switch(event.type)
+        {
+            case SDL_QUIT:
+            {
+                pdata->running = 0;
+            } break;
+            case SDL_WINDOWEVENT:
+            {
+                switch(event.window.event)
+                {
+                    case SDL_WINDOWEVENT_RESIZED:
+                    {
+                        /*
+                        int width = pdata->vq_data.video_queue_width;
+                        int height = pdata->vq_data.video_queue_height;
+                        
+                        SDL_Rect rect;
+                        SDL_RenderGetViewport(renderer, &rect);
+                        
+                        real32 width_ratio = 1.0f*rect.w/width;
+                        real32 height_ratio = 1.0f*rect.h/height;
+                        
+                        //real32 new_aspect = (1.0f * rect.w) / rect.h;
+                        real32 aspect = (1.0f * pdata->vq_data.video_queue_width) / pdata->vq_data.video_queue_height;
+                        
+                        if(width_ratio > height_ratio)
+                        {
+                        SDL_RenderSetLogicalSize(renderer, height_ratio*width, rect.h);
+                        }
+                        else if(height_ratio < width_ratio)
+                        {
+                        SDL_RenderSetLogicalSize(renderer, rect.w, width_ratio*height);
+                        }
+                        else
+                        {
+                        SDL_RenderSetLogicalSize(renderer, rect.w, rect.h);
+                        }
+                        */
+                        
+                        //Deb_ResizePixelBuffer(renderer);
+                        
+                        
+                        //dbg_print("Texture width: %d\theight: %d\n", texture_width, texture_height);
+                        //dbg_print("Scale x: %f\t y: %f\n", scaleX, scaleY);
+                        
+                        
+                        //SDL_FreeSurface(surface);
+                        //surface = Deb_ResizePixelBuffer(window);
+                    } break;
+                    default:
+                    {
+                        
+                    } break;
+                }
+            } break;
+            case SDL_KEYDOWN:
+            case SDL_KEYUP:
+            {
+                bool32 shift_down = event.key.keysym.mod & KMOD_SHIFT;
+                bool32 ctrl_down = event.key.keysym.mod & KMOD_CTRL;
+                bool32 alt_down = event.key.keysym.mod & KMOD_ALT;
+                bool32 pressed = event.key.state == SDL_PRESSED ? 1 : 0;
+                
+#define add_key(a, b) add_key(input, a, shift_down, ctrl_down, alt_down, b)
+                // NOTE(Val): Keypress events here
+                switch(event.key.keysym.sym)
+                {
+                    case SDLK_SPACE:
+                    {
+                        add_key(KB_SPACE, pressed);
+                    } break;
+                    case SDLK_ESCAPE:
+                    {
+                        add_key(KB_ESCAPE, pressed);
+                    } break;
+                    case SDLK_RETURN:
+                    {
+                        add_key(KB_ENTER, pressed);
+                    } break;
+                    case SDLK_F4:
+                    {
+                        add_key(KB_F4, pressed);
+                    } break;
+                    /*
+                    case SDLK_SPACE:
+                    {
+                    TogglePlayback(pdata);
+                    
+                    } break;
+                    case SDLK_ESCAPE:
+                    {
+                    pdata->running = 0;
+                    } break;
+                    case SDLK_RETURN:
+                    {
+                    SDL_Keymod mod = SDL_GetModState();
+                    
+                    if(mod & KMOD_ALT)
+                    {
+                    dbg_error("ALT + Enter pressed.\n");
+                    if(pdata->client.fullscreen)
+                    {
+                    SDL_SetWindowFullscreen(window, 0);
+                    pdata->client.fullscreen = 0;
+                    }
+                    else
+                    {
+                    SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+                    pdata->client.fullscreen = 1;
+                    }
+                    }
+                    else if(mod & KMOD_CTRL)
+                    {
+                    
+                    }
+                    else if(mod & KMOD_SHIFT)
+                    {
+                    
+                    }
+                    } break;
+                    default:
+                    {
+                    
+                    } break;
+                    */
+                }
+#undef add_key
+            } break;
+            case SDL_MOUSEMOTION:
+            {
+                input->mouse.old_x = input->mouse.x;
+                input->mouse.old_y = input->mouse.y;
+                
+                input->mouse.x = event.motion.x;
+                input->mouse.y = event.motion.y;
+            } break;
+            case SDL_MOUSEBUTTONDOWN:
+            case SDL_MOUSEBUTTONUP:
+            {
+                if(event.button.button == SDL_BUTTON_LEFT)
+                {
+                    input->mouse.left_button_was_pressed = input->mouse.left_button_is_pressed;
+                    input->mouse.left_button_is_pressed = event.button.state == SDL_PRESSED ? 1 : 0;
+                }
+                else if(event.button.button == SDL_BUTTON_RIGHT)
+                {
+                    input->mouse.right_button_was_pressed = input->mouse.right_button_is_pressed;
+                    input->mouse.right_button_is_pressed = event.button.state == SDL_PRESSED ? 1 : 0;
+                }
+                else if(event.button.button == SDL_BUTTON_MIDDLE)
+                {
+                    input->mouse.middle_button_was_pressed = input->mouse.middle_button_is_pressed;
+                    input->mouse.middle_button_is_pressed = event.button.state == SDL_PRESSED ? 1 : 0;
+                }
+                else
+                {
+                    dbg_info("Unhandled mouse button input.\n");
+                }
+            } break;
+            default: 
+            {
+                
+            } break;
+        }
+        
+        // TODO(Val): Time here
+    }
+    
+    return 0;
+}
+
+#ifdef _WIN32
+#undef main         // workaround on windows where main is redefined by SDL
+#endif
+
+int main(int argc, const char* argv[])
 {
     // initialize all the necessary SDL stuff
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0){
         return 1;
     }
+    
+#ifdef _WIN32
+    dbg_info("SDL_FilterEvents\n");
+    SDL_SetEventFilter(resize_filter, NULL);
+#endif
     
     SDL_CreateWindowAndRenderer(1024,
                                 576,
@@ -605,7 +840,8 @@ int main(int argc, const char** argv)
     
     //Deb_ResizePixelBuffer(renderer);
     
-    pdata->threads.main_thread = PlatformCreateThread(MainLoop, pdata, "main");
+    //pdata->threads.main_thread = PlatformCreateThread(MainLoop, pdata, "main");
+    MainLoop(pdata);
     
     ProcessInput(pdata);
     

@@ -220,7 +220,6 @@ file_open(open_file_info *file)
         time = format_context->streams[video_stream]->avg_frame_rate;
         file->fps = (real32)time.num/(real32)time.den;
         file->target_time = (real32)time.den/(real32)time.num * 1000.0f;
-        set_FPS(file->target_time);
     }
     
     if(audio_stream >= 0)

@@ -1,6 +1,13 @@
 #ifndef WT_PLATFORM
 #define WT_PLATFORM
 
+typedef struct _input_data {
+    
+} input_data;
+
+static int
+PlatformGetInput();
+
 static void
 PlatformPauseAudio(bool32 on);
 

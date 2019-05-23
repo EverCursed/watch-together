@@ -11,11 +11,23 @@
 #define KWHT  "\x1B[37m"
 
 #ifdef DEBUG
+
+#ifdef __MINGW32__
+#define dbg_print(...) do { fprintf(stderr, __VA_ARGS__); } while(0)
+#define dbg_error(x) do { fprintf(stderr, "%s %d : %s", __FILE__, __LINE__, x); } while(0)
+#define dbg_info(x) fprintf(stderr, x)
+#define dbg_success(x) fprintf(stderr, x)
+#define dbg(x) x
+#endif
+
+#ifdef __linux__
 #define dbg_print(...) do { fprintf(stderr, __VA_ARGS__); } while(0)
 #define dbg_error(x) do { fprintf(stderr, KRED "%s %d : %s" KNRM, __FILE__, __LINE__, x); } while(0)
 #define dbg_info(x) fprintf(stderr, KYEL x KNRM)
 #define dbg_success(x) fprintf(stderr, KGRN x KNRM)
 #define dbg(x) x
+#endif
+
 #else
 #define dbg_print(...)
 #define dbg_error(x)
@@ -45,8 +57,18 @@ typedef struct _pixel_buffer {
     uint32 pitch;
 } pixel_buffer;
 
+typedef struct _key_event {
+    uint32 key;
+    bool32 pressed;
+    bool32 shift;
+    bool32 alt;
+    bool32 ctrl;
+} key_event;
+
+#define MAX_KEYS 8
 typedef struct _keyboard_info {
-    
+    key_event events[MAX_KEYS];
+    uint32 n;
 } keyboard_info;
 
 typedef struct _mouse_info {
@@ -114,9 +136,9 @@ typedef struct _open_file_info {
     uint32 width;
     uint32 height;
     uint32 pitch;
+    uint32 video_format;
     real32 fps;
     real32 target_time;
-    uint32 video_format;
     
     uint32 sample_rate;
     uint32 bytes_per_sample;
@@ -199,6 +221,6 @@ typedef struct _program_data {
     bool32 paused;
 } program_data;
 
-static int32 MainLoop(void *);
+static int32 MainLoop(program_data  *);
 
 #endif
