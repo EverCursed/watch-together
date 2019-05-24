@@ -70,6 +70,7 @@ dequeue_audio_bytes(audio_queue_data *data, void *dst, uint32 size)
     //(data->audio_queue_start + size) > data->audio_queue_start))
     if(data->audio_queue_used_space < size)
     {
+        /*
         dbg_print("audio_queue_start: %d\n"
                   "audio_queue_end: %d\n"
                   "audio_queue_size: %d\n"
@@ -78,6 +79,7 @@ dequeue_audio_bytes(audio_queue_data *data, void *dst, uint32 size)
                   data->audio_queue_end,
                   data->audio_queue_size,
                   size);
+        */
         return -1;
     }
     

@@ -1,6 +1,6 @@
-//#include "deb-watchtogether-v2.h"
 #include "watchtogether.h"
 #include "platform.h"
+#include "kbkeys.h"
 
 #include "audio_queue.c"
 #include "video_queue.c"
@@ -26,27 +26,111 @@ time_diff(struct timespec t2, struct timespec t1)
     return ret;
 }
 
+// TODO(Val): Find a way to get the refresh rate of the screen, for now this is a define
+#define REFRESH_RATE     16.666666666666f
+// TODO(Val): Test a variety of these, and see how long it's possible to go
+// TODO(Val): This will directly affect our maximum refresh rate. 
+#define MS_SAFETY_MARGIN 2.0f
+
 static int32
-UpdateLoop(program_data  *pdata)
+MainLoop(program_data *pdata)
 {
-    struct timespec TimeStart, TimeEnd;
+    //struct timespec TimeStart, TimeEnd;
+    int32 time_start;
+    int32 time_end;
+    real64 next_frame_time;
+    real64 next_video_frame_time;
+    
+    next_frame_time = time_start + (int32)REFRESH_RATE;
+    time_start = PlatformGetTime();
+    next_video_frame_time = 0;
     
     while(pdata->running)
     {
-        clock_gettime(CLOCK_REALTIME, &TimeStart);
+        dbg_print("time_start:\t\t\t%d\n"
+                  "next_frame_time:\t\t%f\n"
+                  "next_video_frame_time:\t\t%f\t\n",
+                  time_start,
+                  next_frame_time,
+                  next_video_frame_time);
+        
+        next_frame_time += REFRESH_RATE;
+        
+        //clock_gettime(CLOCK_REALTIME, &TimeStart);
         
         // TODO(Val): Get input
         PlatformGetInput(pdata);
         
         // TODO(Val): Process input
+        int keys = pdata->input.keyboard.n;
+        for(int i = 0; i < keys; i++)
+        {
+            key_event e = pdata->input.keyboard.events[i];
+            
+            switch(e.key)
+            {
+                case KB_F4:
+                {
+                    if(e.alt)
+                        pdata->running = 0;
+                } break;
+                case KB_ESCAPE:
+                {
+                    pdata->running = 0;
+                } break;
+            }
+        }
+        pdata->input.keyboard.n = 0;
         
         // TODO(Val): Get audio
-        //get_next_frame(data->Pixels, data->SoundSample);
         
         // TODO(Val): Draw UI
         
-        PlatformFrameUpdater(pdata);
+        // TODO(Val): Sleep until safety margin
         
+        // TODO(Val): Probably don't use MS_SAFETY_MARGIN here
+        dbg_print("pdata->playing: %d\n"
+                  "pdata->paused:  %d\n",
+                  pdata->playing,
+                  pdata->paused);
+        
+        if(pdata->file.file_ready)
+        {
+            if(!next_video_frame_time)
+                next_video_frame_time = time_start + pdata->file.target_time;
+            
+            if((pdata->playing && !pdata->paused) &&
+               (next_frame_time + MS_SAFETY_MARGIN >= next_video_frame_time))
+            {
+                //PlatformEnqueueAudio(pdata);
+                if(pdata->file.has_video)
+                    PlatformFrameUpdater(pdata);
+                
+                // TODO(Val): Increment tick value based on time passed
+                next_video_frame_time += pdata->file.target_time;
+                pdata->tick++;
+            }
+        }
+        
+        time_end = PlatformGetTime();
+        
+        int sleep_time = (int32)REFRESH_RATE - (time_end - time_start);
+        if(sleep_time < 0)
+            sleep_time = 0;
+        dbg_print("sleep_time: %d\n", sleep_time);
+        dbg_print("time_start: %d\n"
+                  "time_end:   %d\n",
+                  time_start, time_end);
+        
+        dbg_info("Sleep started.\n");
+        PlatformSleep(sleep_time);
+        dbg_info("Sleep ended.\n");
+        
+        time_start = next_frame_time;
+        
+        PlatformGetInput(pdata);
+        
+        /*
         clock_gettime(CLOCK_REALTIME, &TimeEnd);
         
         // TODO(Val): Rewrite the sleep for frame updater, maybe use SDL stuff somehow?
@@ -63,7 +147,10 @@ UpdateLoop(program_data  *pdata)
         
         //dbg_print("Nanosleep: tv_sec = %ld\ttv_nsec = %ld\n", SleepDuration.tv_sec, SleepDuration.tv_nsec);
         nanosleep(&SleepDuration, NULL);
+    */
     }
+    
+    return 0;
 }
 
 static void
@@ -74,7 +161,7 @@ TogglePlayback(program_data *pdata)
 }
 
 static int32
-MainLoop(program_data *pdata)
+MainThread(program_data *pdata)
 {
     pdata->threads.decoder_thread =
         PlatformCreateThread(DecodingThreadStart, pdata, "decoder");
@@ -83,7 +170,7 @@ MainLoop(program_data *pdata)
     //pdata->threads.blt_thread =
     //PlatformCreateThread(PlatformFrameUpdater, pdata, "frame_updater");
     
-    UpdateLoop(pdata);
+    MainLoop(pdata);
     
     //PlatformWaitThread(pdata->threads.blt_thread, NULL);
     PlatformWaitThread(pdata->threads.decoder_thread, NULL);

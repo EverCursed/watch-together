@@ -142,7 +142,6 @@ AudioCallback(void*  userdata,
     if(ret)
     {
         dbg_error("Something happened to audio\n");
-        dbg_print("ret: %d\n", ret);
         memset(stream, silence, len); 
     }
     else
@@ -305,7 +304,7 @@ PlatformPauseAudio(bool32 b)
 }
 
 static void
-PlatformSleep(uint32 ms)
+PlatformSleep(int32 ms)
 {
     SDL_Delay(ms);
 }
@@ -344,10 +343,6 @@ ProcessInput(void *arg)
         //dbg_info("Event received.\n");
         switch(event.type)
         {
-            case SDL_QUIT:
-            {
-                pdata->running = 0;
-            } break;
             case SDL_WINDOWEVENT:
             {
                 switch(event.window.event)
@@ -485,6 +480,12 @@ int width = pdata->vq_data.video_queue_width;
     return 0;
 }
 
+static uint32
+PlatformGetTime()
+{
+    return SDL_GetTicks();
+}
+
 // TODO(Val): This still needs to be redone, as the UI should probably
 // update outside of the video fps target
 static int32
@@ -492,44 +493,40 @@ PlatformFrameUpdater(void *data)
 {
     program_data *pdata = data;
     
-    if(pdata->running)
+    //dbg_info("PlatformFrameUpdater loop start.\n");
+    dbg_print("%s\n", SDL_GetError());
+    
+    //SDL_Surface *win_surface = SDL_GetWindowSurface(window);
+    //SDL_UpdateWindowSurface(window);
+    // display
+    //SDL_BlitSurface(surface, NULL, win_surface, NULL);
+    
+    // NOTE(Val): Wait here until the end of this frame's time
+    // slot to begin next frame processing.
+    // TODO(Val): At best, this can be said to be the absolute
+    // fucking worst way to do this. This will need to be redone 
+    // since only updating the video frame at a certain 
+    // framerate is necessary. Redrawing the buffer with
+    // appropriate scaling will still need to happen without
+    // framerate in consideration
+    // Maybe do this in a separate thread? Just sleep until
+    // it's time to flip buffers and then sleep again?
+    
+    int ret;
+    
+    if(pdata->playing)
+        blit_frame(pdata);
+    
+    //SDL_RenderSetScale(renderer, texture_width, texture_height);
+    ret = SDL_RenderCopy(renderer, background_texture, NULL, NULL);
+    if(ret)
     {
-        //dbg_info("PlatformFrameUpdater loop start.\n");
-        dbg_print("%s\n", SDL_GetError());
-        
-        //SDL_Surface *win_surface = SDL_GetWindowSurface(window);
-        //SDL_UpdateWindowSurface(window);
-        // display
-        //SDL_BlitSurface(surface, NULL, win_surface, NULL);
-        
-        // NOTE(Val): Wait here until the end of this frame's time
-        // slot to begin next frame processing.
-        // TODO(Val): At best, this can be said to be the absolute
-        // fucking worst way to do this. This will need to be redone 
-        // since only updating the video frame at a certain 
-        // framerate is necessary. Redrawing the buffer with
-        // appropriate scaling will still need to happen without
-        // framerate in consideration
-        // Maybe do this in a separate thread? Just sleep until
-        // it's time to flip buffers and then sleep again?
-        
-        int ret;
-        
-        if(pdata->playing)
-            blit_frame(pdata);
-        
-        //SDL_RenderSetScale(renderer, texture_width, texture_height);
-        ret = SDL_RenderCopy(renderer, background_texture, NULL, NULL);
-        if(ret)
-        {
-            dbg_error(SDL_GetError());
-            dbg_print("\n");
-        }
-        //SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
-        
-        SDL_RenderPresent(renderer);
-        
+        dbg_error(SDL_GetError());
+        dbg_print("\n");
     }
+    //SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
+    
+    SDL_RenderPresent(renderer);
     
     return 0;
 }
@@ -572,11 +569,12 @@ static inline void add_key(input_struct *input,
 {
     if(input->keyboard.n < MAX_KEYS)
     {
-        input->keyboard.events[input->keyboard.n].key = key;
-        input->keyboard.events[input->keyboard.n].pressed = pressed;
-        input->keyboard.events[input->keyboard.n].shift = shift;
-        input->keyboard.events[input->keyboard.n].ctrl = ctrl;
-        input->keyboard.events[input->keyboard.n].alt = alt;
+        int n = input->keyboard.n;
+        input->keyboard.events[n].key = key;
+        input->keyboard.events[n].pressed = pressed;
+        input->keyboard.events[n].shift = shift;
+        input->keyboard.events[n].ctrl = ctrl;
+        input->keyboard.events[n].alt = alt;
         input->keyboard.n++;
     }
 }
@@ -585,9 +583,12 @@ static inline void add_key(input_struct *input,
 int resize_filter(void *userdata,
                   SDL_Event *event)
 {
-    if(event->type == SDL_WINDOWEVENT_SIZE_CHANGED)
+    /*
+    if(event->window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
     {
+        dbg_error("SDL_WINDOWEVENT_SIZE_CHANGED filtered.\n");
         
+        // NOTE(Val): This happens on any window resize 
         
         //SDL_Rect size;
         //SDL_RenderSetViewport(renderer, NULL);
@@ -607,6 +608,20 @@ int resize_filter(void *userdata,
         //draw();
         return 0;
     }
+    else if(event->window.event == SDL_WINDOWEVENT_RESIZED)
+    {
+        dbg_error("SDL_WINDOWEVENT_RESIZED filtered.\n");
+        
+        // NOTE(Val): This happens if the window is resized by the user.
+        
+        // NOTE(Val): This follows SDL_WINDOWEVENT_SIZE_CHANGED in all cases.
+        
+        
+        
+        
+        return 0;
+    }
+    */
     return 1; // return 1 so all events are added to queue
 }
 #endif
@@ -617,7 +632,11 @@ static int PlatformGetInput(program_data *pdata)
     
     SDL_Event event = {};
     
-    while(pdata->running && SDL_PollEvent(&event))
+    //while(pdata->running && SDL_PollEvent(&event))
+    SDL_PumpEvents();
+    while(pdata->running &&
+          input->keyboard.n < MAX_KEYS-1 &&
+          SDL_PollEvent(&event))
     {
         //dbg_info("Event received.\n");
         switch(event.type)
@@ -632,6 +651,7 @@ static int PlatformGetInput(program_data *pdata)
                 {
                     case SDL_WINDOWEVENT_RESIZED:
                     {
+                        dbg_error("SDL_WINDOWEVENT_RESIZED fired.\n");
                         /*
                         int width = pdata->vq_data.video_queue_width;
                         int height = pdata->vq_data.video_queue_height;
@@ -822,10 +842,6 @@ int main(int argc, const char* argv[])
     SDL_SetWindowTitle(window, WT_WINDOW_TITLE);
     SDL_ShowWindow(window);
     
-    //sound_sample SoundSample = load_WAV("data/audio_test/audio.wav");
-    
-    // NOTE(Val): av_register_all();
-    
     //SDL_PauseAudioDevice(AudioID, 0); /* start audio playing. */
     
     //texture = Deb_ResizePixelBuffer(window, renderer);
@@ -841,9 +857,9 @@ int main(int argc, const char* argv[])
     //Deb_ResizePixelBuffer(renderer);
     
     //pdata->threads.main_thread = PlatformCreateThread(MainLoop, pdata, "main");
-    MainLoop(pdata);
+    MainThread(pdata);
     
-    ProcessInput(pdata);
+    //ProcessInput(pdata);
     
     // TODO(Val): Close everything properly here
     PlatformWaitThread(pdata->threads.main_thread, NULL);

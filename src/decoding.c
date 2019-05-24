@@ -188,7 +188,6 @@ file_open(open_file_info *file)
     // Init video codec context
     if(video_stream >= 0)
     {
-        file->has_video = 1;
         video_codec_context = avcodec_alloc_context3(video_codec);
         if(!video_codec_context)
         {
@@ -220,6 +219,8 @@ file_open(open_file_info *file)
         time = format_context->streams[video_stream]->avg_frame_rate;
         file->fps = (real32)time.num/(real32)time.den;
         file->target_time = (real32)time.den/(real32)time.num * 1000.0f;
+        
+        file->has_video = 1;
     }
     
     if(audio_stream >= 0)
@@ -296,8 +297,8 @@ file_open(open_file_info *file)
     return 0;
 }
 
-#define AUDIO_FRAME 0
-#define VIDEO_FRAME 1
+#define AUDIO_FRAME 1
+#define VIDEO_FRAME 2
 
 struct frame {
     void *buffer;
@@ -455,8 +456,6 @@ DecodingThreadStart(void *ptr)
     if(!file_open(file))
     {
         dbg_success("File opened successfully.\n");
-        pdata->playing = 1;
-        pdata->paused = 0;
         PlatformPauseAudio(0);
         
         if(file->has_video)
@@ -497,6 +496,10 @@ DecodingThreadStart(void *ptr)
         {
             PlatformInitVideo(pdata);
         }
+        
+        pdata->playing = 1;
+        pdata->paused = 0;
+        file->file_ready = 1;
         
         struct frame_info info = {};
         while(pdata->running)

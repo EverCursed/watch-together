@@ -5,8 +5,11 @@ typedef struct _input_data {
     
 } input_data;
 
+static uint32
+PlatformGetTime();
+
 static int
-PlatformGetInput();
+PlatformGetInput(program_data *);
 
 static void
 PlatformPauseAudio(bool32 on);
@@ -15,7 +18,7 @@ static int32
 PlatformFrameUpdater(void *data);
 
 static void
-PlatformSleep(uint32);
+PlatformSleep(int32);
 
 static thread_info
 PlatformCreateThread(int32 (*f)(void *), void*, char*);

@@ -12,7 +12,7 @@
 
 #ifdef DEBUG
 
-#ifdef __MINGW32__
+#ifdef _WIN32
 #define dbg_print(...) do { fprintf(stderr, __VA_ARGS__); } while(0)
 #define dbg_error(x) do { fprintf(stderr, "%s %d : %s", __FILE__, __LINE__, x); } while(0)
 #define dbg_info(x) fprintf(stderr, x)
@@ -149,6 +149,7 @@ typedef struct _open_file_info {
     bool32 has_video;
     
     bool32 file_opened;
+    bool32 file_ready;
     // TODO(Val): audio format
 } open_file_info;
 
@@ -163,7 +164,7 @@ typedef struct _video_queue_data {
     void* video_queue_buffer;
     uint32 video_queue_size;
     uint32 video_queue_maxframes;
-    _Atomic uint32 video_queue_nframes;
+    uint32 video_queue_nframes;
     uint32 video_queue_frame_size;
     uint32 video_queue_start;
     uint32 video_queue_end;
@@ -214,6 +215,8 @@ typedef struct _program_data {
     threads_info_all threads;
     audio_queue_data aq_data;
     video_queue_data vq_data;
+    
+    uint32 tick;
     
     bool32 running;
     // TODO(Val): Does "playing" need to exist? File open already exists.

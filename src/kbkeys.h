@@ -1,3 +1,6 @@
+#ifndef WT_KBKEYS
+#define WT_KBKEYS
+
 #define KB_0         0
 #define KB_1         1
 #define KB_2         2
@@ -57,3 +60,5 @@
 #define KB_PGDOWN    56
 #define KB_ESCAPE    57
 #define KB_SPACE     58
+
+#endif
