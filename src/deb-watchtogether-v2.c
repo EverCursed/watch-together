@@ -533,6 +533,10 @@ PlatformFrameUpdater(void *data)
     if(pdata->playing)
         blit_frame(pdata);
     
+    
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+    SDL_RenderClear(renderer);
+    
     //SDL_RenderSetScale(renderer, texture_width, texture_height);
     ret = SDL_RenderCopy(renderer, background_texture, NULL, NULL);
     if(ret)
@@ -570,10 +574,6 @@ PlatformInitVideo(program_data *pdata)
     }
     
     SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
-    
-    SDL_RenderSetScale(renderer, 1.0f, 1.0f);
-    
-    SDL_RenderSetViewport(renderer, NULL);
 }
 
 static inline void add_key(input_struct *input,
