@@ -60,5 +60,9 @@
 #define KB_PGDOWN    56
 #define KB_ESCAPE    57
 #define KB_SPACE     58
+#define KB_UP        59
+#define KB_LEFT      60
+#define KB_RIGHT     61
+#define KB_DOWN      62
 
 #endif

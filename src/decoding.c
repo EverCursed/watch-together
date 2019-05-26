@@ -328,9 +328,9 @@ process_frame(struct frame_info info, program_data *pdata)
                                             SWS_BICUBIC,
                                             NULL, NULL, NULL);
         
-        void *temp_buffer = malloc(pdata->vq_data.video_queue_frame_size);
+        void *temp_buffer = malloc(pdata->vq_data.vq_frame_size);
         uint8_t *ptrs[1] = { temp_buffer };
-        int stride[1] = { pdata->vq_data.video_queue_pitch };
+        int stride[1] = { pdata->vq_data.vq_pitch };
         
         sws_scale(modifContext,
                   (uint8 const* const*)frame->data,
@@ -340,7 +340,7 @@ process_frame(struct frame_info info, program_data *pdata)
                   (uint8 *const *const)ptrs,
                   stride);
         
-        while(pdata->running && (enqueue_frame(&pdata->vq_data, temp_buffer, pdata->vq_data.video_queue_pitch) < 0))
+        while(pdata->running && (enqueue_frame(&pdata->vq_data, temp_buffer, pdata->vq_data.vq_pitch, frame->pts) < 0))
         {
             SDL_Delay((int32)pdata->file.target_time);
         }
@@ -358,13 +358,15 @@ process_frame(struct frame_info info, program_data *pdata)
                   frame->linesize[2],
                   frame->width,
                   frame->height);
+        
         while(pdata->running && (enqueue_frame_YUV(&pdata->vq_data,
                                                    frame->data[0],
                                                    frame->linesize[0],
                                                    frame->data[1],
                                                    frame->linesize[1],
                                                    frame->data[2],
-                                                   frame->linesize[2])))
+                                                   frame->linesize[2],
+                                                   frame->pts)))
         {
             SDL_Delay((int32)pdata->file.target_time);
         }
@@ -446,6 +448,8 @@ process_frame(struct frame_info info, program_data *pdata)
         }
         free(data);
     }
+    
+    return 0;
 }
 
 static int32 

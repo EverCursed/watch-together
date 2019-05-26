@@ -153,46 +153,48 @@ typedef struct _open_file_info {
     // TODO(Val): audio format
 } open_file_info;
 
+#define NUM_FRAMES 30
+
 typedef struct _video_queue_data {
-    uint32 video_queue_type;
-    
-    uint32 video_queue_width;
-    uint32 video_queue_height;
-    uint32 video_queue_format;
+    uint32 vq_width;
+    uint32 vq_height;
+    uint32 vq_format;
     uint32 bpp;
     
-    void* video_queue_buffer;
-    uint32 video_queue_size;
-    uint32 video_queue_maxframes;
-    uint32 video_queue_nframes;
-    uint32 video_queue_frame_size;
-    uint32 video_queue_start;
-    uint32 video_queue_end;
-    uint32 video_queue_pitch;
+    void* vq_buffer;
+    uint32 vq_size;
+    uint32 vq_maxframes;
+    uint32 vq_nframes;
+    uint32 vq_frame_size;
+    uint32 vq_start;
+    uint32 vq_end;
+    uint32 vq_pitch;
     
-    uint32 video_queue_Y_width;
-    uint32 video_queue_U_width;
-    uint32 video_queue_V_width;
+    uint32 vq_Y_width;
+    uint32 vq_U_width;
+    uint32 vq_V_width;
     
-    uint32 video_queue_Y_height;
-    uint32 video_queue_U_height;
-    uint32 video_queue_V_height;
+    uint32 vq_Y_height;
+    uint32 vq_U_height;
+    uint32 vq_V_height;
     
-    uint32 video_queue_Y_pitch;
-    uint32 video_queue_U_pitch;
-    uint32 video_queue_V_pitch;
+    uint32 vq_Y_pitch;
+    uint32 vq_U_pitch;
+    uint32 vq_V_pitch;
     
-    uint32 video_queue_Y_frame_size;
-    uint32 video_queue_U_frame_size;
-    uint32 video_queue_V_frame_size;
+    uint32 vq_Y_frame_size;
+    uint32 vq_U_frame_size;
+    uint32 vq_V_frame_size;
     
-    uint32 video_queue_Y_size;
-    uint32 video_queue_U_size;
-    uint32 video_queue_V_size;
+    uint32 vq_Y_size;
+    uint32 vq_U_size;
+    uint32 vq_V_size;
     
-    void *video_queue_Y_buffer;
-    void *video_queue_U_buffer;
-    void *video_queue_V_buffer;
+    void *vq_Y_buffer;
+    void *vq_U_buffer;
+    void *vq_V_buffer;
+    
+    uint32 vq_timestamps[NUM_FRAMES];
 } video_queue_data;
 
 typedef struct _audio_queue_data {
@@ -216,6 +218,12 @@ typedef struct _program_data {
     audio_queue_data aq_data;
     video_queue_data vq_data;
     
+    real64 prevFrameTime;
+    real64 nextFrameTime;
+    
+    // TODO(Val): remove this or make it more organized. 
+    real32 volume;
+    uint32 audio_format;
     uint32 tick;
     
     bool32 running;

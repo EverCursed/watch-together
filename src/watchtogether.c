@@ -30,7 +30,7 @@ time_diff(struct timespec t2, struct timespec t1)
 #define REFRESH_RATE     16.666666666666f
 // TODO(Val): Test a variety of these, and see how long it's possible to go
 // TODO(Val): This will directly affect our maximum refresh rate. 
-#define MS_SAFETY_MARGIN 2.0f
+#define MS_SAFETY_MARGIN 4.0f
 
 static int32
 MainLoop(program_data *pdata)
@@ -49,10 +49,12 @@ MainLoop(program_data *pdata)
     {
         dbg_print("time_start:\t\t\t%d\n"
                   "next_frame_time:\t\t%f\n"
-                  "next_video_frame_time:\t\t%f\t\n",
+                  "next_video_frame_time:\t\t%f\t\n"
+                  "tick:\t\t\t\t%d\n",
                   time_start,
                   next_frame_time,
-                  next_video_frame_time);
+                  next_video_frame_time,
+                  pdata->tick);
         
         next_frame_time += REFRESH_RATE;
         
@@ -78,6 +80,24 @@ MainLoop(program_data *pdata)
                 {
                     pdata->running = 0;
                 } break;
+                case KB_UP:
+                {
+                    if(e.pressed)
+                    {
+                        pdata->volume += 0.025f;
+                        
+                        if(pdata->volume > 1.0f) pdata->volume = 1.0f;
+                    }
+                }
+                case KB_DOWN:
+                {
+                    if(e.pressed)
+                    {
+                        pdata->volume -= 0.025f;
+                        
+                        if(pdata->volume < 0.0f) pdata->volume = 0.0f;
+                    }
+                }
             }
         }
         pdata->input.keyboard.n = 0;
@@ -89,15 +109,10 @@ MainLoop(program_data *pdata)
         // TODO(Val): Sleep until safety margin
         
         // TODO(Val): Probably don't use MS_SAFETY_MARGIN here
-        dbg_print("pdata->playing: %d\n"
-                  "pdata->paused:  %d\n",
-                  pdata->playing,
-                  pdata->paused);
-        
         if(pdata->file.file_ready)
         {
             if(!next_video_frame_time)
-                next_video_frame_time = time_start + pdata->file.target_time;
+                next_video_frame_time = (real64)time_start + pdata->file.target_time;
             
             if((pdata->playing && !pdata->paused) &&
                (next_frame_time + MS_SAFETY_MARGIN >= next_video_frame_time))
