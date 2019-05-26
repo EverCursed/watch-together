@@ -136,8 +136,14 @@ AudioCallback(void*  userdata,
               Uint8* stream,
               int    len)
 {
+    //program_data *pdata = userdata;
     //dbg_info("AudioCallback executed.\n");
+    //void* data = malloc(len);
     int ret = dequeue_audio_bytes(&pdata->aq_data, stream, len);
+    
+    
+    
+    
     
     if(ret)
     {
@@ -146,8 +152,16 @@ AudioCallback(void*  userdata,
     }
     else
     {
+        // TODO(Val): Pull the proper format
+        //SDL_MixAudioFormat(stream, data,
+        //pdata->audio_format,
+        //len,
+        //SDL_MIX_MAXVOLUME);
+        
         dbg_success("AudioCallback was successful\n");
     }
+    
+    //free(data);
 }
 
 /*
@@ -272,7 +286,7 @@ PlatformInitAudio(program_data *pdata)
     // to and how that would affect performance.
     DesiredAudioSpec.samples = 4096;
     DesiredAudioSpec.callback = AudioCallback;
-    DesiredAudioSpec.userdata = NULL;
+    DesiredAudioSpec.userdata = pdata;
     
     // TODO(Val): See if there's a different way to do this 
     // other than closing and reopening the same sound device
@@ -291,6 +305,8 @@ PlatformInitAudio(program_data *pdata)
         // TODO(Val): This doesnt check what audio device params we received.
         output->bytes_per_sample = bytes_per_sample;
         output->sample_format = file->sample_format;
+        
+        pdata->audio_format = ReceivedAudioSpec.format;
         
         SDL_PauseAudioDevice(AudioID, 0);
     }
@@ -652,31 +668,41 @@ static int PlatformGetInput(program_data *pdata)
                     case SDL_WINDOWEVENT_RESIZED:
                     {
                         dbg_error("SDL_WINDOWEVENT_RESIZED fired.\n");
+                        
+                        int new_width = event.window.data1;
+                        int new_height = event.window.data2;
+                        
+                        SDL_Rect rect = {};
+                        
+                        real32 width_ratio = (real32)new_width/pdata->file.width;
+                        real32 height_ratio = (real32)new_height/pdata->file.height;
+                        
+                        real32 ratio = (real32)pdata->file.width / (real32)pdata->file.height;
+                        real32 new_ratio = (real32)new_width / (real32)new_height;
+                        
+                        if(new_ratio >= ratio)
+                        {
+                            rect.h = new_height;
+                            rect.w = (real32)pdata->file.width * height_ratio;
+                        }
+                        else
+                        {
+                            rect.w = new_width;
+                            rect.h = (real32)pdata->file.height * width_ratio;
+                        }
+                        
+                        rect.x = (new_width - rect.w)/2;
+                        rect.y = (new_height - rect.h)/2;
+                        
+                        SDL_RenderSetViewport(renderer,
+                                              &rect);
+                        
                         /*
                         int width = pdata->vq_data.video_queue_width;
                         int height = pdata->vq_data.video_queue_height;
                         
-                        SDL_Rect rect;
                         SDL_RenderGetViewport(renderer, &rect);
                         
-                        real32 width_ratio = 1.0f*rect.w/width;
-                        real32 height_ratio = 1.0f*rect.h/height;
-                        
-                        //real32 new_aspect = (1.0f * rect.w) / rect.h;
-                        real32 aspect = (1.0f * pdata->vq_data.video_queue_width) / pdata->vq_data.video_queue_height;
-                        
-                        if(width_ratio > height_ratio)
-                        {
-                        SDL_RenderSetLogicalSize(renderer, height_ratio*width, rect.h);
-                        }
-                        else if(height_ratio < width_ratio)
-                        {
-                        SDL_RenderSetLogicalSize(renderer, rect.w, width_ratio*height);
-                        }
-                        else
-                        {
-                        SDL_RenderSetLogicalSize(renderer, rect.w, rect.h);
-                        }
                         */
                         
                         //Deb_ResizePixelBuffer(renderer);
@@ -722,6 +748,14 @@ static int PlatformGetInput(program_data *pdata)
                     case SDLK_F4:
                     {
                         add_key(KB_F4, pressed);
+                    } break;
+                    case SDLK_UP:
+                    {
+                        add_key(KB_UP, pressed);
+                    } break;
+                    case SDLK_DOWN:
+                    {
+                        add_key(KB_DOWN, pressed);
                     } break;
                     /*
                     case SDLK_SPACE:
