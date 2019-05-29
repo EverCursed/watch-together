@@ -67,7 +67,6 @@ wt_decode(struct frame_info *info)
     {
         //printf("frame->format == %d\n", format_context->streams[video_stream]->codecpar->format);
         if(format_context->streams[video_stream]->codecpar->format == AV_PIX_FMT_YUV420P)
-            //frame->format == )
         {
             info->type = FRAME_VIDEO_YUV;
         }
@@ -122,17 +121,6 @@ wt_decode(struct frame_info *info)
     av_packet_unref(pkt);
     return 0;
 }
-
-/*
-struct decoder_properties {
-uint32 audio_frequency;
-uint32 audio_channels;
-uint32 audio_bytes_per_sample;
-uint32 video_width;
-uint32 video_height;
-uint32 video_bytes_per_sample;
-};
-*/
 
 static int32
 file_open(open_file_info *file)

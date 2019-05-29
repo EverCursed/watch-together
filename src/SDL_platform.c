@@ -8,14 +8,12 @@
 #include "utils.h"
 #include "kbkeys.h"
 
-#include "deb-watchtogether-v2.h"
+#include "SDL_platform.h"
 #include "watchtogether.c"
 
 /* TODO(Val): A list of things that still must be done 
  --- Provide TCP/UDP support
  --- Touchscreen support
- --- Rewrite audio pushing so that I can push arbitrary 
- ---     lengths of audio into queue
  --- Write an allocator to handle all allocations instead of 
  ---     malloc/av_malloc
  */
@@ -25,7 +23,6 @@ global bool32 audio_initialized = 0;
 global float ms_target = 33.33333333333333333333f;
 global SDL_Window *window = NULL;
 global SDL_Renderer *renderer = NULL;
-global SDL_Texture *texture;
 global SDL_Texture *background_texture;
 global SDL_Texture *ui_texture;
 global uint8 silence;
@@ -36,24 +33,9 @@ global program_data *pdata;
 
 #define TESTING_FILE "data/video.mp4"
 
-// TODO(Val): remove this, just temporary
-// NOTE(Val): sets the length of a frame in ms
-static void
-set_FPS(float value)
-{
-    dbg_print("ms target set to: %f\n", value);
-    ms_target = value;
-}
-
 static void
 blit_frame(program_data *pdata)
 {
-    // TODO(Val): this is temporary, should get these values properly
-    //dbg_info("blit_frame\n");
-    
-    
-    //SDL_LockTexture(background_texture, NULL, &pixels, &pitch);
-    
     if(pdata->file.video_format == VIDEO_YUV)
     {
         void* pixels;
@@ -136,14 +118,7 @@ AudioCallback(void*  userdata,
               Uint8* stream,
               int    len)
 {
-    //program_data *pdata = userdata;
-    //dbg_info("AudioCallback executed.\n");
-    //void* data = malloc(len);
     int ret = dequeue_audio_bytes(&pdata->aq_data, stream, len);
-    
-    
-    
-    
     
     if(ret)
     {
@@ -160,81 +135,7 @@ AudioCallback(void*  userdata,
         
         dbg_success("AudioCallback was successful\n");
     }
-    
-    //free(data);
 }
-
-/*
-static void
-set_audio_properties(uint32 freq,
-                     uint32 channels,
-                     uint32 bytes_per_sample)
-{
-    SDL_AudioSpec spec = {};
-    spec.callback = AudioCallback;
-    spec.freq = freq;
-    if(channels == 1 || channels == 2 || channels == 4 || channels == 6)
-        spec.channels = channels;
-    else
-        dbg_error("Improper number of channels when initializing audio.\n");
-    spec.samples = 4096;
-    
-    if(bytes_per_sample == SAMPLE_U8)
-        spec.format = AUDIO_U8;
-    else if(bytes_per_sample == SAMPLE_S16)
-        spec.format = AUDIO_S16;
-    else if(bytes_per_sample == SAMPLE_S32)
-        spec.format = AUDIO_S32;
-    else if(bytes_per_sample == SAMPLE_FLOAT)
-        spec.format = AUDIO_F32;
-    else
-        dbg_error("Audio format not handled.\n");
-        
-    // TODO(Val): Make this the determining factor for what
-    // audio to push
-    SDL_AudioSpec received = {};
-    if(spec.format)
-    {
-        AudioID = SDL_OpenAudioDevice(NULL,
-                                      0,
-                                      &spec,
-                                      &received,
-                                      SDL_AUDIO_ALLOW_FORMAT_CHANGE);
-                                      
-        if(received.freq == spec.freq &&
-           received.channels == spec.channels &&
-           received.format == spec.format)
-        {
-            silence = received.silence;
-            SDL_PauseAudioDevice(AudioID, 0);
-            dbg_success("Successfully created audio device\n");
-        }
-        else
-        {
-            dbg_error("Audio device opened with differing properties.\n");
-        }
-    }
-}
-*/
-
-/*
-static void
-EnqueueAudio(sound_sample *SoundSample)
-{
-    // NOTE(Val): This is split into two parts because 
-    // it currently loops the audio non-stop
-    if(SoundSample->Size)
-    {
-        uint32 ret = SDL_QueueAudio(AudioID,
-                                    SoundSample->Data,
-                                    SoundSample->Size);
-        if(ret < 0)
-            dbg_error("Audio queueing failed!\n");
-    }
-    //dbg_print("EnqueueAudio: %s\n", SDL_GetError());
-    //dbg_print("Current queue size: %d\n", SDL_GetQueuedAudioSize(AudioID));
-}
-*/
 
 static void 
 PlatformInitAudio(program_data *pdata)
@@ -502,49 +403,26 @@ PlatformGetTime()
     return SDL_GetTicks();
 }
 
-// TODO(Val): This still needs to be redone, as the UI should probably
-// update outside of the video fps target
 static int32
-PlatformFrameUpdater(void *data)
+PlatformUpdateFrame(program_data *pdata)
 {
-    program_data *pdata = data;
-    
-    //dbg_info("PlatformFrameUpdater loop start.\n");
-    dbg_print("%s\n", SDL_GetError());
-    
-    //SDL_Surface *win_surface = SDL_GetWindowSurface(window);
-    //SDL_UpdateWindowSurface(window);
-    // display
-    //SDL_BlitSurface(surface, NULL, win_surface, NULL);
-    
-    // NOTE(Val): Wait here until the end of this frame's time
-    // slot to begin next frame processing.
-    // TODO(Val): At best, this can be said to be the absolute
-    // fucking worst way to do this. This will need to be redone 
-    // since only updating the video frame at a certain 
-    // framerate is necessary. Redrawing the buffer with
-    // appropriate scaling will still need to happen without
-    // framerate in consideration
-    // Maybe do this in a separate thread? Just sleep until
-    // it's time to flip buffers and then sleep again?
-    
     int ret;
     
-    if(pdata->playing)
+    if(!pdata->paused)
         blit_frame(pdata);
-    
     
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
     SDL_RenderClear(renderer);
     
-    //SDL_RenderSetScale(renderer, texture_width, texture_height);
     ret = SDL_RenderCopy(renderer, background_texture, NULL, NULL);
     if(ret)
     {
         dbg_error(SDL_GetError());
         dbg_print("\n");
     }
-    //SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
+    
+    // Render the UI on top of video frame
+    SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
     
     SDL_RenderPresent(renderer);
     
@@ -838,8 +716,6 @@ static int PlatformGetInput(program_data *pdata)
                 
             } break;
         }
-        
-        // TODO(Val): Time here
     }
     
     return 0;
@@ -896,13 +772,15 @@ int main(int argc, const char* argv[])
     //ProcessInput(pdata);
     
     // TODO(Val): Close everything properly here
-    PlatformWaitThread(pdata->threads.main_thread, NULL);
+    //PlatformWaitThread(pdata->threads.main_thread, NULL);
     
     dbg_info("Cleaning up.\n");
     
     free(pdata);
     
-    SDL_DestroyTexture(texture);
+    SDL_DestroyRenderer(renderer);
+    
+    // TODO(Val): Are these necessary? 
     SDL_DestroyTexture(background_texture);
     SDL_DestroyTexture(ui_texture);
     

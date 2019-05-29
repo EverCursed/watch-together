@@ -29,12 +29,15 @@
 #endif
 
 #else
+
 #define dbg_print(...)
 #define dbg_error(x)
 #define dbg_info(x)
 #define dbg_success(x)
 #define dbg(x)
+
 #endif
+
 
 struct _platform_data;
 struct _thread_info;
@@ -128,8 +131,8 @@ typedef struct _ouput_video {
 } output_video;
 
 
-#define VIDEO_RGB 0x1
-#define VIDEO_YUV 0x2
+#define VIDEO_RGB 1
+#define VIDEO_YUV 2
 typedef struct _open_file_info {
     char *filename;
     
@@ -227,7 +230,6 @@ typedef struct _program_data {
     uint32 tick;
     
     bool32 running;
-    // TODO(Val): Does "playing" need to exist? File open already exists.
     bool32 playing;
     bool32 paused;
 } program_data;

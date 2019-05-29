@@ -29,8 +29,6 @@ Returns the number of samples enqueued
 static int32
 enqueue_audio_bytes(audio_queue_data *data, void *src, uint32 bytes)
 {
-    // TODO(Val): See if this should instead queue
-    // as much as it can
     if(data->audio_queue_size - data->audio_queue_used_space < bytes)
     {
         dbg_print("Warning: Not enough space to enqueue audio.\n");

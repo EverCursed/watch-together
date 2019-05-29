@@ -8,7 +8,6 @@
 
 #include <time.h>
 
-// TODO(Val): ffmpeg decoding/encoding
 // TODO(Val): NAT-T implementation, see how it works
 // TODO(Val): Encryption
 
@@ -29,7 +28,7 @@ time_diff(struct timespec t2, struct timespec t1)
 // TODO(Val): Find a way to get the refresh rate of the screen, for now this is a define
 #define REFRESH_RATE     16.666666666666f
 // TODO(Val): Test a variety of these, and see how long it's possible to go
-// TODO(Val): This will directly affect our maximum refresh rate. 
+// NOTE(Val): This will directly affect our maximum refresh rate. 
 #define MS_SAFETY_MARGIN 4.0f
 
 static int32
@@ -60,10 +59,11 @@ MainLoop(program_data *pdata)
         
         //clock_gettime(CLOCK_REALTIME, &TimeStart);
         
-        // TODO(Val): Get input
+        // Get input
+        // TODO(Val): Introduce some kind of timing system to see how long keys are held
         PlatformGetInput(pdata);
         
-        // TODO(Val): Process input
+        // Process input
         int keys = pdata->input.keyboard.n;
         for(int i = 0; i < keys; i++)
         {
@@ -106,9 +106,6 @@ MainLoop(program_data *pdata)
         
         // TODO(Val): Draw UI
         
-        // TODO(Val): Sleep until safety margin
-        
-        // TODO(Val): Probably don't use MS_SAFETY_MARGIN here
         if(pdata->file.file_ready)
         {
             if(!next_video_frame_time)
@@ -119,9 +116,9 @@ MainLoop(program_data *pdata)
             {
                 //PlatformEnqueueAudio(pdata);
                 if(pdata->file.has_video)
-                    PlatformFrameUpdater(pdata);
+                    PlatformUpdateFrame(pdata);
                 
-                // TODO(Val): Increment tick value based on time passed
+                // increment tick value based on time passed
                 next_video_frame_time += pdata->file.target_time;
                 pdata->tick++;
             }
@@ -144,25 +141,6 @@ MainLoop(program_data *pdata)
         time_start = next_frame_time;
         
         PlatformGetInput(pdata);
-        
-        /*
-        clock_gettime(CLOCK_REALTIME, &TimeEnd);
-        
-        // TODO(Val): Rewrite the sleep for frame updater, maybe use SDL stuff somehow?
-        struct timespec TimeDifference = time_diff(TimeEnd, TimeStart);
-        //dbg_print("TimeDiff: tv_sec = %ld\ttv_nsec = %ld\n", TimeDifference.tv_sec, TimeDifference.tv_nsec);
-        
-        struct timespec target = {};
-        target.tv_sec = (uint64)(pdata->file.target_time / 1000.0f);
-        target.tv_nsec = (uint64)(pdata->file.target_time * 1000000.0f);
-        
-        //dbg_print("Target: tv_sec = %ld\ttv_nsec = %ld\n", target.tv_sec, target.tv_nsec);
-        
-        struct timespec SleepDuration = time_diff(target, TimeDifference);
-        
-        //dbg_print("Nanosleep: tv_sec = %ld\ttv_nsec = %ld\n", SleepDuration.tv_sec, SleepDuration.tv_nsec);
-        nanosleep(&SleepDuration, NULL);
-    */
     }
     
     return 0;

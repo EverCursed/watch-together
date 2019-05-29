@@ -7,6 +7,8 @@
 
 // REVIEW(Val): It is possible to have some false sharing performance issues
 
+// TODO(Val): There is a bug where frames start spazzing out after playing for some time
+
 #define RGB 0
 #define YUV 1
 
@@ -37,9 +39,6 @@ static void
 init_video_queue_YUV(video_queue_data *data,
                      uint32 Ywidth,
                      uint32 Yheight)
-//uint32 Ypitch,
-//uint32 Upitch,
-//uint32 Vpitch)
 {
     uint32 Uwidth = (Ywidth+1)/2;
     uint32 Uheight = (Yheight+1)/2;
@@ -50,14 +49,13 @@ init_video_queue_YUV(video_queue_data *data,
     uint32 Upitch = round_up_align(Uwidth);
     uint32 Vpitch = round_up_align(Vwidth);
     
-    // TODO(Val): make this for YUV
     data->vq_Y_width = Ywidth;
     data->vq_Y_height = Yheight;
     data->vq_U_width = Uwidth;
     data->vq_U_height = Uheight;
     data->vq_V_width = Vwidth;
     data->vq_V_height = Vheight;
-    //data->bpp = b;
+    
     data->vq_Y_pitch = Ypitch;
     data->vq_U_pitch = Upitch;
     data->vq_V_pitch = Vpitch;
