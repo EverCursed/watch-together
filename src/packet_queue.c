@@ -27,7 +27,7 @@ init_avpacket_queue(int32 n)
 }
 
 static int32
-enqueue_packet(avpacket_queue *queue, AVPacket *packet)
+enqueue_packet(avpacket_queue *queue, AVPacket packet)
 {
     if(queue->n == queue->maxn)
     {
@@ -35,7 +35,7 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
         return -1;
     }
     
-    *(queue->buffer + end*AVPACKET_SIZE) = *packet;
+    *((AVPacket *)(queue->buffer + end*AVPACKET_SIZE)) = packet;
     queue->n++;
     queue->end = (queue->end + 1) % queue->maxn;
     
