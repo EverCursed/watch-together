@@ -49,9 +49,7 @@ typedef struct _threads_info_all {
     struct _thread_info audio_thread;
 } threads_info_all;
 
-typedef struct _decoder_data {
-    const char *filename;
-} decoder_data;
+typedef struct _decoder_info decoder_info;
 
 typedef struct _pixel_buffer {
     void* buffer;
@@ -156,60 +154,9 @@ typedef struct _open_file_info {
     // TODO(Val): audio format
 } open_file_info;
 
-#define NUM_FRAMES 30
+typedef struct _video_queue_data video_queue_data;
 
-typedef struct _video_queue_data {
-    uint32 vq_width;
-    uint32 vq_height;
-    uint32 vq_format;
-    uint32 bpp;
-    
-    void* vq_buffer;
-    uint32 vq_size;
-    uint32 vq_maxframes;
-    uint32 vq_nframes;
-    uint32 vq_frame_size;
-    uint32 vq_start;
-    uint32 vq_end;
-    uint32 vq_pitch;
-    
-    uint32 vq_Y_width;
-    uint32 vq_U_width;
-    uint32 vq_V_width;
-    
-    uint32 vq_Y_height;
-    uint32 vq_U_height;
-    uint32 vq_V_height;
-    
-    uint32 vq_Y_pitch;
-    uint32 vq_U_pitch;
-    uint32 vq_V_pitch;
-    
-    uint32 vq_Y_frame_size;
-    uint32 vq_U_frame_size;
-    uint32 vq_V_frame_size;
-    
-    uint32 vq_Y_size;
-    uint32 vq_U_size;
-    uint32 vq_V_size;
-    
-    void *vq_Y_buffer;
-    void *vq_U_buffer;
-    void *vq_V_buffer;
-    
-    uint32 vq_timestamps[NUM_FRAMES];
-} video_queue_data;
-
-typedef struct _audio_queue_data {
-    void* audio_queue_buffer;
-    uint32 frequency;
-    uint32 channels;
-    uint32 bytes_per_sample;
-    uint32 audio_queue_size;
-    uint32 audio_queue_used_space;
-    uint32 audio_queue_start;
-    uint32 audio_queue_end;
-} audio_queue_data;
+typedef struct _audio_queue_data audio_queue_data;
 
 typedef struct _program_data {
     input_struct input;
@@ -220,6 +167,12 @@ typedef struct _program_data {
     threads_info_all threads;
     audio_queue_data aq_data;
     video_queue_data vq_data;
+    decoder_info decoder;
+    
+    // TODO(Val): Will we need multiple packet queues?
+    packet_queue *pq_main;
+    packet_queue *pq_playback;
+    packet_queue *pq_stream;
     
     real64 prevFrameTime;
     real64 nextFrameTime;
@@ -229,7 +182,7 @@ typedef struct _program_data {
     uint32 audio_format;
     uint32 tick;
     
-    bool32 running;
+    volatile bool32 running;
     bool32 playing;
     bool32 paused;
 } program_data;
