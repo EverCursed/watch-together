@@ -31,63 +31,39 @@ global uint32 texture_height;
 
 global program_data *pdata;
 
-#define TESTING_FILE "data/video.mp4"
+#define TESTING_FILE "data/video_test/hancock.mp4"
 
 static void
 blit_frame(program_data *pdata)
 {
-    if(pdata->file.video_format == VIDEO_YUV)
+    output_video *video = &pdata->video;
+    
+    if(pdata->video.type == VIDEO_YUV)
     {
-        void* pixels;
-        int32 pitch;
+        int ret = SDL_UpdateYUVTexture(background_texture, NULL,
+                                       video->video_frame, video->pitch,
+                                       video->video_frame_sup1, video->pitch_sup1,
+                                       video->video_frame_sup2, video->pitch_sup2);
         
-        void *Y, *U, *V;
-        uint32 Yp, Up, Vp;
-        int ret = get_next_frame_YUV(&pdata->vq_data,
-                                     &Y, &Yp,
-                                     &U, &Up,
-                                     &V, &Vp);
-        if(!ret)
-        {
-            SDL_UpdateYUVTexture(background_texture, NULL, Y, Yp, U, Up, V, Vp);
-            if(!pdata->paused)
-            {
-                dbg_success("Discarding frame.\n");
-                int ret2 = discard_next_frame_YUV(&pdata->vq_data);
-                
-            }
-        }
-        else
-        {
-            dbg_error("get_next_frame_YUV() failed.\n");
-        }
+        if(ret < 0)
+            goto error;
     }
-    else if(pdata->file.video_format == VIDEO_RGB)
+    else if(pdata->video.type == VIDEO_RGB)
     {
-        if(!pdata->paused)
-        {
-            void* buffer; // = malloc(pdata->vq_data.video_queue_frame_size);
-            uint32 pitch;
-            int ret = get_next_frame(&pdata->vq_data, &buffer, &pitch);
-            
-            if(!ret)
-            {
-                SDL_UpdateTexture(background_texture, NULL, buffer, pitch);
-                discard_next_frame(&pdata->vq_data);
-            }
-            else
-            {
-                dbg_error("dequeue_frame() failed.\n");
-            }
-        }
+        int ret = SDL_UpdateTexture(background_texture, NULL, video->video_frame, video->pitch);
+        
+        if(ret < 0)
+            goto error;
     }
     else
     {
-        dbg_error("Not initialized?");
+        dbg_error("Video output frame not initialized?");
     }
     
-    //SDL_UnlockTexture(background_texture);
+    return;
     
+    error:
+    dbg_error(SDL_GetError());
 }
 
 /*
@@ -425,8 +401,7 @@ PlatformUpdateFrame(program_data *pdata)
 {
     int ret;
     
-    if(!pdata->paused)
-        blit_frame(pdata);
+    blit_frame(pdata);
     
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
     SDL_RenderClear(renderer);
@@ -451,7 +426,7 @@ PlatformInitVideo(program_data *pdata)
 {
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
     
-    if(pdata->file.video_format == VIDEO_RGB)
+    if(pdata->video.type == VIDEO_RGB)
     {
         background_texture = SDL_CreateTexture(renderer, 
                                                SDL_PIXELFORMAT_BGRA32,
@@ -459,7 +434,7 @@ PlatformInitVideo(program_data *pdata)
                                                pdata->file.width,
                                                pdata->file.height);
     }
-    else if(pdata->file.video_format == VIDEO_YUV)
+    else if(pdata->video.type == VIDEO_YUV)
     {
         background_texture = SDL_CreateTexture(renderer, 
                                                SDL_PIXELFORMAT_IYUV,
