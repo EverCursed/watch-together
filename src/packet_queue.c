@@ -7,8 +7,8 @@ This holds a queue of AVPacket structs. This is a buffer for
 */
 
 #include <libavcodec/avcodec.h>
-
 #include "packet_queue.h"
+#include "watchtogether.h"
 
 #define AVPACKET_SIZE sizeof(AVPacket)
 
@@ -31,11 +31,11 @@ enqueue_packet(avpacket_queue *queue, AVPacket packet)
 {
     if(queue->n == queue->maxn)
     {
-        dbg_warning("Packet queue full.\n");
+        dbg_info("Packet queue full.\n");
         return -1;
     }
     
-    *((AVPacket *)(queue->buffer + end*AVPACKET_SIZE)) = packet;
+    *((AVPacket *)(queue->buffer + queue->end*AVPACKET_SIZE)) = packet;
     queue->n++;
     queue->end = (queue->end + 1) % queue->maxn;
     
@@ -47,13 +47,13 @@ dequeue_packet(avpacket_queue *queue, AVPacket *packet)
 {
     if(queue->n == 0)
     {
-        dbg_warning("Packet queue empty.\n");
+        dbg_info("Packet queue empty.\n");
         return -1;
     }
     
     queue->n--;
     queue->next = (queue->next + 1) % queue->maxn;
-    *packet = *(queue->buffer + next*AVPACKET_SIZE);
+    *packet = *(queue->buffer + queue->next*AVPACKET_SIZE);
     
     return 0;
 }
@@ -64,7 +64,7 @@ peek_packet(avpacket_queue *queue, AVPacket *packet, int nth)
     // check if nth packet is queued up
     if(!(queue->n > nth))
     {
-        dbg_warning("Peek packet: There is no packet in this location.");
+        dbg_info("Peek packet: There is no packet in this location.");
         return -1;
     }
     
@@ -79,7 +79,6 @@ static int32
 clear_avpacket_queue(avpacket_queue *queue)
 {
     queue->n = 0;
-    queue->maxn = n;
     queue->next = 0;
     queue->end = 0;
     
