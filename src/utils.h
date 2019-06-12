@@ -8,7 +8,7 @@
 
 uint32 round_up_align(uint32 val)
 {
-    register uint32 temp = (val + (BYTES_ALIGNMENT-1));
+    uint32 temp = (val + (BYTES_ALIGNMENT-1));
     return temp - (temp % BYTES_ALIGNMENT);
     //return val + (BYTES_ALIGNMENT - (val % BYTES_ALIGNMENT));
 }
