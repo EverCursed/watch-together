@@ -9,8 +9,8 @@
 
 // TODO(Val): There is a bug where frames start spazzing out after playing for some time
 
-#define RGB 0
-#define YUV 1
+//#define RGB 0
+//#define YUV 1
 
 static void
 init_video_queue(video_queue_data *data,
@@ -398,8 +398,6 @@ discard_next_frame_YUV(video_queue_data *data)
     return 0;
 }
 
-
-/// DO NOT USE YET
 static int32
 dequeue_frame_YUV(video_queue_data *data,
                   void *dstY,
@@ -439,6 +437,22 @@ close_video_queue(video_queue_data *data)
     {
         free(data->vq_buffer);
         data->vq_buffer = NULL;
+    }
+}
+
+static void
+close_video_queue_YUV(video_queue_data *data)
+{
+    data->vq_maxframes = 0;
+    if(data->vq_Y_buffer)
+    {
+        free(data->vq_Y_buffer);
+        free(data->vq_U_buffer);
+        free(data->vq_V_buffer);
+        
+        data->vq_Y_buffer = NULL;
+        data->vq_U_buffer = NULL;
+        data->vq_V_buffer = NULL;
     }
 }
 
