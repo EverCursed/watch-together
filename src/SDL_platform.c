@@ -113,17 +113,33 @@ Deb_ResizePixelBuffer(SDL_Renderer *renderer)
 }
 */ 
 
+static int32
+PlatformQueueAudio(output_audio *audio)
+{
+    int ret = SDL_QueueAudio(AudioID,
+                             audio->buffer,
+                             audio->size);
+    
+    if(ret < 0)
+    {
+        dbg_error(SDL_GetError());
+        
+        return -1;
+    }
+    
+    return 0;
+}
+
 static void
 AudioCallback(void*  userdata,
               Uint8* stream,
               int    len)
 {
-    int ret = dequeue_audio_bytes(&pdata->aq_data, stream, len);
-    
-    if(ret)
+    output_audio *audio = &pdata->audio;
+    if(audio->is_ready)
     {
-        dbg_error("Something happened to audio\n");
-        memset(stream, silence, len); 
+        dbg_success("AudioCallback was successful\n");
+        
     }
     else
     {
@@ -133,7 +149,8 @@ AudioCallback(void*  userdata,
         //len,
         //SDL_MIX_MAXVOLUME);
         
-        dbg_success("AudioCallback was successful\n");
+        dbg_error("Something happened to audio\n");
+        memset(stream, silence, len); 
     }
 }
 
@@ -186,8 +203,8 @@ PlatformInitAudio(program_data *pdata)
     // TODO(Val): Test to see what the smallest value we can set 
     // to and how that would affect performance.
     DesiredAudioSpec.samples = 4096;
-    DesiredAudioSpec.callback = AudioCallback;
-    DesiredAudioSpec.userdata = pdata;
+    //DesiredAudioSpec.callback = AudioCallback;
+    //DesiredAudioSpec.userdata = pdata;
     
     // TODO(Val): See if there's a different way to do this 
     // other than closing and reopening the same sound device
