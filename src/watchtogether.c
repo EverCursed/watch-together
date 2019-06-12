@@ -2,15 +2,17 @@
 #include "platform.h"
 #include "kbkeys.h"
 
-#include "audio_queue.c"
-#include "video_queue.c"
+#include "packet_queue.c"
+//#include "audio_queue.c"
+//#include "video_queue.c"
 #include "decoding.c"
 
-#include <time.h>
+//#include <time.h>
 
 // TODO(Val): NAT-T implementation, see how it works
 // TODO(Val): Encryption
 
+/*
 static struct timespec
 time_diff(struct timespec t2, struct timespec t1)
 {
@@ -24,12 +26,20 @@ time_diff(struct timespec t2, struct timespec t1)
     }
     return ret;
 }
-
+*/
 // TODO(Val): Find a way to get the refresh rate of the screen, for now this is a define
 #define REFRESH_RATE     16.666666666666f
 // TODO(Val): Test a variety of these, and see how long it's possible to go
 // NOTE(Val): This will directly affect our maximum refresh rate. 
-#define MS_SAFETY_MARGIN 4.0f
+#define MS_SAFETY_MARGIN 2.0f
+
+static real32
+get_timestamp(int64 time, AVRational time_base)
+{
+    dbg_print("time: %ld\t\ttime_base: %d/%d\n", time, time_base.num, time_base.den);
+    
+    return (real32)time*(real32)time_base.num/(real32)time_base.den;
+}
 
 static int32
 MainLoop(program_data *pdata)
@@ -37,27 +47,40 @@ MainLoop(program_data *pdata)
     //struct timespec TimeStart, TimeEnd;
     int32 time_start;
     int32 time_end;
+    
+    int32 playback_start;
+    
+    real64 current_frame_time;
     real64 next_frame_time;
+    real64 current_video_frame_time;
     real64 next_video_frame_time;
     
-    next_frame_time = time_start + (int32)REFRESH_RATE;
     time_start = PlatformGetTime();
-    next_video_frame_time = 0;
+    playback_start = time_start;
     
+    current_frame_time = time_start;
+    current_video_frame_time = time_start;
+    
+    next_frame_time = current_frame_time + REFRESH_RATE;
+    next_video_frame_time = current_video_frame_time + 1000.0f*av_q2d(pdata->decoder.video_time_base);
+    
+    dbg_print("audio time_base: %d/%d\n", pdata->decoder.audio_time_base.num, pdata->decoder.audio_time_base.den);
+    
+    // now start main loop
     while(pdata->running)
     {
         dbg_print("time_start:\t\t\t%d\n"
+                  "current_frame_time:\t\t%f\n"
                   "next_frame_time:\t\t%f\n"
-                  "next_video_frame_time:\t\t%f\t\n"
+                  "current_video_frame_time:\t%f\n"
+                  "next_video_frame_time:\t\t%f\n"
                   "tick:\t\t\t\t%d\n",
                   time_start,
+                  current_frame_time, 
                   next_frame_time,
+                  current_video_frame_time,
                   next_video_frame_time,
                   pdata->tick);
-        
-        next_frame_time += REFRESH_RATE;
-        
-        //clock_gettime(CLOCK_REALTIME, &TimeStart);
         
         // Get input
         // TODO(Val): Introduce some kind of timing system to see how long keys are held
@@ -102,45 +125,55 @@ MainLoop(program_data *pdata)
         }
         pdata->input.keyboard.n = 0;
         
-        // TODO(Val): Get audio
         
         // TODO(Val): Draw UI
         
-        if(pdata->file.file_ready)
+        
+        if(next_video_frame_time <= next_frame_time - MS_SAFETY_MARGIN)
         {
-            if(!next_video_frame_time)
-                next_video_frame_time = (real64)time_start + pdata->file.target_time;
-            
-            if((pdata->playing && !pdata->paused) &&
-               (next_frame_time + MS_SAFETY_MARGIN >= next_video_frame_time))
+            dbg_info("next_video_frame_time <= next_frame_time - MS_SAFETY_MARGIN\n");
+            if(pdata->video.is_ready)
             {
-                //PlatformEnqueueAudio(pdata);
-                if(pdata->file.has_video)
-                    PlatformUpdateFrame(pdata);
+                dbg_success("pdata->video.is_ready\n");
+                // TODO(Val): update video frame;
+                PlatformUpdateFrame(pdata);
                 
-                // increment tick value based on time passed
-                next_video_frame_time += pdata->file.target_time;
-                pdata->tick++;
+                current_video_frame_time = next_video_frame_time;
+                next_video_frame_time += 1000.0f*av_q2d(pdata->decoder.video_time_base);
+            }
+            else
+            {
+                // TODO(Val): skip this frame
             }
         }
         
         time_end = PlatformGetTime();
         
-        int sleep_time = (int32)REFRESH_RATE - (time_end - time_start);
-        if(sleep_time < 0)
-            sleep_time = 0;
-        dbg_print("sleep_time: %d\n", sleep_time);
-        dbg_print("time_start: %d\n"
-                  "time_end:   %d\n",
-                  time_start, time_end);
+        PlatformSleep(next_frame_time - PlatformGetTime() - MS_SAFETY_MARGIN);
         
-        dbg_info("Sleep started.\n");
-        PlatformSleep(sleep_time);
-        dbg_info("Sleep ended.\n");
+        /*
+        if(pdata->file.file_ready)
+        {
+            if(!next_video_frame_time)
+                next_video_frame_time = (real64)time_start + pdata->file.target_time;
+                
+            if((pdata->playing && !pdata->paused) &&
+               (next_frame_time + MS_SAFETY_MARGIN >= next_video_frame_time))
+            {
+                //PlatformEnqueueAudio(pdata);
+                if(pdata->file.has_video)
+                    adadwa;
+                // increment tick value based on time passed
+                next_video_frame_time += pdata->file.target_time;
+                pdata->tick++;
+            }
+        }
+        */
+        dbg_print("Loop time: %d\n", time_end - time_start);
+        time_start = time_end;
         
-        time_start = next_frame_time;
-        
-        PlatformGetInput(pdata);
+        current_frame_time = next_frame_time;
+        next_frame_time += REFRESH_RATE;
     }
     
     return 0;
@@ -153,18 +186,18 @@ TogglePlayback(program_data *pdata)
     PlatformPauseAudio(pdata->paused);
 }
 
+#define PACKET_QUEUE_SIZE 120
 static int32
 MainThread(program_data *pdata)
 {
+    pdata->pq_main = init_avpacket_queue(PACKET_QUEUE_SIZE);
+    pdata->pq_video = init_avpacket_queue(60);
+    pdata->pq_audio = init_avpacket_queue(60);
+    
     pdata->threads.decoder_thread =
         PlatformCreateThread(DecodingThreadStart, pdata, "decoder");
-    //pdata->threads.blt_thread = 
-    //PlatformCreateThread(UpdateLoop, pdata, "frame_updater");
-    //pdata->threads.blt_thread =
-    //PlatformCreateThread(PlatformFrameUpdater, pdata, "frame_updater");
     
     MainLoop(pdata);
     
-    //PlatformWaitThread(pdata->threads.blt_thread, NULL);
     PlatformWaitThread(pdata->threads.decoder_thread, NULL);
 }
