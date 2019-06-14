@@ -44,6 +44,9 @@ blit_frame(program_data *pdata)
                                        video->video_frame, video->pitch,
                                        video->video_frame_sup1, video->pitch_sup1,
                                        video->video_frame_sup2, video->pitch_sup2);
+        free(video->video_frame);
+        free(video->video_frame_sup1);
+        free(video->video_frame_sup2);
         
         if(ret < 0)
             goto error;
@@ -51,6 +54,7 @@ blit_frame(program_data *pdata)
     else if(pdata->video.type == VIDEO_RGB)
     {
         int ret = SDL_UpdateTexture(background_texture, NULL, video->video_frame, video->pitch);
+        free(video->video_frame);
         
         if(ret < 0)
             goto error;
@@ -417,6 +421,8 @@ PlatformUpdateFrame(program_data *pdata)
     SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
     
     SDL_RenderPresent(renderer);
+    
+    pdata->video.is_ready = 0;
     
     return 0;
 }
