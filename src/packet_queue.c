@@ -27,7 +27,7 @@ init_avpacket_queue(int32 n)
 }
 
 static int32
-enqueue_packet(avpacket_queue *queue, AVPacket packet)
+enqueue_packet(avpacket_queue *queue, AVPacket *packet)
 {
     if(queue->n == queue->maxn)
     {
@@ -35,7 +35,7 @@ enqueue_packet(avpacket_queue *queue, AVPacket packet)
         return -1;
     }
     
-    *((AVPacket *)(queue->buffer + queue->end*AVPACKET_SIZE)) = packet;
+    av_packet_move_ref((AVPacket *)(queue->buffer + queue->end*AVPACKET_SIZE), packet);
     queue->n++;
     queue->end = (queue->end + 1) % queue->maxn;
     
@@ -94,4 +94,16 @@ close_avpacket_queue(avpacket_queue *queue)
         free(queue->buffer);
     
     return 0;
+}
+
+static inline bool32
+pq_is_full(avpacket_queue *queue)
+{
+    return (queue->n == queue->maxn);
+}
+
+static inline bool32
+pq_is_empty(avpacket_queue *queue)
+{
+    return (queue->n == 0);
 }
