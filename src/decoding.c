@@ -50,14 +50,13 @@ get_packet(program_data *pdata, AVPacket *packet)
         }
         else if(ret == AVERROR_EOF)
         {
+            // TODO(Val): Mark that there are no more packets for this file. 
             dbg_error("End of file.\n");
         }
         else
         {
             dbg_error("Some other error happened.\n");
         }
-        // TODO(Val): Mark that there are no more packets for this file. 
-        dbg_info("End of file.\n");
         return -1;
     }
     
@@ -156,14 +155,14 @@ file_open(open_file_info *file, decoder_info *decoder)
     dbg_print("avformat version: %d - %d\n", LIBAVFORMAT_VERSION_INT, avformat_version());
     
     int ret = 0;
-    if(!(ret = avformat_open_input(&decoder->format_context, file->filename, NULL, NULL)) < 0)
+    //decoder->format_context = avformat_alloc_context();
+    if(avformat_open_input(&decoder->format_context, file->filename, NULL, NULL) < 0)
     {
         dbg_error("AV open input failed.\n");
         return -1; // Couldn't open file
     }
     
     // Retrieve stream information
-    //format_context = avformat_alloc_context();
     if(avformat_find_stream_info(decoder->format_context, NULL) < 0)
     {
         dbg_error("Couldn't find stream info\n");
@@ -340,6 +339,12 @@ global struct SwsContext* modifContext = NULL;
 static int32
 process_video_frame(program_data *pdata, struct frame_info info)
 {
+    if(pdata->video.is_ready)
+    {
+        dbg_warn("Started processing a video frame, while the previous one hasn't been used.\n");
+        return -1;
+    }
+    
     uint32 ret = 0;
     AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
@@ -469,6 +474,12 @@ process_video_frame(program_data *pdata, struct frame_info info)
 static int32
 process_audio_frame(program_data *pdata, struct frame_info info)
 {
+    if(pdata->audio.is_ready)
+    {
+        dbg_warn("Started processing an audio frame, while the previous one hasn't been used.\n");
+        return -1;
+    }
+    
     uint32 ret = 0;
     AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
@@ -568,19 +579,19 @@ SortPackets(program_data *pdata)
 {
     AVPacket pkt;
     // NOTE(Val): if there are packets in main queue and audio/video queues aren't full
-    while(pdata->pq_main->n &&
-          pdata->pq_audio->n != pdata->pq_audio->maxn &&
-          pdata->pq_video->n != pdata->pq_video->maxn)
+    while(!pq_is_empty(pdata->pq_main) &&
+          pq_is_full(pdata->pq_audio) &&
+          pq_is_full(pdata->pq_video))
     {
         int ret = dequeue_packet(pdata->pq_main, &pkt);
         
         if(pkt.stream_index == pdata->decoder.video_stream)
         {
-            enqueue_packet(pdata->pq_video, pkt);
+            enqueue_packet(pdata->pq_video, &pkt);
         }
         else if(pkt.stream_index == pdata->decoder.audio_stream)
         {
-            enqueue_packet(pdata->pq_audio, pkt);
+            enqueue_packet(pdata->pq_audio, &pkt);
         }
         else
         {
@@ -594,14 +605,12 @@ LoadPackets(program_data *pdata)
 {
     AVPacket *pkt = av_packet_alloc();
     
-    while(pdata->pq_main->n != pdata->pq_main->maxn && 
-          1) // TODO(Val): check if there are no more packets to load (EOF)
+    while(!pq_is_full(pdata->pq_main)) // TODO(Val): check if there are no more packets to load (EOF)
     {
-        
         int ret = get_packet(pdata, pkt);
         if(ret >= 0)
         {
-            enqueue_packet(pdata->pq_main, *pkt);
+            enqueue_packet(pdata->pq_main, pkt);
         }
         else
         {
@@ -693,52 +702,57 @@ DecodingThreadStart(void *ptr)
     
     //init_queues(pdata);
     
-    pdata->playing = 1;
-    pdata->paused = 0;
-    
     int ret = file_open(&pdata->file, &pdata->decoder);
     if(ret < 0)
     {
-        return 0;
+        return -1;
     }
     
     file->file_ready = 1;
+    pdata->playing = 1;
+    pdata->paused = 0;
     
     while(pdata->running)
     {
         LoadPackets(pdata);
         SortPackets(pdata);
         
-        AVPacket pkt[2];
-        peek_packet(pdata->pq_audio, &pkt[0], 0);
-        peek_packet(pdata->pq_video, &pkt[1], 0);
-        
-        // TODO(Val): check that packets are valid (or existed)
-        
-        int32 soonest_dts = pkt[0].dts < pkt[1].dts ? 0 : 1;
-        AVPacket packet = {};
-        dequeue_packet(soonest_dts ? pdata->pq_video : pdata->pq_audio,
-                       &packet);
-        
-        dbg_print("dts: %d\n", packet.dts);
-        
-        uint32 current_time = PlatformGetTime();
-        PlatformSleep(packet.dts - current_time);
-        
-        struct frame_info f = wt_decode(pdata, &packet);
-        
-        if(f.type == FRAME_AUDIO)
+        if(!pq_is_empty(pdata->pq_audio) &&
+           !pq_is_empty(pdata->pq_video))
         {
-            process_audio_frame(pdata, f);
-        }
-        else if(f.type == FRAME_VIDEO_YUV ||
-                f.type == FRAME_VIDEO_RGB)
-        {
-            process_video_frame(pdata, f);
-        }
-        else
-        {
-            dbg_error("Unknown frame type.\n");
+            AVPacket pkt[2];
+            peek_packet(pdata->pq_audio, &pkt[0], 0);
+            peek_packet(pdata->pq_video, &pkt[1], 0);
+            
+            // TODO(Val): check that packets are valid (or existed)
+            
+            int32 soonest_dts = pkt[0].dts < pkt[1].dts ? 0 : 1;
+            AVPacket packet = {};
+            dequeue_packet(soonest_dts ? pdata->pq_video : pdata->pq_audio,
+                           &packet);
+            
+            dbg_print("dts: %ld\n", packet.dts);
+            
+            struct frame_info f = wt_decode(pdata, &packet);
+            
+            if(f.type == FRAME_AUDIO)
+            {
+                process_audio_frame(pdata, f);
+            }
+            else if(f.type == FRAME_VIDEO_YUV ||
+                    f.type == FRAME_VIDEO_RGB)
+            {
+                process_video_frame(pdata, f);
+            }
+            else
+            {
+                dbg_error("Unknown frame type.\n");
+            }
+            
+            av_frame_free(&f.frame);
+            
+            uint32 current_time = PlatformGetTime();
+            PlatformSleep(packet.dts - current_time);
         }
     }
     
