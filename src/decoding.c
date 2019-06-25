@@ -632,10 +632,12 @@ LoadPackets(program_data *pdata)
         if(ret >= 0)
         {
             enqueue_packet(pdata->pq_main, pkt);
+            av_packet_unref(pkt);
         }
         else
         {
             dbg_error("get_packet() failed.\n");
+            return;
         }
     }
 }
