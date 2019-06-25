@@ -44,25 +44,21 @@ get_timestamp(int64 time, AVRational time_base)
 static int32
 MainLoop(program_data *pdata)
 {
-    //struct timespec TimeStart, TimeEnd;
+    // times needed for application framerate.
     int32 time_start;
     int32 time_end;
-    
-    int32 playback_start;
-    
     real64 current_frame_time;
     real64 next_frame_time;
-    real64 current_video_frame_time;
-    real64 next_video_frame_time;
     
     time_start = PlatformGetTime();
-    playback_start = time_start;
-    
     current_frame_time = time_start;
-    current_video_frame_time = time_start;
-    
     next_frame_time = current_frame_time + REFRESH_RATE;
-    next_video_frame_time = current_video_frame_time + 1000.0f*av_q2d(pdata->decoder.video_time_base);
+    
+    // times needed for video playback
+    real64 playback_start;
+    real64 current_video_frame_time;
+    real64 next_video_frame_time;
+    real64 aggregated_pause_time;
     
     dbg_print("audio time_base: %d/%d\n", pdata->decoder.audio_time_base.num, pdata->decoder.audio_time_base.den);
     
