@@ -587,14 +587,17 @@ SortPackets(program_data *pdata)
         
         if(pkt.stream_index == pdata->decoder.video_stream)
         {
+            dbg_info("Queued video packet.\n");
             enqueue_packet(pdata->pq_video, &pkt);
         }
         else if(pkt.stream_index == pdata->decoder.audio_stream)
         {
+            dbg_info("Queued audio packet.\n");
             enqueue_packet(pdata->pq_audio, &pkt);
         }
         else
         {
+            dbg_info("Discarded unknown packet.\n");
             av_packet_unref(&pkt);
         }
     }
@@ -720,6 +723,7 @@ DecodingThreadStart(void *ptr)
         if(!pq_is_empty(pdata->pq_audio) &&
            !pq_is_empty(pdata->pq_video))
         {
+            dbg_info("!pq_is_empty()\n");
             AVPacket pkt[2];
             peek_packet(pdata->pq_audio, &pkt[0], 0);
             peek_packet(pdata->pq_video, &pkt[1], 0);
