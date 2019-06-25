@@ -316,6 +316,7 @@ typedef struct _program_data {
     volatile bool32 running;
     volatile bool32 playing;
     volatile bool32 paused;
+    volatile bool32 start_playback;
 } program_data;
 
 static int32 MainLoop(program_data  *);

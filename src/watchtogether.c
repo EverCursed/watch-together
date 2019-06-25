@@ -8,7 +8,6 @@
 #include "decoding.c"
 
 //#include <time.h>
-
 // TODO(Val): NAT-T implementation, see how it works
 // TODO(Val): Encryption
 
@@ -78,13 +77,25 @@ MainLoop(program_data *pdata)
                   next_video_frame_time,
                   pdata->tick);
         
+        if(pdata->start_playback)
+        {
+            playback_start = current_frame_time;
+            current_video_frame_time = current_frame_time;
+            next_video_frame_time = current_video_frame_time + 1000.0f*av_q2d(pdata->decoder.video_time_base);
+            aggregated_pause_time = 0.0f;
+            
+            pdata->start_playback = 0;
+            pdata->playing = 1;
+        }
+        
         // Get input
         // TODO(Val): Introduce some kind of timing system to see how long keys are held
-        PlatformGetInput(pdata);
+        if(pdata->running)
+            PlatformGetInput(pdata);
         
         // Process input
         int keys = pdata->input.keyboard.n;
-        for(int i = 0; i < keys; i++)
+        for(int i = 0; i < keys && pdata->running; i++)
         {
             key_event e = pdata->input.keyboard.events[i];
             
@@ -128,22 +139,29 @@ MainLoop(program_data *pdata)
         
         // TODO(Val): Draw UI
         
-        
-        if(next_video_frame_time <= next_frame_time - MS_SAFETY_MARGIN)
+        if(pdata->playing)
         {
-            dbg_info("next_video_frame_time <= next_frame_time - MS_SAFETY_MARGIN\n");
-            if(pdata->video.is_ready)
+            if(next_video_frame_time <= next_frame_time - MS_SAFETY_MARGIN)
             {
-                dbg_success("pdata->video.is_ready\n");
-                // TODO(Val): update video frame;
-                PlatformUpdateFrame(pdata);
-                
-                current_video_frame_time = next_video_frame_time;
-                next_video_frame_time += 1000.0f*av_q2d(pdata->decoder.video_time_base);
-            }
-            else
-            {
-                // TODO(Val): skip this frame
+                dbg_info("next_video_frame_time <= next_frame_time - MS_SAFETY_MARGIN\n");
+                if(pdata->video.is_ready)
+                {
+                    dbg_success("pdata->video.is_ready\n");
+                    // TODO(Val): update video frame;
+                    PlatformUpdateFrame(pdata);
+                    
+                    free(pdata->video.video_frame);
+                    free(pdata->video.video_frame_sup1);
+                    free(pdata->video.video_frame_sup2);
+                    
+                    current_video_frame_time = next_video_frame_time;
+                    next_video_frame_time += 1000.0f*av_q2d(pdata->decoder.video_time_base);
+                }
+                else
+                {
+                    dbg_warn("Video is not ready.\n");
+                    // TODO(Val): skip this frame
+                }
             }
         }
         
@@ -191,8 +209,8 @@ static int32
 MainThread(program_data *pdata)
 {
     pdata->pq_main = init_avpacket_queue(PACKET_QUEUE_SIZE);
-    pdata->pq_video = init_avpacket_queue(60);
-    pdata->pq_audio = init_avpacket_queue(60);
+    pdata->pq_video = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
+    pdata->pq_audio = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
     
     pdata->threads.decoder_thread =
         PlatformCreateThread(DecodingThreadStart, pdata, "decoder");
@@ -200,4 +218,8 @@ MainThread(program_data *pdata)
     MainLoop(pdata);
     
     PlatformWaitThread(pdata->threads.decoder_thread, NULL);
+    
+    close_avpacket_queue(pdata->pq_audio);
+    close_avpacket_queue(pdata->pq_video);
+    close_avpacket_queue(pdata->pq_main);
 }
