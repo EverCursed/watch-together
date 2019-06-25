@@ -771,8 +771,7 @@ DecodingThreadStart(void *ptr)
             
             av_frame_free(&f.frame);
             
-            uint32 current_time = PlatformGetTime();
-            PlatformSleep(packet.dts - current_time);
+            PlatformSleep(33);
         }
     }
     
