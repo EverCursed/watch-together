@@ -35,7 +35,8 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
         return -1;
     }
     
-    av_packet_move_ref((AVPacket *)(queue->buffer + queue->end*AVPACKET_SIZE), packet);
+    av_packet_ref((queue->buffer + queue->end*AVPACKET_SIZE), packet);
+    
     queue->n++;
     queue->end = (queue->end + 1) % queue->maxn;
     
@@ -51,13 +52,16 @@ dequeue_packet(avpacket_queue *queue, AVPacket *packet)
         return -1;
     }
     
+    av_packet_ref(packet, (queue->buffer + queue->end*AVPACKET_SIZE));
+    av_packet_unref((queue->buffer + queue->end*AVPACKET_SIZE));
+    
     queue->n--;
     queue->next = (queue->next + 1) % queue->maxn;
-    *packet = *(queue->buffer + queue->next*AVPACKET_SIZE);
     
     return 0;
 }
 
+// TODO(Val): Should we make another reference? Will need to unref manually then.
 static int32
 peek_packet(avpacket_queue *queue, AVPacket *packet, int nth)
 {
@@ -78,6 +82,11 @@ peek_packet(avpacket_queue *queue, AVPacket *packet, int nth)
 static int32
 clear_avpacket_queue(avpacket_queue *queue)
 {
+    for(int i = queue->next; i < queue->end; i = (i+1) % queue->maxn)
+    {
+        av_packet_unref(queue->buffer + i*AVPACKET_SIZE);
+    }
+    
     queue->n = 0;
     queue->next = 0;
     queue->end = 0;
@@ -92,6 +101,8 @@ close_avpacket_queue(avpacket_queue *queue)
     
     if(queue->buffer)
         free(queue->buffer);
+    
+    free(queue);
     
     return 0;
 }

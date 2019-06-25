@@ -594,12 +594,13 @@ SortPackets(program_data *pdata)
         {
             dbg_info("Queued audio packet.\n");
             enqueue_packet(pdata->pq_audio, &pkt);
+            
         }
         else
         {
             dbg_info("Discarded unknown packet.\n");
-            av_packet_unref(&pkt);
         }
+        av_packet_unref(&pkt);
     }
 }
 
