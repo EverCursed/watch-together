@@ -726,8 +726,14 @@ DecodingThreadStart(void *ptr)
     }
     
     file->file_ready = 1;
-    pdata->playing = 1;
+    pdata->playing = 0;
     pdata->paused = 0;
+    
+    init_queues(pdata);
+    LoadPackets(pdata);
+    SortPackets(pdata);
+    
+    pdata->start_playback = 1;
     
     while(pdata->running)
     {
@@ -739,35 +745,64 @@ DecodingThreadStart(void *ptr)
         {
             dbg_info("!pq_is_empty()\n");
             AVPacket pkt[2];
-            peek_packet(pdata->pq_audio, &pkt[0], 0);
-            peek_packet(pdata->pq_video, &pkt[1], 0);
+            int32 ret0 = peek_packet(pdata->pq_audio, &pkt[0], 0);
+            int32 ret1 = peek_packet(pdata->pq_video, &pkt[1], 0);
+            
+            int32 soonest_dts = -1;
+            if(!ret0 && !ret1)
+            {
+                soonest_dts = pkt[0].pts < pkt[1].pts ?
+                    (pkt[0].pts != AV_NOPTS_VALUE ? 0 : -1) :
+                (pkt[1].pts != AV_NOPTS_VALUE ? 1 : -1);
+            }
+            else if(!ret0)
+            {
+                soonest_dts = 0;
+            }
+            else if(!ret1)
+            {
+                soonest_dts = 1;
+            }
             
             // TODO(Val): check that packets are valid (or existed)
             
-            int32 soonest_dts = pkt[0].dts < pkt[1].dts ? 0 : 1;
-            AVPacket packet = {};
-            dequeue_packet(soonest_dts ? pdata->pq_video : pdata->pq_audio,
-                           &packet);
-            
-            dbg_print("dts: %ld\n", packet.dts);
-            
-            struct frame_info f = wt_decode(pdata, &packet);
-            
-            if(f.type == FRAME_AUDIO)
+            if(soonest_dts != -1)
             {
-                process_audio_frame(pdata, f);
+                dbg_print("pkt[0].pts = %ld\n"
+                          "pkt[1].pts = %ld\n"
+                          "AV_NOPTS_VALUE = %ld\n",
+                          pkt[0].pts,
+                          pkt[1].pts,
+                          AV_NOPTS_VALUE);
+                AVPacket packet = {};
+                avpacket_queue *queue = soonest_dts ? pdata->pq_video : pdata->pq_audio; 
+                dequeue_packet(queue,
+                               &packet);
+                
+                
+                
+                dbg_print("dts: %ld\n", packet.dts);
+                
+                struct frame_info f = wt_decode(pdata, &packet);
+                
+                if(f.type == FRAME_AUDIO &&
+                   !pdata->audio.is_ready)
+                {
+                    process_audio_frame(pdata, f);
+                }
+                else if((f.type == FRAME_VIDEO_YUV ||
+                         f.type == FRAME_VIDEO_RGB) &&
+                        !pdata->video.is_ready)
+                {
+                    process_video_frame(pdata, f);
+                }
+                else
+                {
+                    dbg_error("Unknown frame type.\n");
+                }
+                
+                av_frame_free(&f.frame);
             }
-            else if(f.type == FRAME_VIDEO_YUV ||
-                    f.type == FRAME_VIDEO_RGB)
-            {
-                process_video_frame(pdata, f);
-            }
-            else
-            {
-                dbg_error("Unknown frame type.\n");
-            }
-            
-            av_frame_free(&f.frame);
             
             PlatformSleep(33);
         }
