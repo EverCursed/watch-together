@@ -159,7 +159,9 @@ wt_decode(program_data *pdata, AVPacket *pkt)
     return info;
     
     wt_decode_failed:
-    av_frame_free(&info.frame);
+    av_packet_unref(pkt);
+    av_frame_free(&frame);
+    info.ret = -1;
     return info;
 }
 
