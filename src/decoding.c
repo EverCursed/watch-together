@@ -109,7 +109,22 @@ wt_decode(program_data *pdata, AVPacket *pkt)
     receive_packet:
     ret = avcodec_send_packet(dec_ctx, pkt);
     // TODO(Val): This needs to be changed. Getting called here again would break.
-    if(ret == AVERROR(EAGAIN)) goto receive_packet;
+    if(ret == AVERROR(EAGAIN))
+    {
+        av_packet_unref(pkt);
+        
+        if(info.type == FRAME_AUDIO)
+        {
+            dequeue_packet(pdata->pq_audio, pkt);
+        }
+        else if(info.type == FRAME_VIDEO_RGB ||
+                info.type == FRAME_VIDEO_YUV)
+        {
+            dequeue_packet(pdata->pq_video, pkt);
+        }
+        
+        goto send_packet;
+    }
     else if(ret == AVERROR_EOF ||
             ret == AVERROR(EINVAL) ||
             ret == AVERROR(ENOMEM)) 
