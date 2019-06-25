@@ -129,7 +129,10 @@ wt_decode(program_data *pdata, AVPacket *pkt)
             ret == AVERROR(EINVAL) ||
             ret == AVERROR(ENOMEM)) 
     {
-        dbg_error("Error sending a packet for decoding\n");
+        if(ret == AVERROR(EINVAL))
+            dbg_error("EINVAL\n");
+        else
+            dbg_error("Error sending a packet for decoding\n");
         goto wt_decode_failed;
     }
     
@@ -386,6 +389,9 @@ process_video_frame(program_data *pdata, struct frame_info info)
                                      av_get_bits_per_pixel(
             av_pix_fmt_desc_get(
             decoder->video_codec_context->pix_fmt)));
+        
+        // TODO(Val): This malloc is wrong. Better to allocate buffer
+        // before, and then reuse it and free at the end.
         void *temp_buffer = malloc(pitch * decoder->video_codec_context->height);
         uint8_t *ptrs[1] = { temp_buffer };
         int stride[1] = { pitch };
@@ -597,8 +603,8 @@ SortPackets(program_data *pdata)
     AVPacket pkt;
     // NOTE(Val): if there are packets in main queue and audio/video queues aren't full
     while(!pq_is_empty(pdata->pq_main) &&
-          pq_is_full(pdata->pq_audio) &&
-          pq_is_full(pdata->pq_video))
+          !pq_is_full(pdata->pq_audio) &&
+          !pq_is_full(pdata->pq_video))
     {
         int ret = dequeue_packet(pdata->pq_main, &pkt);
         

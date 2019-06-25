@@ -31,7 +31,7 @@ global uint32 texture_height;
 
 global program_data *pdata;
 
-#define TESTING_FILE "data/video_test/hancock.mp4"
+#define TESTING_FILE "data/video_test/video.mp4"
 
 static void
 blit_frame(program_data *pdata)
@@ -452,6 +452,7 @@ PlatformInitVideo(program_data *pdata)
     SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
 }
 
+
 static inline void add_key(input_struct *input,
                            uint32 key,
                            bool32 shift,
@@ -525,7 +526,7 @@ static int PlatformGetInput(program_data *pdata)
     SDL_Event event = {};
     
     //while(pdata->running && SDL_PollEvent(&event))
-    SDL_PumpEvents();
+    //SDL_PumpEvents();
     while(pdata->running &&
           input->keyboard.n < MAX_KEYS-1 &&
           SDL_PollEvent(&event))
@@ -709,10 +710,6 @@ static int PlatformGetInput(program_data *pdata)
                     dbg_info("Unhandled mouse button input.\n");
                 }
             } break;
-            default: 
-            {
-                
-            } break;
         }
     }
     
@@ -774,13 +771,13 @@ int main(int argc, const char* argv[])
     
     dbg_info("Cleaning up.\n");
     
-    free(pdata);
-    
+    SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
     
+    //free(pdata);
     // TODO(Val): Are these necessary? 
-    SDL_DestroyTexture(background_texture);
-    SDL_DestroyTexture(ui_texture);
+    //SDL_DestroyTexture(background_texture);
+    //SDL_DestroyTexture(ui_texture);
     
     SDL_CloseAudioDevice(AudioID);
     
