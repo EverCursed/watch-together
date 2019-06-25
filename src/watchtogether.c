@@ -93,11 +93,15 @@ MainLoop(program_data *pdata)
                 case KB_F4:
                 {
                     if(e.alt)
+                    {
                         pdata->running = 0;
+                        return 0;
+                    }
                 } break;
                 case KB_ESCAPE:
                 {
                     pdata->running = 0;
+                    return 0;
                 } break;
                 case KB_UP:
                 {
