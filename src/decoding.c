@@ -660,6 +660,8 @@ init_queues(program_data *pdata)
             //pdata->file.height,
             //4);
         }
+        
+        PlatformInitVideo(pdata);
     }
     
     if(file->has_audio)
@@ -668,19 +670,11 @@ init_queues(program_data *pdata)
         //pdata->file.sample_rate,
         //pdata->file.channels,
         //pdata->file.bytes_per_sample);
+        
+        PlatformInitAudio(pdata);
     }
     
     dbg_success("Audio and video queues initialized.\n");
-    
-    if(pdata->file.has_audio)
-    {
-        dbg_info("has_audio is set.\n");
-        PlatformInitAudio(pdata);
-    }
-    if(pdata->file.has_video)
-    {
-        PlatformInitVideo(pdata);
-    }
 }
 
 static void
