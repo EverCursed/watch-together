@@ -106,7 +106,7 @@ wt_decode(program_data *pdata, AVPacket *pkt)
         goto wt_decode_failed;
     }
     
-    receive_packet:
+    send_packet:
     ret = avcodec_send_packet(dec_ctx, pkt);
     // TODO(Val): This needs to be changed. Getting called here again would break.
     if(ret == AVERROR(EAGAIN))
