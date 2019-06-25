@@ -314,8 +314,8 @@ typedef struct _program_data {
     uint32 tick;
     
     volatile bool32 running;
-    bool32 playing;
-    bool32 paused;
+    volatile bool32 playing;
+    volatile bool32 paused;
 } program_data;
 
 static int32 MainLoop(program_data  *);
