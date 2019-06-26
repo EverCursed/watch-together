@@ -606,78 +606,7 @@ static int PlatformGetInput(program_data *pdata)
                 bool32 alt_down = event.key.keysym.mod & KMOD_ALT;
                 bool32 pressed = event.key.state == SDL_PRESSED ? 1 : 0;
                 
-#define add_key(a, b) add_key(input, a, shift_down, ctrl_down, alt_down, b)
-                // NOTE(Val): Keypress events here
-                switch(event.key.keysym.sym)
-                {
-                    case SDLK_SPACE:
-                    {
-                        add_key(KB_SPACE, pressed);
-                    } break;
-                    case SDLK_ESCAPE:
-                    {
-                        add_key(KB_ESCAPE, pressed);
-                    } break;
-                    case SDLK_RETURN:
-                    {
-                        add_key(KB_ENTER, pressed);
-                    } break;
-                    case SDLK_F4:
-                    {
-                        add_key(KB_F4, pressed);
-                    } break;
-                    case SDLK_UP:
-                    {
-                        add_key(KB_UP, pressed);
-                    } break;
-                    case SDLK_DOWN:
-                    {
-                        add_key(KB_DOWN, pressed);
-                    } break;
-                    /*
-                    case SDLK_SPACE:
-                    {
-                    TogglePlayback(pdata);
-                    
-                    } break;
-                    case SDLK_ESCAPE:
-                    {
-                    pdata->running = 0;
-                    } break;
-                    case SDLK_RETURN:
-                    {
-                    SDL_Keymod mod = SDL_GetModState();
-                    
-                    if(mod & KMOD_ALT)
-                    {
-                    dbg_error("ALT + Enter pressed.\n");
-                    if(pdata->client.fullscreen)
-                    {
-                    SDL_SetWindowFullscreen(window, 0);
-                    pdata->client.fullscreen = 0;
-                    }
-                    else
-                    {
-                    SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
-                    pdata->client.fullscreen = 1;
-                    }
-                    }
-                    else if(mod & KMOD_CTRL)
-                    {
-                    
-                    }
-                    else if(mod & KMOD_SHIFT)
-                    {
-                    
-                    }
-                    } break;
-                    default:
-                    {
-                    
-                    } break;
-                    */
-                }
-#undef add_key
+                add_key(input, event.key.keysym.sym, shift_down, ctrl_down, alt_down, pressed);
             } break;
             case SDL_MOUSEMOTION:
             {
