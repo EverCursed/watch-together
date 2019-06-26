@@ -27,43 +27,74 @@
 #define CHANGE_COLOR(x) SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), x)
 
 #define dbg_print(...) do { fprintf(stderr, __VA_ARGS__); } while(0)
-#define dbg_error(x) \
+#define dbg_error(...) \
 do { \
     CHANGE_COLOR(FOREGROUND_RED); \
-    fprintf(stderr, "%s %d : %s", __FILE__, __LINE__, x); \
+    fprintf(stderr, __VA_ARGS__); \
     CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN); \
 } while(0)
 
-#define dbg_info(x) \
+#define dbg_info(...) \
 do { \
     CHANGE_COLOR(FOREGROUND_BLUE | FOREGROUND_GREEN); \
-    fprintf(stderr, "%s %d : %s", __FILE__, __LINE__, x); \
+    fprintf(stderr, __VA_ARGS__); \
     CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN); \
 } while(0)
 
-#define dbg_success(x) \
+#define dbg_success(...) \
 do { \
     CHANGE_COLOR(FOREGROUND_GREEN); \
-    fprintf(stderr, "%s %d : %s", __FILE__, __LINE__, x); \
+    fprintf(stderr, __VA_ARGS__); \
     CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN); \
 } while(0)
 
-#define dbg_warn(x) \
+#define dbg_warn(...) \
 do { \
     CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_GREEN); \
-    fprintf(stderr, "%s %d : %s", __FILE__, __LINE__, x); \
+    fprintf(stderr, __VA_ARGS__); \
     CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN); \
 } while(0)
+
 #define dbg(x) x
 
 #elif defined(__linux__)
 
-#define dbg_print(...) do { fprintf(stderr, __VA_ARGS__); } while(0)
-#define dbg_error(x) do { fprintf(stderr, KRED "%s %d : %s" KNRM, __FILE__, __LINE__, x); } while(0)
-#define dbg_info(x) fprintf(stderr, KCYN x KNRM)
-#define dbg_success(x) fprintf(stderr, KGRN x KNRM)
-#define dbg_warn(x) fprintf(stderr, KYEL x KNRM)
+#define dbg_print(...) \
+do {\
+    fprintf(stderr, __VA_ARGS__);\
+} while(0)
+
+#define dbg_error(...)\
+do {\
+    fprintf(stderr, KRED);\
+    fprintf(stderr, "%s %d : ", __FILE__, __LINE__);\
+    fprintf(stderr, __VA_ARGS__);\
+    fprintf(stderr, KNRM);\
+} while(0)
+
+#define dbg_info(...) \
+do {\
+    fprintf(stderr, KCYN);\
+    fprintf(stderr, __VA_ARGS__);\
+    fprintf(stderr, KNRM);\
+} while(0)
+
+#define dbg_success(...) \
+do {\
+    fprintf(stderr, KGRN);\
+    fprintf(stderr, __VA_ARGS__);\
+    fprintf(stderr, KNRM);\
+} while(0)
+
+#define dbg_warn(...) \
+do {\
+    fprintf(stderr, KYEL);\
+    fprintf(stderr, __VA_ARGS__);\
+    fprintf(stderr, KNRM);\
+} while(0)
+
 #define dbg(x) x
+#endif
 
 #else
 
@@ -74,7 +105,6 @@ do { \
 #define dbg_warn(x)
 #define dbg(x)
 
-#endif
 #endif
 
 struct _platform_data;

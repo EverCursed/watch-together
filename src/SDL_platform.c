@@ -67,7 +67,7 @@ blit_frame(program_data *pdata)
     return;
     
     error:
-    dbg_error(SDL_GetError());
+    dbg_error("%s\n", SDL_GetError());
 }
 
 /*
@@ -102,7 +102,7 @@ PlatformQueueAudio(output_audio *audio)
     
     if(ret < 0)
     {
-        dbg_error(SDL_GetError());
+        dbg_error("%s\n", SDL_GetError());
         
         return -1;
     }
@@ -413,8 +413,7 @@ PlatformUpdateFrame(program_data *pdata)
     ret = SDL_RenderCopy(renderer, background_texture, NULL, NULL);
     if(ret)
     {
-        dbg_error(SDL_GetError());
-        dbg_print("\n");
+        dbg_error("%s\n", SDL_GetError());
     }
     
     // Render the UI on top of video frame
