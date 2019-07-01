@@ -212,6 +212,12 @@ PlatformInitAudio(program_data *pdata)
 }
 
 static void
+PlatformCloseAudio(program_data *pdata)
+{
+    SDL_CloseAudioDevice(AudioID);
+}
+
+static void
 PlatformPauseAudio(bool32 b)
 {
     SDL_PauseAudioDevice(AudioID, b);
@@ -241,157 +247,6 @@ static int32
 PlatformWaitThread(thread_info thread, int32 *ret)
 {
     SDL_WaitThread(thread.thread, ret);
-}
-
-static int32
-ProcessInput(void *arg)
-{
-    program_data *pdata = arg;
-    input_struct *input = &pdata->input;
-    
-    // TODO(Val): aggregate input, as we don't know how often the application
-    // will check it
-    SDL_Event event = {};
-    while(pdata->running && SDL_WaitEvent(&event))
-    {
-        //dbg_info("Event received.\n");
-        switch(event.type)
-        {
-            case SDL_WINDOWEVENT:
-            {
-                switch(event.window.event)
-                {
-                    case SDL_WINDOWEVENT_RESIZED:
-                    {
-                        /*
-int width = pdata->vq_data.video_queue_width;
-                        int height = pdata->vq_data.video_queue_height;
-                        
-                        SDL_Rect rect;
-                        SDL_RenderGetViewport(renderer, &rect);
-                        
-                        real32 width_ratio = 1.0f*rect.w/width;
-                        real32 height_ratio = 1.0f*rect.h/height;
-                        
-                        //real32 new_aspect = (1.0f * rect.w) / rect.h;
-                        real32 aspect = (1.0f * pdata->vq_data.video_queue_width) / pdata->vq_data.video_queue_height;
-                        
-                        if(width_ratio > height_ratio)
-                        {
-                            SDL_RenderSetLogicalSize(renderer, height_ratio*width, rect.h);
-                        }
-                        else if(height_ratio < width_ratio)
-                        {
-                            SDL_RenderSetLogicalSize(renderer, rect.w, width_ratio*height);
-                        }
-                        else
-                        {
-                            SDL_RenderSetLogicalSize(renderer, rect.w, rect.h);
-                        }
-                        */
-                        
-                        //Deb_ResizePixelBuffer(renderer);
-                        
-                        
-                        //dbg_print("Texture width: %d\theight: %d\n", texture_width, texture_height);
-                        //dbg_print("Scale x: %f\t y: %f\n", scaleX, scaleY);
-                        
-                        
-                        //SDL_FreeSurface(surface);
-                        //surface = Deb_ResizePixelBuffer(window);
-                    } break;
-                    default:
-                    {
-                        
-                    } break;
-                }
-            } break;
-            case SDL_KEYDOWN:
-            {
-                // NOTE(Val): Keypress events here
-                switch(event.key.keysym.sym)
-                {
-                    case SDLK_SPACE:
-                    {
-                        TogglePlayback(pdata);
-                        
-                    } break;
-                    case SDLK_ESCAPE:
-                    {
-                        pdata->running = 0;
-                    } break;
-                    case SDLK_RETURN:
-                    {
-                        SDL_Keymod mod = SDL_GetModState();
-                        
-                        if(mod & KMOD_ALT)
-                        {
-                            dbg_error("ALT + Enter pressed.\n");
-                            if(pdata->client.fullscreen)
-                            {
-                                SDL_SetWindowFullscreen(window, 0);
-                                pdata->client.fullscreen = 0;
-                            }
-                            else
-                            {
-                                SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
-                                pdata->client.fullscreen = 1;
-                            }
-                        }
-                        else if(mod & KMOD_CTRL)
-                        {
-                            
-                        }
-                        else if(mod & KMOD_SHIFT)
-                        {
-                            
-                        }
-                    } break;
-                    default:
-                    {
-                        
-                    } break;
-                }
-            } break;
-            case SDL_MOUSEMOTION:
-            {
-                input->mouse.old_x = input->mouse.x;
-                input->mouse.old_y = input->mouse.y;
-                
-                input->mouse.x = event.motion.x;
-                input->mouse.y = event.motion.y;
-            } break;
-            case SDL_MOUSEBUTTONDOWN:
-            case SDL_MOUSEBUTTONUP:
-            {
-                if(event.button.button == SDL_BUTTON_LEFT)
-                {
-                    input->mouse.left_button_was_pressed = input->mouse.left_button_is_pressed;
-                    input->mouse.left_button_is_pressed = event.button.state == SDL_PRESSED ? 1 : 0;
-                }
-                else if(event.button.button == SDL_BUTTON_RIGHT)
-                {
-                    input->mouse.right_button_was_pressed = input->mouse.right_button_is_pressed;
-                    input->mouse.right_button_is_pressed = event.button.state == SDL_PRESSED ? 1 : 0;
-                }
-                else if(event.button.button == SDL_BUTTON_MIDDLE)
-                {
-                    input->mouse.middle_button_was_pressed = input->mouse.middle_button_is_pressed;
-                    input->mouse.middle_button_is_pressed = event.button.state == SDL_PRESSED ? 1 : 0;
-                }
-                else
-                {
-                    dbg_info("Unhandled mouse button input.\n");
-                }
-            } break;
-            default: 
-            {
-                
-            } break;
-        }
-    }
-    
-    return 0;
 }
 
 static uint32
@@ -450,7 +305,6 @@ PlatformInitVideo(program_data *pdata)
     
     SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
 }
-
 
 static inline void add_key(input_struct *input,
                            uint32 key,
@@ -518,11 +372,12 @@ int resize_filter(void *userdata,
 }
 #endif
 
-static int PlatformGetInput(program_data *pdata)
+static int
+PlatformGetInput(program_data *pdata)
 {
     input_struct *input = &pdata->input;
     
-    SDL_Event event = {};
+    SDL_Event event = {0};
     
     //while(pdata->running && SDL_PollEvent(&event))
     //SDL_PumpEvents();
@@ -535,7 +390,10 @@ static int PlatformGetInput(program_data *pdata)
         {
             case SDL_QUIT:
             {
+                dbg_error("SDL_QUIT\n");
                 pdata->running = 0;
+                SDL_Quit();
+                return 0;
             } break;
             case SDL_WINDOWEVENT:
             {
@@ -648,12 +506,25 @@ static int PlatformGetInput(program_data *pdata)
 #undef main         // workaround on windows where main is redefined by SDL
 #endif
 
-int main(int argc, const char* argv[])
+int main(int argc, const char** argv)
 {
     // initialize all the necessary SDL stuff
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0){
         return 1;
     }
+    
+    SDL_version ver, ver2;
+    SDL_VERSION(&ver);
+    SDL_GetVersion(&ver2);
+    
+    dbg_info("Version_1: %d.%d.%d\n"
+             "Version_2: %d.%d.%d\n",
+             ver.major,
+             ver.minor,
+             ver.patch,
+             ver2.major,
+             ver2.minor,
+             ver2.patch);
     
 #ifdef _WIN32
     dbg_info("SDL_FilterEvents\n");
@@ -704,8 +575,8 @@ int main(int argc, const char* argv[])
     
     //free(pdata);
     // TODO(Val): Are these necessary? 
-    //SDL_DestroyTexture(background_texture);
-    //SDL_DestroyTexture(ui_texture);
+    SDL_DestroyTexture(background_texture);
+    SDL_DestroyTexture(ui_texture);
     
     SDL_CloseAudioDevice(AudioID);
     

@@ -26,6 +26,9 @@ static void
 PlatformInitAudio(program_data *);
 
 static void
+PlatformCloseAudio(program_data *);
+
+static void
 PlatformInitVideo(program_data *);
 
 #endif

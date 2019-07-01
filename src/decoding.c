@@ -507,7 +507,7 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
     
-    uint32 size = av_samples_get_buffer_size(NULL, 
+    uint32 size = av_samples_get_buffer_size(NULL,
                                              decoder->audio_codec_context->channels,
                                              frame->nb_samples,
                                              decoder->audio_codec_context->sample_fmt,
@@ -540,7 +540,7 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     uint32 sample_fmt = decoder->audio_codec_context->sample_fmt; 
     uint32 bytes_per_sample = frame->linesize[0]/frame->nb_samples;
     
-    // TODO(Val): I'm not sure what the problem here is, but w/e
+    // TODO(Val): Make sure this is deallocated
     void *data = malloc(real_size);
     
     if(sample_fmt == AV_SAMPLE_FMT_U8P  ||
@@ -617,7 +617,6 @@ SortPackets(program_data *pdata)
         {
             dbg_info("Queued audio packet.\n");
             enqueue_packet(pdata->pq_audio, &pkt);
-            
         }
         else
         {
@@ -708,7 +707,7 @@ close_queues(program_data *pdata)
     
     if(file->has_audio)
     {
-        //close_audio_queue(&pdata->aq_data);
+        PlatformCloseAudio(pdata);
     }
     
     // TODO(Val): Should I uninitialize audio/video here? 
@@ -725,17 +724,16 @@ DecodingThreadStart(void *ptr)
     
     //init_queues(pdata);
     
+    /*
     int ret = file_open(&pdata->file, &pdata->decoder);
     if(ret < 0)
     {
         return -1;
     }
     
-    file->file_ready = 1;
-    pdata->playing = 0;
-    pdata->paused = 0;
-    
-    init_queues(pdata);
+    // TODO(Val): Should this maybe be done in the main thread?
+    //init_queues(pdata);
+    */
     LoadPackets(pdata);
     SortPackets(pdata);
     
@@ -814,7 +812,7 @@ DecodingThreadStart(void *ptr)
         }
     }
     
-    //close_queues(pdata);
+    close_queues(pdata);
     
     return 0;
 }

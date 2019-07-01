@@ -106,13 +106,11 @@ MainLoop(program_data *pdata)
                     if(e.alt)
                     {
                         pdata->running = 0;
-                        return 0;
                     }
                 } break;
                 case KB_ESCAPE:
                 {
                     pdata->running = 0;
-                    return 0;
                 } break;
                 case KB_UP:
                 {
@@ -169,24 +167,6 @@ MainLoop(program_data *pdata)
         
         PlatformSleep(next_frame_time - PlatformGetTime() - MS_SAFETY_MARGIN);
         
-        /*
-        if(pdata->file.file_ready)
-        {
-            if(!next_video_frame_time)
-                next_video_frame_time = (real64)time_start + pdata->file.target_time;
-                
-            if((pdata->playing && !pdata->paused) &&
-               (next_frame_time + MS_SAFETY_MARGIN >= next_video_frame_time))
-            {
-                //PlatformEnqueueAudio(pdata);
-                if(pdata->file.has_video)
-                    adadwa;
-                // increment tick value based on time passed
-                next_video_frame_time += pdata->file.target_time;
-                pdata->tick++;
-            }
-        }
-        */
         dbg_print("Loop time: %d\n", time_end - time_start);
         time_start = time_end;
         
@@ -212,12 +192,24 @@ MainThread(program_data *pdata)
     pdata->pq_video = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
     pdata->pq_audio = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
     
+    file_open(&pdata->file, &pdata->decoder);
+    PlatformInitAudio(pdata);
+    PlatformInitVideo(pdata);
+    
+    pdata->file.file_ready = 1;
+    pdata->playing = 0;
+    pdata->paused = 0;
+    
+    
     pdata->threads.decoder_thread =
         PlatformCreateThread(DecodingThreadStart, pdata, "decoder");
     
     MainLoop(pdata);
     
     PlatformWaitThread(pdata->threads.decoder_thread, NULL);
+    
+    PlatformCloseAudio(pdata);
+    
     
     close_avpacket_queue(pdata->pq_audio);
     close_avpacket_queue(pdata->pq_video);

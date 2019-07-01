@@ -74,7 +74,7 @@ peek_packet(avpacket_queue *queue, AVPacket *packet, int nth)
     
     int index_t = (queue->next + nth) % queue->maxn;
     
-    *packet = *(queue->buffer + index_t*AVPACKET_SIZE);
+    av_packet_ref(packet, (queue->buffer + index_t*AVPACKET_SIZE));
     
     return 0;
 }
