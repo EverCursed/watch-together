@@ -253,12 +253,12 @@ typedef struct _open_file_info {
 } open_file_info;
 
 typedef struct _avpacket_queue {
+    AVPacket *buffer;
+    AVPacket **array;
     int32 maxn;  // max number of packets
     int32 n;     // total number of packets
     int32 next;  // the packet that will be dequeued/peeked next
     int32 end;   // the where the next packet will be enqueued
-    AVPacket *buffer;
-    int64 *timestamps;
 } avpacket_queue;
 
 #define NUM_FRAMES 30

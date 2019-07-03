@@ -10,13 +10,13 @@ This holds a queue of AVPacket structs. This is a buffer for
 #include "packet_queue.h"
 #include "watchtogether.h"
 
-#define AVPACKET_SIZE sizeof(AVPacket)
+// TODO(Val): Think about how the packets should be free'd.
 
 static avpacket_queue*
 init_avpacket_queue(int32 n)
 {
     avpacket_queue *queue = malloc(sizeof(avpacket_queue));
-    queue->buffer = malloc(AVPACKET_SIZE * n);
+    queue->array = malloc(sizeof(AVPacket *)*n);
     
     queue->n = 0;
     queue->maxn = n;
@@ -35,8 +35,7 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
         return -1;
     }
     
-    av_packet_ref((queue->buffer + queue->end*AVPACKET_SIZE), packet);
-    
+    *(queue->array+queue->end) = packet;
     queue->n++;
     queue->end = (queue->end + 1) % queue->maxn;
     
@@ -44,7 +43,7 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
 }
 
 static int32
-dequeue_packet(avpacket_queue *queue, AVPacket *packet)
+dequeue_packet(avpacket_queue *queue, AVPacket **packet)
 {
     if(queue->n == 0)
     {
@@ -52,9 +51,7 @@ dequeue_packet(avpacket_queue *queue, AVPacket *packet)
         return -1;
     }
     
-    av_packet_ref(packet, (queue->buffer + queue->next*AVPACKET_SIZE));
-    av_packet_unref((queue->buffer + queue->next*AVPACKET_SIZE));
-    
+    *packet = *(queue->array + queue->next);
     queue->n--;
     queue->next = (queue->next + 1) % queue->maxn;
     
@@ -63,7 +60,7 @@ dequeue_packet(avpacket_queue *queue, AVPacket *packet)
 
 // TODO(Val): Should we make another reference? Will need to unref manually then.
 static int32
-peek_packet(avpacket_queue *queue, AVPacket *packet, int nth)
+peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)
 {
     // check if nth packet is queued up
     if(!(queue->n > nth))
@@ -74,7 +71,7 @@ peek_packet(avpacket_queue *queue, AVPacket *packet, int nth)
     
     int index_t = (queue->next + nth) % queue->maxn;
     
-    av_packet_ref(packet, (queue->buffer + index_t*AVPACKET_SIZE));
+    *packet = *(queue->array + index_t);
     
     return 0;
 }
@@ -82,10 +79,12 @@ peek_packet(avpacket_queue *queue, AVPacket *packet, int nth)
 static int32
 clear_avpacket_queue(avpacket_queue *queue)
 {
+    /*
     for(int i = queue->next; i < queue->end; i = (i+1) % queue->maxn)
     {
         av_packet_unref(queue->buffer + i*AVPACKET_SIZE);
     }
+    */
     
     queue->n = 0;
     queue->next = 0;
@@ -99,8 +98,9 @@ close_avpacket_queue(avpacket_queue *queue)
 {
     clear_avpacket_queue(queue);
     
-    if(queue->buffer)
-        free(queue->buffer);
+    if(queue->array)
+        free(queue->array);
+    //free(queue->buffer);
     
     free(queue);
     

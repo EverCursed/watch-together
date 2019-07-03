@@ -115,12 +115,12 @@ wt_decode(program_data *pdata, AVPacket *pkt)
         
         if(info.type == FRAME_AUDIO)
         {
-            dequeue_packet(pdata->pq_audio, pkt);
+            dequeue_packet(pdata->pq_audio, &pkt);
         }
         else if(info.type == FRAME_VIDEO_RGB ||
                 info.type == FRAME_VIDEO_YUV)
         {
-            dequeue_packet(pdata->pq_video, pkt);
+            dequeue_packet(pdata->pq_video, &pkt);
         }
         
         goto send_packet;
@@ -600,7 +600,7 @@ process_audio_frame(program_data *pdata, struct frame_info info)
 static void
 SortPackets(program_data *pdata)
 {
-    AVPacket pkt;
+    AVPacket *pkt;
     // NOTE(Val): if there are packets in main queue and audio/video queues aren't full
     while(!pq_is_empty(pdata->pq_main) &&
           !pq_is_full(pdata->pq_audio) &&
@@ -608,21 +608,21 @@ SortPackets(program_data *pdata)
     {
         int ret = dequeue_packet(pdata->pq_main, &pkt);
         
-        if(pkt.stream_index == pdata->decoder.video_stream)
+        if(pkt->stream_index == pdata->decoder.video_stream)
         {
             dbg_info("Queued video packet.\n");
-            enqueue_packet(pdata->pq_video, &pkt);
+            enqueue_packet(pdata->pq_video, pkt);
         }
-        else if(pkt.stream_index == pdata->decoder.audio_stream)
+        else if(pkt->stream_index == pdata->decoder.audio_stream)
         {
             dbg_info("Queued audio packet.\n");
-            enqueue_packet(pdata->pq_audio, &pkt);
+            enqueue_packet(pdata->pq_audio, pkt);
         }
         else
         {
             dbg_info("Discarded unknown packet.\n");
         }
-        av_packet_unref(&pkt);
+        //av_packet_unref(&pkt);
     }
 }
 
@@ -634,10 +634,11 @@ LoadPackets(program_data *pdata)
     while(!pq_is_full(pdata->pq_main)) // TODO(Val): check if there are no more packets to load (EOF)
     {
         int ret = get_packet(pdata, pkt);
+        
         if(ret >= 0)
         {
             enqueue_packet(pdata->pq_main, pkt);
-            av_packet_unref(pkt);
+            //av_packet_unref(pkt);
         }
         else
         {
@@ -748,16 +749,16 @@ DecodingThreadStart(void *ptr)
            !pq_is_empty(pdata->pq_video))
         {
             dbg_info("!pq_is_empty()\n");
-            AVPacket pkt[2];
+            AVPacket* pkt[2];
             int32 ret0 = peek_packet(pdata->pq_audio, &pkt[0], 0);
             int32 ret1 = peek_packet(pdata->pq_video, &pkt[1], 0);
             
             int32 soonest_dts = -1;
             if(!ret0 && !ret1)
             {
-                soonest_dts = pkt[0].pts < pkt[1].pts ?
-                    (pkt[0].pts != AV_NOPTS_VALUE ? 0 : -1) :
-                (pkt[1].pts != AV_NOPTS_VALUE ? 1 : -1);
+                soonest_dts = pkt[0]->pts < pkt[1]->pts ?
+                    (pkt[0]->pts != AV_NOPTS_VALUE ? 0 : -1) :
+                (pkt[1]->pts != AV_NOPTS_VALUE ? 1 : -1);
             }
             else if(!ret0)
             {
@@ -775,19 +776,16 @@ DecodingThreadStart(void *ptr)
                 dbg_print("pkt[0].pts = %ld\n"
                           "pkt[1].pts = %ld\n"
                           "AV_NOPTS_VALUE = %ld\n",
-                          pkt[0].pts,
-                          pkt[1].pts,
+                          pkt[0]->pts,
+                          pkt[1]->pts,
                           AV_NOPTS_VALUE);
-                AVPacket packet = {};
+                AVPacket* packet;
                 avpacket_queue *queue = soonest_dts ? pdata->pq_video : pdata->pq_audio; 
-                dequeue_packet(queue,
-                               &packet);
+                dequeue_packet(queue, &packet);
                 
+                dbg_print("dts: %ld\n", packet->dts);
                 
-                
-                dbg_print("dts: %ld\n", packet.dts);
-                
-                struct frame_info f = wt_decode(pdata, &packet);
+                struct frame_info f = wt_decode(pdata, packet);
                 
                 if(f.type == FRAME_AUDIO &&
                    !pdata->audio.is_ready)
