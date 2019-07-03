@@ -48,6 +48,10 @@ blit_frame(program_data *pdata)
         free(video->video_frame_sup1);
         free(video->video_frame_sup2);
         
+        video->video_frame = NULL;
+        video->video_frame_sup1 = NULL;
+        video->video_frame_sup2 = NULL;
+        
         if(ret < 0)
             goto error;
     }
