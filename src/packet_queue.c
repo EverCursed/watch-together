@@ -52,8 +52,8 @@ dequeue_packet(avpacket_queue *queue, AVPacket *packet)
         return -1;
     }
     
-    av_packet_ref(packet, (queue->buffer + queue->end*AVPACKET_SIZE));
-    av_packet_unref((queue->buffer + queue->end*AVPACKET_SIZE));
+    av_packet_ref(packet, (queue->buffer + queue->next*AVPACKET_SIZE));
+    av_packet_unref((queue->buffer + queue->next*AVPACKET_SIZE));
     
     queue->n--;
     queue->next = (queue->next + 1) % queue->maxn;
