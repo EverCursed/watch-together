@@ -705,6 +705,8 @@ DecodingThreadStart(void *ptr)
     int ret = file_open(&pdata->file, &pdata->decoder);
     if(ret < 0)
     {
+        pdata->file.open_failed = 1;
+        
         return -1;
     }
     

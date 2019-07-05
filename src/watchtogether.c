@@ -82,6 +82,15 @@ MainLoop(program_data *pdata)
                   next_video_frame_time,
                   pdata->tick);
         
+        if(pdata->file.open_failed)
+        {
+            pdata->file.open_failed = 0;
+            
+            // TODO(Val): Opening file failed.
+            
+            dbg_error("Opening file failed.\n");
+        }
+        
         // Get input
         // TODO(Val): Introduce some kind of timing system to see how long keys are held
         PlatformGetInput(pdata);
