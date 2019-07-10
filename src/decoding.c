@@ -359,137 +359,212 @@ global struct SwsContext* modifContext = NULL;
 static int32
 process_video_frame(program_data *pdata, struct frame_info info)
 {
+    /*
     if(pdata->video.is_ready)
     {
         dbg_warn("Started processing a video frame, while the previous one hasn't been used.\n");
         return -1;
     }
-    
+    */
     uint32 ret = 0;
     AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
     
     dbg_info("Start processing video frame.\n");
     
-    if(pdata->running && info.type == FRAME_VIDEO_RGB)
-    {
-        modifContext = sws_getCachedContext(modifContext,
-                                            decoder->video_codec_context->width,
-                                            decoder->video_codec_context->height,
-                                            frame->format,
-                                            decoder->video_codec_context->width,  // dst width
-                                            decoder->video_codec_context->height, // dst height
-                                            //video_buffer->width,
-                                            //video_buffer->height,
-                                            AV_PIX_FMT_RGB32,
-                                            SWS_BICUBIC,
-                                            NULL, NULL, NULL);
-        
-        int32 pitch = round_up_align(decoder->video_codec_context->width *
-                                     av_get_bits_per_pixel(
-            av_pix_fmt_desc_get(
-            decoder->video_codec_context->pix_fmt)));
-        
-        // TODO(Val): This malloc is wrong. Better to allocate buffer
-        // before, and then reuse it and free at the end.
-        void *temp_buffer = malloc(pitch * decoder->video_codec_context->height);
-        uint8_t *ptrs[1] = { temp_buffer };
-        int stride[1] = { pitch };
-        
-        sws_scale(modifContext,
-                  (uint8 const* const*)frame->data,
-                  frame->linesize,
-                  0,
-                  decoder->video_codec_context->height,
-                  (uint8 *const *const)ptrs,
-                  stride);
-        
-        pdata->video.video_frame = temp_buffer;
-        pdata->video.time = frame->pts;
-        //pdata->video.duration = frame->duration;
-        pdata->video.pitch = stride[0];
-        pdata->video.width = frame->width;
-        pdata->video.height = frame->height;
-        pdata->video.type = VIDEO_RGB;
-        pdata->video.is_ready = 1;
-        
-        /*
-        while(pdata->running && (enqueue_frame(&pdata->vq_data, temp_buffer, pdata->vq_data.vq_pitch, frame->pts) < 0))
+    
+    /*
+    
+        if(pdata->running && info.type == FRAME_VIDEO_RGB)
         {
-            SDL_Delay((int32)pdata->file.target_time);
-        }
-        free(temp_buffer);
-    */
-    }
-    else if(pdata->running && info.type == FRAME_VIDEO_YUV)
-    {
-        dbg_print("linesize[0] = %d\n"
-                  "linesize[1] = %d\n"
-                  "linesize[2] = %d\n"
-                  "width = %d\n"
-                  "height = %d\n",
-                  frame->linesize[0],
-                  frame->linesize[1],
-                  frame->linesize[2],
-                  frame->width,
-                  frame->height);
-        
-        int32 pitch_Y = round_up_align(frame->width *
-                                       av_get_bits_per_pixel(
-            av_pix_fmt_desc_get(
-            frame->format)));
-        int32 pitch_U = round_up_align((frame->width+1)/2 *
-                                       av_get_bits_per_pixel(
-            av_pix_fmt_desc_get(
-            frame->format)));
-        int32 pitch_V = round_up_align((frame->width+1)/2 *
-                                       av_get_bits_per_pixel(
-            av_pix_fmt_desc_get(
-            frame->format)));
-        
-        void *frame_Y = malloc(pitch_Y * frame->height);
-        void *frame_U = malloc(pitch_U * (frame->height+1)/2);
-        void *frame_V = malloc(pitch_V * (frame->height+1)/2);
-        
-        copy_pixel_buffers(frame_Y, frame->data[0], pitch_Y, frame->linesize[0], frame->height);
-        copy_pixel_buffers(frame_U, frame->data[1], pitch_U, frame->linesize[1], (frame->height+1)/2);
-        copy_pixel_buffers(frame_V, frame->data[2], pitch_V, frame->linesize[2], (frame->height+1)/2);
-        
-        pdata->video.video_frame = frame_Y;
-        pdata->video.video_frame_sup1 = frame_U;
-        pdata->video.video_frame_sup2 = frame_V;
-        
-        pdata->video.time = frame->pts;
-        //pdata->video.duration = frame->duration;
-        
-        pdata->video.pitch = pitch_Y;
-        pdata->video.pitch_sup1 = pitch_U;
-        pdata->video.pitch_sup2 = pitch_V;
-        
-        pdata->video.width = frame->width;
-        pdata->video.height = frame->height;
-        pdata->video.type = VIDEO_YUV;
-        pdata->video.is_ready = 1;
-        
-        /*
-        while(pdata->running && (enqueue_frame_YUV(&pdata->vq_data,
-        frame->data[0],
-        frame->linesize[0],
-        frame->data[1],
-        frame->linesize[1],
-        frame->data[2],
-        frame->linesize[2],
-        frame->pts)))
+            modifContext = sws_getCachedContext(modifContext,
+                                                decoder->video_codec_context->width,
+                                                decoder->video_codec_context->height,
+                                                frame->format,
+                                                decoder->video_codec_context->width,  // dst width
+                                                decoder->video_codec_context->height, // dst height
+                                                //video_buffer->width,
+                                                //video_buffer->height,
+                                                AV_PIX_FMT_RGB32,
+                                                SWS_BICUBIC,
+                                                NULL, NULL, NULL);
+                                                
+            int32 pitch = round_up_align(decoder->video_codec_context->width *
+                                         av_get_bits_per_pixel(
+                av_pix_fmt_desc_get(
+                decoder->video_codec_context->pix_fmt)));
+                
+            // TODO(Val): This malloc is wrong. Better to allocate buffer
+            // before, and then reuse it and free at the end.
+            void *temp_buffer = malloc(pitch * decoder->video_codec_context->height);
+            uint8_t *ptrs[1] = { temp_buffer };
+            int stride[1] = { pitch };
+            
+            sws_scale(modifContext,
+                      (uint8 const* const*)frame->data,
+                      frame->linesize,
+                      0,
+                      decoder->video_codec_context->height,
+                      (uint8 *const *const)ptrs,
+                      stride);
+                      
+            pdata->video.video_frame = temp_buffer;
+            pdata->video.time = frame->pts;
+            //pdata->video.duration = frame->duration;
+            pdata->video.pitch = stride[0];
+            pdata->video.width = frame->width;
+            pdata->video.height = frame->height;
+            pdata->video.type = VIDEO_RGB;
+            pdata->video.is_ready = 1;
+            
+            //while(pdata->running && (enqueue_frame(&pdata->vq_data, temp_buffer, pdata->vq_data.vq_pitch, frame->pts) < 0))
+            //{
+                //SDL_Delay((int32)pdata->file.target_time);
+            //}
+            //free(temp_buffer);
+        //}
+        else if(pdata->running && info.type == FRAME_VIDEO_YUV)
         {
-        SDL_Delay((int32)pdata->file.target_time);
-        }
+            dbg_print("linesize[0] = %d\n"
+                      "linesize[1] = %d\n"
+                      "linesize[2] = %d\n"
+                      "width = %d\n"
+                      "height = %d\n",
+                      frame->linesize[0],
+                      frame->linesize[1],
+                      frame->linesize[2],
+                      frame->width,
+                      frame->height);
+                      
+            int32 pitch_Y = round_up_align(frame->width *
+                                           av_get_bits_per_pixel(
+                av_pix_fmt_desc_get(
+                frame->format)));
+            int32 pitch_U = round_up_align((frame->width+1)/2 *
+                                           av_get_bits_per_pixel(
+                av_pix_fmt_desc_get(
+                frame->format)));
+            int32 pitch_V = round_up_align((frame->width+1)/2 *
+                                           av_get_bits_per_pixel(
+                av_pix_fmt_desc_get(
+                frame->format)));
+                
+            void *frame_Y = malloc(pitch_Y * frame->height);
+            void *frame_U = malloc(pitch_U * (frame->height+1)/2);
+            void *frame_V = malloc(pitch_V * (frame->height+1)/2);
+            
+            copy_pixel_buffers(frame_Y, frame->data[0], pitch_Y, frame->linesize[0], frame->height);
+            copy_pixel_buffers(frame_U, frame->data[1], pitch_U, frame->linesize[1], (frame->height+1)/2);
+            copy_pixel_buffers(frame_V, frame->data[2], pitch_V, frame->linesize[2], (frame->height+1)/2);
+            
+            pdata->video.video_frame = frame_Y;
+            pdata->video.video_frame_sup1 = frame_U;
+            pdata->video.video_frame_sup2 = frame_V;
+            
+            pdata->video.time = frame->pts;
+            //pdata->video.duration = frame->duration;
+            
+            pdata->video.pitch = pitch_Y;
+            pdata->video.pitch_sup1 = pitch_U;
+            pdata->video.pitch_sup2 = pitch_V;
+            
+            pdata->video.width = frame->width;
+            pdata->video.height = frame->height;
+            pdata->video.type = VIDEO_YUV;
+            pdata->video.is_ready = 1;
+            
+            //while(pdata->running && (enqueue_frame_YUV(&pdata->vq_data,
+            //frame->data[0],
+            //frame->linesize[0],
+            //frame->data[1],
+            //frame->linesize[1],
+            //frame->data[2],
+            //frame->linesize[2],
+            //frame->pts)))
+            //{
+            //SDL_Delay((int32)pdata->file.target_time);
+            //}
+            //
+        //}
+        //else
+        //{
+            //dbg_error("Unknown video frame type.\n");
+        //}
         */
-        
-    }
-    else
-    {
-        dbg_error("Unknown video frame type.\n");
-    }
+    
+    modifContext = sws_getCachedContext(modifContext,
+                                        decoder->video_codec_context->width,
+                                        decoder->video_codec_context->height,
+                                        frame->format,
+                                        decoder->video_codec_context->width,  // dst width
+                                        decoder->video_codec_context->height, // dst height
+                                        //video_buffer->width,
+                                        //video_buffer->height,
+                                        AV_PIX_FMT_YUV420P,
+                                        SWS_BICUBIC,
+                                        NULL, NULL, NULL);
+    
+    
+    int32 pitch_Y = round_up_align(frame->width *
+                                   av_get_bits_per_pixel(
+        av_pix_fmt_desc_get(
+        frame->format)));
+    int32 pitch_U = round_up_align((frame->width+1)/2 *
+                                   av_get_bits_per_pixel(
+        av_pix_fmt_desc_get(
+        frame->format)));
+    int32 pitch_V = round_up_align((frame->width+1)/2 *
+                                   av_get_bits_per_pixel(
+        av_pix_fmt_desc_get(
+        frame->format)));
+    
+    void *frame_Y = malloc(pitch_Y * frame->height);
+    void *frame_U = malloc(pitch_U * (frame->height+1)/2);
+    void *frame_V = malloc(pitch_V * (frame->height+1)/2);
+    
+    uint8_t *ptrs[3] = { frame_Y, frame_U, frame_V };
+    int stride[3] = { pitch_Y, pitch_U, pitch_V };
+    
+    sws_scale(modifContext,
+              (uint8 const* const*)frame->data,
+              frame->linesize,
+              0,
+              decoder->video_codec_context->height,
+              (uint8 *const *const)ptrs,
+              stride);
+    
+    copy_pixel_buffers(frame_Y, frame->data[0], pitch_Y, frame->linesize[0], frame->height);
+    copy_pixel_buffers(frame_U, frame->data[1], pitch_U, frame->linesize[1], (frame->height+1)/2);
+    copy_pixel_buffers(frame_V, frame->data[2], pitch_V, frame->linesize[2], (frame->height+1)/2);
+    
+    pdata->video.video_frame = frame_Y;
+    pdata->video.video_frame_sup1 = frame_U;
+    pdata->video.video_frame_sup2 = frame_V;
+    
+    pdata->video.time = frame->pts;
+    //pdata->video.duration = frame->duration;
+    
+    pdata->video.pitch = pitch_Y;
+    pdata->video.pitch_sup1 = pitch_U;
+    pdata->video.pitch_sup2 = pitch_V;
+    
+    pdata->video.width = frame->width;
+    pdata->video.height = frame->height;
+    pdata->video.type = VIDEO_YUV;
+    pdata->video.is_ready = 1;
+    
+    /*
+    pdata->video.video_frame = temp_buffer_Y;
+    pdata->video.video_frame_sup1 = temp_buffer_U;
+    pdata->video.video_frame_sup1 = temp_buffer_V;
+    pdata->video.time = frame->pts;
+    //pdata->video.duration = frame->duration;
+    pdata->video.pitch = stride[0];
+    pdata->video.width = frame->width;
+    pdata->video.height = frame->height;
+    pdata->video.type = VIDEO_YUV;
+    pdata->video.is_ready = 1;
+    */
     
     return 0;
 }
@@ -729,6 +804,8 @@ DecodingThreadStart(void *ptr)
     int ret = file_open(&pdata->file, &pdata->decoder);
     if(ret < 0)
     {
+        pdata->file.open_failed = 1;
+        
         return -1;
     }
     

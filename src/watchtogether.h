@@ -246,9 +246,11 @@ typedef struct _open_file_info {
     
     bool32 has_audio;
     bool32 has_video;
+    bool32 has_subtitles;
     
-    bool32 file_opened;
-    bool32 file_ready;
+    bool32 file_opened;        // signals that the file was successfully opened
+    bool32 file_ready;         // // TODO(Val): signals that the data is ready to be displayed
+    bool32 open_failed;        // signals that opening the file failed
     // TODO(Val): audio format
 } open_file_info;
 

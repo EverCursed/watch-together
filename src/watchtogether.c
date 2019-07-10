@@ -11,21 +11,6 @@
 // TODO(Val): NAT-T implementation, see how it works
 // TODO(Val): Encryption
 
-/*
-static struct timespec
-time_diff(struct timespec t2, struct timespec t1)
-{
-    struct timespec ret = {};
-    if ((t2.tv_nsec - t1.tv_nsec) < 0) {
-        ret.tv_sec = t2.tv_sec - t1.tv_sec - 1;
-        ret.tv_nsec = t2.tv_nsec - t1.tv_nsec + 1000000000;
-    } else {
-        ret.tv_sec = t2.tv_sec - t1.tv_sec;
-        ret.tv_nsec = t2.tv_nsec - t1.tv_nsec;
-    }
-    return ret;
-}
-*/
 // TODO(Val): Find a way to get the refresh rate of the screen, for now this is a define
 #define REFRESH_RATE     16.666666666666f
 // TODO(Val): Test a variety of these, and see how long it's possible to go
@@ -76,6 +61,15 @@ MainLoop(program_data *pdata)
                   current_video_frame_time,
                   next_video_frame_time,
                   pdata->tick);
+        
+        if(pdata->file.open_failed)
+        {
+            pdata->file.open_failed = 0;
+            
+            // TODO(Val): Opening file failed.
+            
+            dbg_error("Opening file failed.\n");
+        }
         
         if(pdata->start_playback)
         {
@@ -133,7 +127,6 @@ MainLoop(program_data *pdata)
             }
         }
         pdata->input.keyboard.n = 0;
-        
         
         // TODO(Val): Draw UI
         

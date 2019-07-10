@@ -288,8 +288,6 @@ PlatformUpdateFrame(program_data *pdata)
 static void
 PlatformInitVideo(program_data *pdata)
 {
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
-    
     if(pdata->video.type == VIDEO_RGB)
     {
         background_texture = SDL_CreateTexture(renderer, 
@@ -307,6 +305,7 @@ PlatformInitVideo(program_data *pdata)
                                                pdata->file.height);
     }
     
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
     SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
 }
 
