@@ -65,7 +65,7 @@ peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)
     // check if nth packet is queued up
     if(!(queue->n > nth))
     {
-        dbg_info("Peek packet: There is no packet in this location.");
+        dbg_info("Peek packet: There is no packet in this location.\n");
         return -1;
     }
     

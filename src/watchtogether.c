@@ -84,8 +84,8 @@ MainLoop(program_data *pdata)
         
         // Get input
         // TODO(Val): Introduce some kind of timing system to see how long keys are held
-        if(pdata->running)
-            PlatformGetInput(pdata);
+        //if(pdata->running)
+        PlatformGetInput(pdata);
         
         // Process input
         int keys = pdata->input.keyboard.n;

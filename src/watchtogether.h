@@ -30,6 +30,7 @@
 #define dbg_error(...) \
 do { \
     CHANGE_COLOR(FOREGROUND_RED); \
+    fprintf(stderr, "%s %d : ", __FILE__, __LINE__);\
     fprintf(stderr, __VA_ARGS__); \
     CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN); \
 } while(0)
@@ -218,7 +219,7 @@ typedef struct _output_audio {
     uint32 channels;
     uint32 sample_format;
     uint32 size;
-    bool32 is_ready;
+    volatile bool32 is_ready;
 } output_audio;
 
 #define VIDEO_RGB 1
@@ -236,7 +237,7 @@ typedef struct _ouput_video {
     uint32 width;
     uint32 height;
     int32 type;
-    bool32 is_ready;
+    volatile bool32 is_ready;
 } output_video;
 
 typedef struct _open_file_info {
