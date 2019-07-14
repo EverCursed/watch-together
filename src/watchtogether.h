@@ -48,12 +48,17 @@ do { \
     CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN); \
 } while(0)
 
+#ifdef SUPPRESS_WARN
 #define dbg_warn(...) \
 do { \
     CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_GREEN); \
     fprintf(stderr, __VA_ARGS__); \
     CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN); \
 } while(0)
+#else
+#define dbg_warn(...) \
+do { } while(0)
+#endif
 
 #define dbg(x) x
 
@@ -86,12 +91,17 @@ do {\
     fprintf(stderr, KNRM);\
 } while(0)
 
+#ifndef SUPPRESS_WARN
 #define dbg_warn(...) \
 do {\
     fprintf(stderr, KYEL);\
     fprintf(stderr, __VA_ARGS__);\
     fprintf(stderr, KNRM);\
 } while(0)
+#else
+#define dbg_warn(...) \
+do { } while(0)
+#endif
 
 #define dbg(x) x
 #endif

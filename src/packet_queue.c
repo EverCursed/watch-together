@@ -31,7 +31,7 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
 {
     if(queue->n == queue->maxn)
     {
-        dbg_info("Packet queue full.\n");
+        dbg_warn("Packet queue full.\n");
         return -1;
     }
     
@@ -47,7 +47,7 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
 {
     if(queue->n == 0)
     {
-        dbg_info("Packet queue empty.\n");
+        dbg_warn("Packet queue empty.\n");
         return -1;
     }
     
