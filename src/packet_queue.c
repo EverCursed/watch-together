@@ -23,6 +23,8 @@ init_avpacket_queue(int32 n)
     queue->next = 0;
     queue->end = 0;
     
+    queue->mutex = SDL_CreateMutex();
+    
     return queue;
 }
 
@@ -51,11 +53,22 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
         return -1;
     }
     
-    *packet = *(queue->array + queue->next);
-    queue->n--;
-    queue->next = (queue->next + 1) % queue->maxn;
-    
-    return 0;
+    if(!SDL_LockMutex(queue->mutex))
+    {
+        *packet = queue->array[queue->next];
+        queue->n--;
+        queue->next = (queue->next + 1) % queue->maxn;
+        
+        dbg_info("Dequeueing packet.\n");
+        dbg_packet((*packet));
+        
+        SDL_UnlockMutex(queue->mutex);
+        return 0;
+    }
+    else
+    {
+        return -1;
+    }
 }
 
 // TODO(Val): Should we make another reference? Will need to unref manually then.
