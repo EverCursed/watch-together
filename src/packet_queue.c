@@ -12,6 +12,17 @@ This holds a queue of AVPacket structs. This is a buffer for
 
 // TODO(Val): Think about how the packets should be free'd.
 
+#define dbg_packet(p) \
+do { \
+    dbg_info("Packet:\n" \
+    "\tpos:\t%ld\n" \
+    "\tindex:\t%d\n" \
+    "\tpts:\t%ld\n", \
+    p->pos, \
+    p->stream_index, \
+    p->pts); \
+} while(0)
+
 static avpacket_queue*
 init_avpacket_queue(int32 n)
 {
@@ -36,6 +47,8 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
         dbg_warn("Packet queue full.\n");
         return -1;
     }
+    dbg_info("Enqueueing packet.\n");
+    dbg_packet(packet);
     
     *(queue->array+queue->end) = packet;
     queue->n++;
@@ -118,6 +131,21 @@ close_avpacket_queue(avpacket_queue *queue)
     free(queue);
     
     return 0;
+}
+
+static void
+print_packets(avpacket_queue *queue, program_data *pdata)
+{
+    int32 i = queue->next;
+    while(i != queue->end)
+    {
+        AVPacket *packet = queue->array[i];
+        
+        dbg_packet(packet);
+        dbg_info("-----------------------------\n");
+        
+        i = (i + 1) % queue->maxn;
+    }
 }
 
 static inline bool32
