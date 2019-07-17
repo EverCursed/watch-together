@@ -1,3 +1,6 @@
+#include <libswscale/version.h>
+#include <libswscale/swscale.h>
+
 #include "defines.h"
 #include "watchtogether.h"
 #include "platform.h"
@@ -25,8 +28,9 @@ file_close(program_data *pdata)
 }
 
 #define FRAME_AUDIO 1
-#define FRAME_VIDEO_RGB 2
-#define FRAME_VIDEO_YUV 3
+//#define FRAME_VIDEO_RGB 2
+//#define FRAME_VIDEO_YUV 3
+#define FRAME_VIDEO 4
 #define FRAME_UNKNOWN -1
 
 
@@ -42,21 +46,22 @@ get_packet(program_data *pdata, AVPacket *packet)
 {
     int ret = av_read_frame(pdata->decoder.format_context, packet);
     
-    if(ret < 0)
+    if(ret == AVERROR_STREAM_NOT_FOUND)
     {
-        if(ret == AVERROR_STREAM_NOT_FOUND)
-        {
-            dbg_error("Stream not found.\n");
-        }
-        else if(ret == AVERROR_EOF)
-        {
-            // TODO(Val): Mark that there are no more packets for this file. 
-            dbg_error("End of file.\n");
-        }
-        else
-        {
-            dbg_error("Some other error happened.\n");
-        }
+        dbg_error("Stream not found.\n");
+        return -1;
+    }
+    else if(ret == AVERROR_EOF)
+    {
+        // TODO(Val): Mark that there are no more packets for this file. 
+        pdata->file.file_finished = 1;
+        
+        dbg_error("End of file.\n");
+        return -1;
+    }
+    else if(ret != 0)
+    {
+        dbg_error("Some other error happened.\n");
         return -1;
     }
     
@@ -64,11 +69,12 @@ get_packet(program_data *pdata, AVPacket *packet)
 }
 
 static struct frame_info
-wt_decode(program_data *pdata, AVPacket *pkt)
+get_frame(program_data *pdata, int32 stream)
 {
     decoder_info *decoder = &pdata->decoder;
     AVCodecContext *dec_ctx;
     
+    AVPacket *pkt;// = av_packet_alloc();
     AVFrame *frame = av_frame_alloc();
     struct frame_info info = {.frame = frame, .type = 0, .ret = -1};
     
@@ -78,11 +84,16 @@ wt_decode(program_data *pdata, AVPacket *pkt)
     }
     
     int32 ret = 0;
+    avpacket_queue *queue = NULL;
     
     // set the type of frame.
-    if(pkt->stream_index == decoder->video_stream)
+    if(stream == decoder->video_stream)
     {
+        // TODO(Val): Temporarily converting everything to YUV
+        info.type = FRAME_VIDEO;
+        
         //printf("frame->format == %d\n", format_context->streams[video_stream]->codecpar->format);
+        /*
         if(decoder->format_context->streams[decoder->video_stream]->codecpar->format == AV_PIX_FMT_YUV420P)
         {
             info.type = FRAME_VIDEO_YUV;
@@ -91,81 +102,170 @@ wt_decode(program_data *pdata, AVPacket *pkt)
         {
             info.type = FRAME_VIDEO_RGB;
         }
-        
+        */
+        queue = pdata->pq_video;
         dec_ctx = decoder->video_codec_context;
     }
-    else if(pkt->stream_index == decoder->audio_stream)
+    else if(stream == decoder->audio_stream)
     {
         info.type = FRAME_AUDIO;
         
+        queue = pdata->pq_audio;
         dec_ctx = decoder->audio_codec_context;
     }
     else
     {
+        dbg_error("Unknown frame returned.\n");
         info.type = FRAME_UNKNOWN;
-        goto wt_decode_failed;
+        goto get_frame_failed;
     }
     
-    send_packet:
-    ret = avcodec_send_packet(dec_ctx, pkt);
-    // TODO(Val): This needs to be changed. Getting called here again would break.
-    if(ret == AVERROR(EAGAIN))
-    {
-        av_packet_unref(pkt);
+    do {
+        ret = peek_packet(queue, &pkt, 0);
+        if(ret == -1)
+            goto get_frame_failed;
         
-        if(info.type == FRAME_AUDIO)
+        ret = avcodec_send_packet(dec_ctx, pkt);
+        dbg_info("avcodec_send_packet\tret: %d\n", ret);
+        
+        if(ret == AVERROR(EAGAIN))
         {
-            dequeue_packet(pdata->pq_audio, &pkt);
+            dbg_error("AVERROR(EAGAIN)\n");
+            // NOTE(Val): This means a frame must be read before we can send another packet
         }
-        else if(info.type == FRAME_VIDEO_RGB ||
-                info.type == FRAME_VIDEO_YUV)
+        else if(ret == AVERROR_EOF)
         {
-            dequeue_packet(pdata->pq_video, &pkt);
+            pdata->file.file_finished = 1;
+            // TODO(Val): Mark file as finished
+            dbg_error("AVERROR(EOF)\n");
+            // NOTE(Val): Decoder flushed
+        }
+        else if(ret == AVERROR(EINVAL))
+        {
+            dbg_error("AVERROR(EINVAL)\n");
+            goto get_frame_failed;
+            // NOTE(Val): codec not opened, it is an encoder, or requires flush
+        }
+        else if(ret == AVERROR(ENOMEM))
+        {
+            dbg_error("AVERROR(ENOMEM)\n");
+            // NOTE(Val): No memory
+        }
+        else if(ret < 0)
+        {
+            dbg_error("Decoding error.\n");
+        }
+        else if(ret == 0)
+        {
+            dequeue_packet(queue, &pkt);
         }
         
-        goto send_packet;
-    }
-    else if(ret == AVERROR_EOF ||
-            ret == AVERROR(EINVAL) ||
-            ret == AVERROR(ENOMEM)) 
-    {
-        if(ret == AVERROR(EINVAL))
-            dbg_error("EINVAL\n");
-        else
-            dbg_error("Error sending a packet for decoding\n");
-        goto wt_decode_failed;
-    }
+        ret = avcodec_receive_frame(dec_ctx, frame);
+        dbg_info("avcodec_receive_frame\tret: %d\n", ret);
+        
+        if(ret == AVERROR(EAGAIN))
+        {
+            continue;
+            // NOTE(Val): This means a frame must be read before we can send another packet
+        }
+        //av_packet_unref(pkt);
+        else if(ret == AVERROR_EOF)
+        {
+            // TODO(Val): Mark file as finished.
+            dbg_warn("AVERROR_EOF\n");
+            goto get_frame_failed;
+        }
+        else if(ret == AVERROR(EINVAL))
+        {
+            dbg_warn("AVERROR(EINVAL)\n");
+            // NOTE(Val): codec not opened, it is an encoder, or requires flush
+            goto get_frame_failed;
+        }
+        else if(ret < 0)
+        {
+            dbg_error("Decoding error.\n");
+        }
+    } while(ret == AVERROR(EAGAIN) && pdata->running);
     
-    ret = avcodec_receive_frame(dec_ctx, frame);
-    if(ret == AVERROR(EAGAIN))
-    {
-        goto wt_decode_failed;
-    }
-    else if(ret == AVERROR(EINVAL))
-    {
-        dbg_error("AVERROR(EINVAL)\n");
-        goto wt_decode_failed;
-    }
-    else if(ret == AVERROR_EOF)
-    {
-        dbg_error("AVERROR_EOF\n");
-        // TODO(Val): End of file, do something here.
-        goto wt_decode_failed;
-    }
-    else 
-    {
-        info.frame = frame;
-    }
-    
-    av_packet_unref(pkt);
+    //av_packet_unref(pkt);
     info.ret = 0;
+    dbg_success("Returning from decoding.\n");
     return info;
     
-    wt_decode_failed:
+    get_frame_failed:
     av_packet_unref(pkt);
     av_frame_free(&frame);
     info.ret = -1;
     return info;
+    /*
+    send_packet:
+    // TODO(Val): This needs to be changed. Getting called here again would break.
+    if(ret == AVERROR(EAGAIN))
+    {
+    dbg_error("AVERROR(EAGAIN) returned.\n");
+    av_packet_unref(pkt);
+    
+    if(info.type == FRAME_AUDIO)
+    {
+    dequeue_packet(pdata->pq_audio, &pkt);
+    }
+    else if(info.type == FRAME_VIDEO_RGB ||
+    info.type == FRAME_VIDEO_YUV)
+    {
+    dequeue_packet(pdata->pq_video, &pkt);
+    }
+    
+    goto send_packet;
+    }
+    else if(ret == AVERROR_EOF ||
+    ret == AVERROR(EINVAL) ||
+    ret == AVERROR(ENOMEM)) 
+    {
+    if(ret == AVERROR(EINVAL))
+    dbg_error("EINVAL\n");
+    else
+    dbg_error("Error sending a packet for decoding\n");
+    goto wt_decode_failed;
+    }
+    else if(ret == 0)
+    {
+    dbg_success("avcodec_send_packet() succeeded.\n");
+    }
+    
+    if(ret == AVERROR(EAGAIN))
+    {
+    dbg_error("AVERROR(EAGAIN)\n");
+    
+    if(info.type == FRAME_AUDIO)
+    {
+    dequeue_packet(pdata->pq_audio, &pkt);
+    }
+    else if(info.type == FRAME_VIDEO_RGB ||
+    info.type == FRAME_VIDEO_YUV)
+    {
+    dequeue_packet(pdata->pq_video, &pkt);
+    }
+    
+    goto send_packet;
+    }
+    else if(ret == AVERROR(EINVAL))
+    {
+    dbg_error("AVERROR(EINVAL)\n");
+    goto wt_decode_failed;
+    }
+    else if(ret == AVERROR_EOF)
+    {
+    dbg_error("AVERROR_EOF\n");
+    // TODO(Val): End of file, do something here.
+    goto wt_decode_failed;
+    }
+    else 
+    {
+    info.frame = frame;
+    }
+    
+    return info;
+    */
 }
 
 static int32
@@ -244,7 +344,7 @@ file_open(open_file_info *file, decoder_info *decoder)
         }
         else //if(format_context->streams[video_stream]->codecpar->format == AV_PIX_FMT_RGB32)
         {
-            file->video_format = VIDEO_RGB;
+            file->video_format = VIDEO_YUV;
         }
         
         file->width = decoder->video_codec_context->width;
@@ -323,13 +423,12 @@ file_open(open_file_info *file, decoder_info *decoder)
             return -1;
         }
         
-        file->has_audio = 1;
-        
         file->sample_rate = decoder->audio_codec_context->sample_rate;
         file->bytes_per_sample = bytes_per_sample;
         file->channels = decoder->audio_codec_context->channels;
         file->sample_format = fmt;
         
+        file->has_audio = 1;
         //decoder->audio_time_base = decoder->audio_codec_context->framerate;
         
         decoder->audio_time_base = av_inv_q(decoder->format_context->streams[decoder->audio_stream]->avg_frame_rate);
@@ -359,13 +458,6 @@ global struct SwsContext* modifContext = NULL;
 static int32
 process_video_frame(program_data *pdata, struct frame_info info)
 {
-    /*
-    if(pdata->video.is_ready)
-    {
-        dbg_warn("Started processing a video frame, while the previous one hasn't been used.\n");
-        return -1;
-    }
-    */
     uint32 ret = 0;
     AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
@@ -375,122 +467,127 @@ process_video_frame(program_data *pdata, struct frame_info info)
     
     /*
     
-        if(pdata->running && info.type == FRAME_VIDEO_RGB)
-        {
-            modifContext = sws_getCachedContext(modifContext,
-                                                decoder->video_codec_context->width,
-                                                decoder->video_codec_context->height,
-                                                frame->format,
-                                                decoder->video_codec_context->width,  // dst width
-                                                decoder->video_codec_context->height, // dst height
-                                                //video_buffer->width,
-                                                //video_buffer->height,
-                                                AV_PIX_FMT_RGB32,
-                                                SWS_BICUBIC,
-                                                NULL, NULL, NULL);
-                                                
-            int32 pitch = round_up_align(decoder->video_codec_context->width *
-                                         av_get_bits_per_pixel(
-                av_pix_fmt_desc_get(
-                decoder->video_codec_context->pix_fmt)));
-                
-            // TODO(Val): This malloc is wrong. Better to allocate buffer
-            // before, and then reuse it and free at the end.
-            void *temp_buffer = malloc(pitch * decoder->video_codec_context->height);
-            uint8_t *ptrs[1] = { temp_buffer };
-            int stride[1] = { pitch };
-            
-            sws_scale(modifContext,
-                      (uint8 const* const*)frame->data,
-                      frame->linesize,
-                      0,
-                      decoder->video_codec_context->height,
-                      (uint8 *const *const)ptrs,
-                      stride);
-                      
-            pdata->video.video_frame = temp_buffer;
-            pdata->video.time = frame->pts;
-            //pdata->video.duration = frame->duration;
-            pdata->video.pitch = stride[0];
-            pdata->video.width = frame->width;
-            pdata->video.height = frame->height;
-            pdata->video.type = VIDEO_RGB;
-            pdata->video.is_ready = 1;
-            
-            //while(pdata->running && (enqueue_frame(&pdata->vq_data, temp_buffer, pdata->vq_data.vq_pitch, frame->pts) < 0))
-            //{
-                //SDL_Delay((int32)pdata->file.target_time);
-            //}
-            //free(temp_buffer);
-        //}
-        else if(pdata->running && info.type == FRAME_VIDEO_YUV)
-        {
-            dbg_print("linesize[0] = %d\n"
-                      "linesize[1] = %d\n"
-                      "linesize[2] = %d\n"
-                      "width = %d\n"
-                      "height = %d\n",
-                      frame->linesize[0],
-                      frame->linesize[1],
-                      frame->linesize[2],
-                      frame->width,
-                      frame->height);
-                      
-            int32 pitch_Y = round_up_align(frame->width *
-                                           av_get_bits_per_pixel(
-                av_pix_fmt_desc_get(
-                frame->format)));
-            int32 pitch_U = round_up_align((frame->width+1)/2 *
-                                           av_get_bits_per_pixel(
-                av_pix_fmt_desc_get(
-                frame->format)));
-            int32 pitch_V = round_up_align((frame->width+1)/2 *
-                                           av_get_bits_per_pixel(
-                av_pix_fmt_desc_get(
-                frame->format)));
-                
-            void *frame_Y = malloc(pitch_Y * frame->height);
-            void *frame_U = malloc(pitch_U * (frame->height+1)/2);
-            void *frame_V = malloc(pitch_V * (frame->height+1)/2);
-            
-            copy_pixel_buffers(frame_Y, frame->data[0], pitch_Y, frame->linesize[0], frame->height);
-            copy_pixel_buffers(frame_U, frame->data[1], pitch_U, frame->linesize[1], (frame->height+1)/2);
-            copy_pixel_buffers(frame_V, frame->data[2], pitch_V, frame->linesize[2], (frame->height+1)/2);
-            
-            pdata->video.video_frame = frame_Y;
-            pdata->video.video_frame_sup1 = frame_U;
-            pdata->video.video_frame_sup2 = frame_V;
-            
-            pdata->video.time = frame->pts;
-            //pdata->video.duration = frame->duration;
-            
-            pdata->video.pitch = pitch_Y;
-            pdata->video.pitch_sup1 = pitch_U;
-            pdata->video.pitch_sup2 = pitch_V;
-            
-            pdata->video.width = frame->width;
-            pdata->video.height = frame->height;
-            pdata->video.type = VIDEO_YUV;
-            pdata->video.is_ready = 1;
-            
-            //while(pdata->running && (enqueue_frame_YUV(&pdata->vq_data,
-            //frame->data[0],
-            //frame->linesize[0],
-            //frame->data[1],
-            //frame->linesize[1],
-            //frame->data[2],
-            //frame->linesize[2],
-            //frame->pts)))
-            //{
-            //SDL_Delay((int32)pdata->file.target_time);
-            //}
-            //
-        //}
-        //else
-        //{
-            //dbg_error("Unknown video frame type.\n");
-        //}
-        */
+    if(pdata->running && info.type == FRAME_VIDEO_RGB)
+    {
+    modifContext = sws_getCachedContext(modifContext,
+    decoder->video_codec_context->width,
+    decoder->video_codec_context->height,
+    frame->format,
+    decoder->video_codec_context->width,  // dst width
+    decoder->video_codec_context->height, // dst height
+    //video_buffer->width,
+    //video_buffer->height,
+    AV_PIX_FMT_RGB32,
+    SWS_BICUBIC,
+    NULL, NULL, NULL);
+    
+    int32 pitch = round_up_align(decoder->video_codec_context->width *
+    av_get_bits_per_pixel(
+    av_pix_fmt_desc_get(
+    decoder->video_codec_context->pix_fmt)));
+    
+    // TODO(Val): This malloc is wrong. Better to allocate buffer
+    // before, and then reuse it and free at the end.
+    void *temp_buffer = malloc(pitch * decoder->video_codec_context->height);
+    uint8_t *ptrs[1] = { temp_buffer };
+    int stride[1] = { pitch };
+    
+    sws_scale(modifContext,
+    (uint8 const* const*)frame->data,
+    frame->linesize,
+    0,
+    decoder->video_codec_context->height,
+    (uint8 *const *const)ptrs,
+    stride);
+    
+    pdata->video.video_frame = temp_buffer;
+    pdata->video.time = frame->pts;
+    //pdata->video.duration = frame->duration;
+    pdata->video.pitch = stride[0];
+    pdata->video.width = frame->width;
+    pdata->video.height = frame->height;
+    pdata->video.type = VIDEO_RGB;
+    pdata->video.is_ready = 1;
+    
+    //while(pdata->running && (enqueue_frame(&pdata->vq_data, temp_buffer, pdata->vq_data.vq_pitch, frame->pts) < 0))
+    //{
+    //SDL_Delay((int32)pdata->file.target_time);
+    //}
+    //free(temp_buffer);
+    //}
+    else if(pdata->running && info.type == FRAME_VIDEO_YUV)
+    {
+    dbg_print("linesize[0] = %d\n"
+    "linesize[1] = %d\n"
+    "linesize[2] = %d\n"
+    "width = %d\n"
+    "height = %d\n",
+    frame->linesize[0],
+    frame->linesize[1],
+    frame->linesize[2],
+    frame->width,
+    frame->height);
+    
+    int32 pitch_Y = round_up_align(frame->width *
+    av_get_bits_per_pixel(
+    av_pix_fmt_desc_get(
+    frame->format)));
+    int32 pitch_U = round_up_align((frame->width+1)/2 *
+    av_get_bits_per_pixel(
+    av_pix_fmt_desc_get(
+    frame->format)));
+    int32 pitch_V = round_up_align((frame->width+1)/2 *
+    av_get_bits_per_pixel(
+    av_pix_fmt_desc_get(
+    frame->format)));
+    
+    void *frame_Y = malloc(pitch_Y * frame->height);
+    void *frame_U = malloc(pitch_U * (frame->height+1)/2);
+    void *frame_V = malloc(pitch_V * (frame->height+1)/2);
+    
+    copy_pixel_buffers(frame_Y, frame->data[0], pitch_Y, frame->linesize[0], frame->height);
+    copy_pixel_buffers(frame_U, frame->data[1], pitch_U, frame->linesize[1], (frame->height+1)/2);
+    copy_pixel_buffers(frame_V, frame->data[2], pitch_V, frame->linesize[2], (frame->height+1)/2);
+    
+    pdata->video.video_frame = frame_Y;
+    pdata->video.video_frame_sup1 = frame_U;
+    pdata->video.video_frame_sup2 = frame_V;
+    
+    pdata->video.time = frame->pts;
+    //pdata->video.duration = frame->duration;
+    
+    pdata->video.pitch = pitch_Y;
+    pdata->video.pitch_sup1 = pitch_U;
+    pdata->video.pitch_sup2 = pitch_V;
+    
+    pdata->video.width = frame->width;
+    pdata->video.height = frame->height;
+    pdata->video.type = VIDEO_YUV;
+    pdata->video.is_ready = 1;
+    
+    //while(pdata->running && (enqueue_frame_YUV(&pdata->vq_data,
+    //frame->data[0],
+    //frame->linesize[0],
+    //frame->data[1],
+    //frame->linesize[1],
+    //frame->data[2],
+    //frame->linesize[2],
+    //frame->pts)))
+    //{
+    //SDL_Delay((int32)pdata->file.target_time);
+    //}
+    //
+    //}
+    //else
+    //{
+    //dbg_error("Unknown video frame type.\n");
+    //}
+    */
+    
+    dbg_warn("frame->format: %d\n"
+             "new format   : %d\n",
+             frame->format,
+             AV_PIX_FMT_YUV420P);
     
     modifContext = sws_getCachedContext(modifContext,
                                         decoder->video_codec_context->width,
@@ -503,7 +600,6 @@ process_video_frame(program_data *pdata, struct frame_info info)
                                         AV_PIX_FMT_YUV420P,
                                         SWS_BICUBIC,
                                         NULL, NULL, NULL);
-    
     
     int32 pitch_Y = round_up_align(frame->width *
                                    av_get_bits_per_pixel(
@@ -669,7 +765,6 @@ process_audio_frame(program_data *pdata, struct frame_info info)
 
 #define SLEEP_DURATION 5
 
-
 // decoding loop, only here temporarily
 
 static void
@@ -697,6 +792,8 @@ SortPackets(program_data *pdata)
         {
             dbg_info("Discarded unknown packet.\n");
         }
+        
+        pkt = NULL;
         //av_packet_unref(&pkt);
     }
 }
@@ -704,10 +801,11 @@ SortPackets(program_data *pdata)
 static void
 LoadPackets(program_data *pdata)
 {
-    AVPacket *pkt = av_packet_alloc();
-    
-    while(!pq_is_full(pdata->pq_main)) // TODO(Val): check if there are no more packets to load (EOF)
+    while(!pq_is_full(pdata->pq_main) &&
+          !pdata->file.file_finished) // TODO(Val): check if there are no more packets to load (EOF)
     {
+        AVPacket *pkt = av_packet_alloc();
+        
         int ret = get_packet(pdata, pkt);
         
         if(ret >= 0)
@@ -718,9 +816,12 @@ LoadPackets(program_data *pdata)
         else
         {
             dbg_error("get_packet() failed.\n");
-            return;
+            break;
         }
     }
+    
+    if(pq_is_empty(pdata->pq_main))
+        pdata->file.file_finished = 1;
 }
 
 static void
@@ -771,12 +872,12 @@ close_queues(program_data *pdata)
     {
         if(file->video_format == VIDEO_YUV)
         {
-            dbg_info("Initializing YUV queue.\n");
+            dbg_info("Closing YUV queue.\n");
             //close_video_queue_YUV(&pdata->vq_data);
         }
         else
         {
-            dbg_info("Initializing RGB queue.\n");
+            dbg_info("Closing RGB queue.\n");
             //close_video_queue(&pdata->vq_data);
         }
     }
@@ -804,90 +905,151 @@ DecodingThreadStart(void *ptr)
     int ret = file_open(&pdata->file, &pdata->decoder);
     if(ret < 0)
     {
-        pdata->file.open_failed = 1;
-        
-        return -1;
-    }
+    pdata->file.open_failed = 1;
     
+    return -1;
+    }
+    */
     // TODO(Val): Should this maybe be done in the main thread?
     //init_queues(pdata);
-    */
+    
     LoadPackets(pdata);
+    //print_packets(pdata->pq_main, pdata);
+    //print_packets(pdata->pq_video, pdata);
+    //print_packets(pdata->pq_audio, pdata);
+    
     SortPackets(pdata);
+    //print_packets(pdata->pq_main, pdata);
+    //print_packets(pdata->pq_video, pdata);
+    //print_packets(pdata->pq_audio, pdata);
     
     pdata->start_playback = 1;
     
-    while(pdata->running)
+    while(pdata->running && !pdata->playback_finished)
     {
-        LoadPackets(pdata);
-        SortPackets(pdata);
-        
-        if(!pq_is_empty(pdata->pq_audio) &&
-           !pq_is_empty(pdata->pq_video))
+        dbg_success("Processing loop start.\n");
+        if(!pdata->audio.is_ready)
         {
-            dbg_info("!pq_is_empty()\n");
-            AVPacket* pkt[2];
-            int32 ret0 = peek_packet(pdata->pq_audio, &pkt[0], 0);
-            int32 ret1 = peek_packet(pdata->pq_video, &pkt[1], 0);
-            
-            int32 soonest_dts = -1;
-            if(!ret0 && !ret1)
+            dbg_success("Audio not marked ready.\n");
+            if(!pq_is_empty(pdata->pq_audio))
             {
-                soonest_dts = pkt[0]->pts < pkt[1]->pts ?
-                    (pkt[0]->pts != AV_NOPTS_VALUE ? 0 : -1) :
-                (pkt[1]->pts != AV_NOPTS_VALUE ? 1 : -1);
-            }
-            else if(!ret0)
-            {
-                soonest_dts = 0;
-            }
-            else if(!ret1)
-            {
-                soonest_dts = 1;
-            }
-            
-            // TODO(Val): check that packets are valid (or existed)
-            
-            if(soonest_dts != -1)
-            {
-                dbg_print("pkt[0].pts = %ld\n"
-                          "pkt[1].pts = %ld\n"
-                          "AV_NOPTS_VALUE = %ld\n",
-                          pkt[0]->pts,
-                          pkt[1]->pts,
-                          AV_NOPTS_VALUE);
-                AVPacket* packet;
-                avpacket_queue *queue = soonest_dts ? pdata->pq_video : pdata->pq_audio; 
-                dequeue_packet(queue, &packet);
+                dbg_success("Audio packets not empty, starting to process.\n");
                 
-                dbg_print("dts: %ld\n", packet->dts);
+                struct frame_info f = get_frame(pdata, pdata->decoder.audio_stream);
                 
-                struct frame_info f = wt_decode(pdata, packet);
-                
-                if(f.type == FRAME_AUDIO &&
-                   !pdata->audio.is_ready)
+                if(f.ret != -1)
                 {
+                    dbg_success("Processing audio.\n");
+                    
                     process_audio_frame(pdata, f);
+                    av_frame_free(&f.frame);
                 }
-                else if((f.type == FRAME_VIDEO_YUV ||
-                         f.type == FRAME_VIDEO_RGB) &&
-                        !pdata->video.is_ready)
-                {
-                    process_video_frame(pdata, f);
-                }
-                else
-                {
-                    dbg_error("Unknown frame type.\n");
-                }
-                
-                av_frame_free(&f.frame);
             }
-            
-            PlatformSleep(33);
         }
+        
+        if(!pdata->video.is_ready)
+        {
+            dbg_success("Video not marked ready.\n");
+            if(!pq_is_empty(pdata->pq_video))
+            {
+                //AVPacket *packet;
+                //dequeue_packet(pdata->pq_video, &packet);
+                dbg_success("Video packets not empty, starting to process.\n");
+                
+                struct frame_info f = get_frame(pdata, pdata->decoder.video_stream);
+                
+                dbg_info("frame type: %d\n", f.frame->format); 
+                
+                if(f.ret != -1)
+                {
+                    dbg_success("Processing video.\n");
+                    
+                    process_video_frame(pdata, f);
+                    av_frame_free(&f.frame);
+                }
+            }
+        }
+        
+        LoadPackets(pdata);
+        //print_packets(pdata->pq_main, pdata);
+        //print_packets(pdata->pq_video, pdata);
+        //print_packets(pdata->pq_audio, pdata);
+        
+        SortPackets(pdata);
+        //print_packets(pdata->pq_main, pdata);
+        //print_packets(pdata->pq_video, pdata);
+        //print_packets(pdata->pq_audio, pdata);
+        
+        if(pq_is_empty(pdata->pq_video) && pq_is_empty(pdata->pq_audio))
+            pdata->playback_finished = 1;
+        else
+            PlatformSleep(10);
+    }
+    /*
+    
+    if(!pq_is_empty(pdata->pq_audio) &&
+    !pq_is_empty(pdata->pq_video))
+    {
+    dbg_info("!pq_is_empty()\n");
+    AVPacket* pkt[2];
+    int32 ret0 = peek_packet(pdata->pq_audio, &pkt[0], 0);
+    int32 ret1 = peek_packet(pdata->pq_video, &pkt[1], 0);
+    
+    int32 soonest_dts = -1;
+    if(!ret0 && !ret1)
+    {
+    soonest_dts = pkt[0]->pts < pkt[1]->pts ?
+    (pkt[0]->pts != AV_NOPTS_VALUE ? 0 : -1) :
+    (pkt[1]->pts != AV_NOPTS_VALUE ? 1 : -1);
+    }
+    else if(!ret0)
+    {
+    soonest_dts = 0;
+    }
+    else if(!ret1)
+    {
+    soonest_dts = 1;
     }
     
-    close_queues(pdata);
+    // TODO(Val): check that packets are valid (or existed)
+    
+    if(soonest_dts != -1)
+    {
+    dbg_print("pkt[0].pts = %ld\n"
+    "pkt[1].pts = %ld\n"
+    "AV_NOPTS_VALUE = %ld\n",
+    pkt[0]->pts,
+    pkt[1]->pts,
+    AV_NOPTS_VALUE);
+    AVPacket* packet;
+    avpacket_queue *queue = soonest_dts ? pdata->pq_video : pdata->pq_audio; 
+    dequeue_packet(queue, &packet);
+    
+    dbg_print("dts: %ld\n", packet->dts);
+    
+    struct frame_info f = wt_decode(pdata, packet);
+    
+    if(f.type == FRAME_AUDIO &&
+    !pdata->audio.is_ready)
+    {
+    process_audio_frame(pdata, f);
+    }
+    else if((f.type == FRAME_VIDEO_YUV ||
+    f.type == FRAME_VIDEO_RGB) &&
+    !pdata->video.is_ready)
+    {
+    process_video_frame(pdata, f);
+    }
+    else
+    {
+    dbg_error("Unknown frame type.\n");
+    }
+    
+    av_frame_free(&f.frame);
+    }
+    
+    PlatformSleep(33);
+    */
     
     return 0;
 }

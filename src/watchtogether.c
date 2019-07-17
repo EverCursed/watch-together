@@ -74,8 +74,7 @@ MainLoop(program_data *pdata)
         if(pdata->start_playback)
         {
             playback_start = current_frame_time;
-            current_video_frame_time = current_frame_time;
-            next_video_frame_time = current_video_frame_time + 1000.0f*av_q2d(pdata->decoder.video_time_base);
+            next_video_frame_time = next_frame_time + 1000.0f*av_q2d(pdata->decoder.video_time_base);
             aggregated_pause_time = 0.0f;
             
             pdata->start_playback = 0;
@@ -132,9 +131,9 @@ MainLoop(program_data *pdata)
         
         if(pdata->playing)
         {
-            if(next_video_frame_time <= next_frame_time - MS_SAFETY_MARGIN)
+            if(next_video_frame_time >= next_frame_time - MS_SAFETY_MARGIN)
             {
-                dbg_info("next_video_frame_time <= next_frame_time - MS_SAFETY_MARGIN\n");
+                //dbg_info("next_video_frame_time <= next_frame_time - MS_SAFETY_MARGIN\n");
                 if(pdata->video.is_ready)
                 {
                     dbg_success("pdata->video.is_ready\n");
@@ -154,6 +153,16 @@ MainLoop(program_data *pdata)
                 {
                     dbg_warn("Video is not ready.\n");
                     // TODO(Val): skip this frame
+                }
+                
+                if(pdata->audio.is_ready)
+                {
+                    
+                    pdata->audio.is_ready = 0;
+                }
+                else
+                {
+                    dbg_warn("Audio is not ready.\n");
                 }
             }
         }
@@ -179,7 +188,7 @@ TogglePlayback(program_data *pdata)
     PlatformPauseAudio(pdata->paused);
 }
 
-#define PACKET_QUEUE_SIZE 120
+#define PACKET_QUEUE_SIZE 20
 static int32
 MainThread(program_data *pdata)
 {

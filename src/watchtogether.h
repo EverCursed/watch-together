@@ -261,6 +261,8 @@ typedef struct _open_file_info {
     bool32 file_opened;        // signals that the file was successfully opened
     bool32 file_ready;         // // TODO(Val): signals that the data is ready to be displayed
     bool32 open_failed;        // signals that opening the file failed
+    
+    volatile bool32 file_finished;
     // TODO(Val): audio format
 } open_file_info;
 
@@ -360,6 +362,7 @@ typedef struct _program_data {
     volatile bool32 playing;
     volatile bool32 paused;
     volatile bool32 start_playback;
+    volatile bool32 playback_finished;
 } program_data;
 
 static int32 MainLoop(program_data  *);
