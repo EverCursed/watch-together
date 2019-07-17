@@ -279,9 +279,6 @@ PlatformUpdateFrame(program_data *pdata)
     SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
     
     SDL_RenderPresent(renderer);
-    
-    pdata->video.is_ready = 0;
-    
     return 0;
 }
 

@@ -145,6 +145,8 @@ MainLoop(program_data *pdata)
                     free(pdata->video.video_frame_sup1);
                     free(pdata->video.video_frame_sup2);
                     
+                    pdata->video.is_ready = 0;
+                    
                     current_video_frame_time = next_video_frame_time;
                     next_video_frame_time += 1000.0f*av_q2d(pdata->decoder.video_time_base);
                 }
