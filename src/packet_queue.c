@@ -50,7 +50,7 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
     dbg_info("Enqueueing packet.\n");
     dbg_packet(packet);
     
-    *(queue->array+queue->end) = packet;
+    queue->array[queue->end] = packet;
     queue->n++;
     queue->end = (queue->end + 1) % queue->maxn;
     
@@ -97,7 +97,7 @@ peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)
     
     int index_t = (queue->next + nth) % queue->maxn;
     
-    *packet = *(queue->array + index_t);
+    *packet = queue->array[index_t];
     
     return 0;
 }
@@ -119,6 +119,7 @@ clear_avpacket_queue(avpacket_queue *queue)
     return 0;
 }
 
+// TODO(Val): Make this take a reference to a pointer and set it to NULL afterwards
 static int32
 close_avpacket_queue(avpacket_queue *queue)
 {

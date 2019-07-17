@@ -245,7 +245,6 @@ typedef struct _open_file_info {
     
     uint32 width;
     uint32 height;
-    uint32 pitch;
     uint32 video_format;
     real32 fps;
     real32 target_time;
@@ -266,7 +265,7 @@ typedef struct _open_file_info {
 } open_file_info;
 
 typedef struct _avpacket_queue {
-    AVPacket *buffer;
+    //AVPacket *buffer;
     AVPacket **array;
     SDL_mutex *mutex;
     int32 maxn;  // max number of packets
