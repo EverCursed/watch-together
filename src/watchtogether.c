@@ -132,6 +132,13 @@ MainLoop(program_data *pdata)
                         if(pdata->volume < 0.0f) pdata->volume = 0.0f;
                     }
                 }
+                case KB_ENTER:
+                {
+                    if(e.pressed && e.alt)
+                    {
+                        PlatformToggleFullscreen(pdata);
+                    }
+                }
             }
         }
         pdata->input.keyboard.n = 0;

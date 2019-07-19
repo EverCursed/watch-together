@@ -359,6 +359,8 @@ typedef struct _program_data {
     uint32 audio_format;
     uint32 tick;
     
+    bool32 is_fullscreen;
+    
     volatile bool32 running;
     volatile bool32 playing;
     volatile bool32 paused;

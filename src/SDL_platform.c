@@ -311,6 +311,12 @@ PlatformInitVideo(program_data *pdata)
     SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
 }
 
+static void
+PlatformToggleFullscreen(program_data *pdata)
+{
+    SDL_SetWindowFullscreen(window, pdata->is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+}
+
 static inline void add_key(input_struct *input,
                            uint32 key,
                            bool32 shift,

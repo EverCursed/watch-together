@@ -31,4 +31,6 @@ PlatformCloseAudio(program_data *);
 static void
 PlatformInitVideo(program_data *);
 
+static void
+PlatformToggleFullscreen(program_data *);
 #endif
