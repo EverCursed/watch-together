@@ -774,12 +774,15 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     }
     
     pdata->audio.buffer = data;
-    pdata->audio.time = frame->pts;
-    //pdata->audio.duration = frame->duration;
+    //pdata->audio.time = frame->pts;
     pdata->audio.size = real_size;
-    pdata->audio.pts = frame->pts * av_q2d(pdata->decoder.audio_time_base); 
+    //pdata->audio.
+    pdata->audio.duration = (real64)SampleCount / (real64)Frequency;
+    dbg_info("Audio frame duration: %lf\n", pdata->audio.duration);
     
-    dbg_info("Audio pts: %lf\n", pdata->audio.pts);
+    //pdata->audio.pts = frame->pts * av_q2d(pdata->decoder.audio_time_base); 
+    
+    //dbg_info("Audio pts: %lf\n", pdata->audio.pts);
     
     pdata->audio.is_ready = 1;
     /*

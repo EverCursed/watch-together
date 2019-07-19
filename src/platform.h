@@ -33,4 +33,8 @@ PlatformInitVideo(program_data *);
 
 static void
 PlatformToggleFullscreen(program_data *);
+
+static int32
+PlatformQueueAudio(output_audio *);
+
 #endif

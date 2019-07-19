@@ -211,8 +211,6 @@ typedef struct _client_info {
 
 typedef struct _output_audio {
     void *buffer;
-    int64 time; // when this should be copied over
-    int64 duration;
     AVRational time_base;
     uint32 sample_rate;
     uint32 bytes_per_sample;
@@ -221,6 +219,7 @@ typedef struct _output_audio {
     uint32 size;
     volatile bool32 is_ready;
     real64 pts;
+    real64 duration;
 } output_audio;
 
 #define VIDEO_RGB 1

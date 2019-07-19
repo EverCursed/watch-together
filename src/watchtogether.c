@@ -184,6 +184,8 @@ MainLoop(program_data *pdata)
             
             if(pdata->audio.is_ready)
             {
+                PlatformQueueAudio(&pdata->audio);
+                free(pdata->audio.buffer);
                 
                 pdata->audio.is_ready = 0;
             }
@@ -198,7 +200,6 @@ MainLoop(program_data *pdata)
         dbg_print("Loop time: %d\n", time_end - time_start);
         dbg_info("PlatformSleep(%lf)\n", next_frame_time - PlatformGetTime());
         PlatformSleep(next_frame_time - PlatformGetTime());
-        
         
         current_frame_time = next_frame_time;
         next_frame_time += REFRESH_RATE;
@@ -239,7 +240,6 @@ MainThread(program_data *pdata)
     PlatformWaitThread(pdata->threads.decoder_thread, NULL);
     
     PlatformCloseAudio(pdata);
-    
     
     close_avpacket_queue(pdata->pq_audio);
     close_avpacket_queue(pdata->pq_video);
