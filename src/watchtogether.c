@@ -71,6 +71,8 @@ MainLoop(program_data *pdata)
                   next_video_frame_time,
                   pdata->tick);
         
+        time_start = PlatformGetTime();
+        
         if(pdata->file.open_failed)
         {
             pdata->file.open_failed = 0;
@@ -196,7 +198,6 @@ MainLoop(program_data *pdata)
         PlatformSleep(next_frame_time - PlatformGetTime() - MS_SAFETY_MARGIN);
         
         dbg_print("Loop time: %d\n", time_end - time_start);
-        time_start = time_end;
         
         current_frame_time = next_frame_time;
         next_frame_time += REFRESH_RATE;
