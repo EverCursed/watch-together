@@ -315,6 +315,7 @@ static void
 PlatformToggleFullscreen(program_data *pdata)
 {
     SDL_SetWindowFullscreen(window, pdata->is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+    pdata->is_fullscreen = !pdata->is_fullscreen;
 }
 
 static inline void add_key(input_struct *input,
