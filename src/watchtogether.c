@@ -31,6 +31,7 @@ should_display(real64 display_time, real64 next_frame_time)
 {
     // TODO(Val): This might need to be more elaborate
     return (display_time < next_frame_time);
+    //&& (display_time >= next_frame_time - video_frame_duration);
 }
 
 static int32
@@ -139,29 +140,36 @@ MainLoop(program_data *pdata)
         
         if(pdata->playing)
         {
-            if(pdata->video.is_ready &&
-               should_display(pdata->video.pts, next_frame_time))
+            if(pdata->video.is_ready)
             {
-                //dbg_info("next_video_frame_time <= next_frame_time - MS_SAFETY_MARGIN\n");
-                if(pdata->video.is_ready)
+                dbg_warn("video.pts: %lf\n", pdata->video.pts);
+                if(should_display(pdata->video.pts*1000.0f, (next_frame_time - playback_start)))
                 {
-                    dbg_success("pdata->video.is_ready\n");
-                    // TODO(Val): update video frame;
-                    PlatformUpdateFrame(pdata);
-                    
-                    free(pdata->video.video_frame);
-                    free(pdata->video.video_frame_sup1);
-                    free(pdata->video.video_frame_sup2);
-                    
-                    pdata->video.is_ready = 0;
-                    
-                    current_video_frame_time = next_video_frame_time;
-                    next_video_frame_time += 1000.0f*av_q2d(pdata->decoder.video_time_base);
+                    //dbg_info("next_video_frame_time <= next_frame_time - MS_SAFETY_MARGIN\n");
+                    if(pdata->video.is_ready)
+                    {
+                        dbg_success("pdata->video.is_ready\n");
+                        // TODO(Val): update video frame;
+                        PlatformUpdateFrame(pdata);
+                        
+                        free(pdata->video.video_frame);
+                        free(pdata->video.video_frame_sup1);
+                        free(pdata->video.video_frame_sup2);
+                        
+                        pdata->video.is_ready = 0;
+                        
+                        current_video_frame_time = next_video_frame_time;
+                        next_video_frame_time += 1000.0f*av_q2d(pdata->decoder.video_time_base);
+                    }
+                    else
+                    {
+                        dbg_warn("Video was not ready.\n");
+                        // TODO(Val): skip this frame
+                    }
                 }
                 else
                 {
-                    dbg_warn("Video was not ready.\n");
-                    // TODO(Val): skip this frame
+                    
                 }
             }
             
@@ -174,8 +182,6 @@ MainLoop(program_data *pdata)
             {
                 dbg_warn("Audio is not ready.\n");
             }
-            
-            
         }
         
         time_end = PlatformGetTime();

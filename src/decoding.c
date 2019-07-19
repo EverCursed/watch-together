@@ -356,7 +356,8 @@ file_open(open_file_info *file, decoder_info *decoder)
         
         file->has_video = 1;
         
-        decoder->video_time_base = av_inv_q(decoder->format_context->streams[decoder->video_stream]->avg_frame_rate);
+        decoder->video_time_base = //av_inv_q(
+            decoder->format_context->streams[decoder->video_stream]->time_base;
         //file->video_stream = decoder->video_stream;
         //file->video_time_base = decoder->format_context->streams[video_stream].time_base;
     }
@@ -994,6 +995,10 @@ DecodingThreadStart(void *ptr)
                     
                     process_video_frame(pdata, f);
                     av_frame_free(&f.frame);
+                }
+                else
+                {
+                    dbg_error("get_frame failed.\n");
                 }
             }
         }

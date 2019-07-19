@@ -307,7 +307,7 @@ PlatformInitVideo(program_data *pdata)
                                                pdata->file.height);
     }
     
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
     SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
 }
 
