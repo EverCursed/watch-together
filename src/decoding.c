@@ -637,7 +637,7 @@ process_video_frame(program_data *pdata, struct frame_info info)
     pdata->video.video_frame_sup1 = frame_U;
     pdata->video.video_frame_sup2 = frame_V;
     
-    pdata->video.time = frame->pts;
+    //pdata->video.time = frame->pts;
     //pdata->video.duration = frame->duration;
     
     pdata->video.pitch = pitch_Y;
@@ -647,6 +647,9 @@ process_video_frame(program_data *pdata, struct frame_info info)
     pdata->video.width = frame->width;
     pdata->video.height = frame->height;
     pdata->video.type = VIDEO_YUV;
+    pdata->video.pts = frame->pts * av_q2d(pdata->decoder.video_time_base); 
+    dbg_info("Video pts: %lf\n", pdata->video.pts);
+    
     pdata->video.is_ready = 1;
     
     /*
@@ -752,6 +755,10 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     pdata->audio.time = frame->pts;
     //pdata->audio.duration = frame->duration;
     pdata->audio.size = real_size;
+    pdata->audio.pts = frame->pts * av_q2d(pdata->decoder.audio_time_base); 
+    
+    dbg_info("Audio pts: %lf\n", pdata->audio.pts);
+    
     pdata->audio.is_ready = 1;
     /*
     while(pdata->running && (enqueue_audio_bytes(&pdata->aq_data, data, size) < 0))

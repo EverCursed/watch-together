@@ -220,6 +220,7 @@ typedef struct _output_audio {
     uint32 sample_format;
     uint32 size;
     volatile bool32 is_ready;
+    real64 pts;
 } output_audio;
 
 #define VIDEO_RGB 1
@@ -229,7 +230,6 @@ typedef struct _ouput_video {
     void *video_frame;
     void *video_frame_sup1;
     void *video_frame_sup2;
-    int64 time; // when this should be copied over
     AVRational framerate;
     uint32 pitch;
     uint32 pitch_sup1;
@@ -238,6 +238,7 @@ typedef struct _ouput_video {
     uint32 height;
     int32 type;
     volatile bool32 is_ready;
+    real64 pts;
 } output_video;
 
 typedef struct _open_file_info {

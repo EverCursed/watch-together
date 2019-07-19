@@ -16,6 +16,7 @@
 // TODO(Val): Test a variety of these, and see how long it's possible to go
 // NOTE(Val): This will directly affect our maximum refresh rate. 
 #define MS_SAFETY_MARGIN 2.0f
+#define DECODE_TIME 16.6666666666f
 
 static real32
 get_timestamp(int64 time, AVRational time_base)
@@ -23,6 +24,13 @@ get_timestamp(int64 time, AVRational time_base)
     dbg_print("time: %ld\t\ttime_base: %d/%d\n", time, time_base.num, time_base.den);
     
     return (real32)time*(real32)time_base.num/(real32)time_base.den;
+}
+
+inline static bool32
+should_display(real64 display_time, real64 next_frame_time)
+{
+    // TODO(Val): This might need to be more elaborate
+    return (display_time < next_frame_time);
 }
 
 static int32
@@ -131,7 +139,8 @@ MainLoop(program_data *pdata)
         
         if(pdata->playing)
         {
-            if(next_video_frame_time >= next_frame_time - MS_SAFETY_MARGIN)
+            if(pdata->video.is_ready &&
+               should_display(pdata->video.pts, next_frame_time))
             {
                 //dbg_info("next_video_frame_time <= next_frame_time - MS_SAFETY_MARGIN\n");
                 if(pdata->video.is_ready)
@@ -151,20 +160,22 @@ MainLoop(program_data *pdata)
                 }
                 else
                 {
-                    dbg_warn("Video is not ready.\n");
+                    dbg_warn("Video was not ready.\n");
                     // TODO(Val): skip this frame
                 }
-                
-                if(pdata->audio.is_ready)
-                {
-                    
-                    pdata->audio.is_ready = 0;
-                }
-                else
-                {
-                    dbg_warn("Audio is not ready.\n");
-                }
             }
+            
+            if(pdata->audio.is_ready)
+            {
+                
+                pdata->audio.is_ready = 0;
+            }
+            else
+            {
+                dbg_warn("Audio is not ready.\n");
+            }
+            
+            
         }
         
         time_end = PlatformGetTime();
