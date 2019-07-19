@@ -195,9 +195,10 @@ MainLoop(program_data *pdata)
         
         time_end = PlatformGetTime();
         
-        PlatformSleep(next_frame_time - PlatformGetTime() - MS_SAFETY_MARGIN);
-        
         dbg_print("Loop time: %d\n", time_end - time_start);
+        dbg_info("PlatformSleep(%lf)\n", next_frame_time - PlatformGetTime());
+        PlatformSleep(next_frame_time - PlatformGetTime());
+        
         
         current_frame_time = next_frame_time;
         next_frame_time += REFRESH_RATE;
