@@ -44,13 +44,6 @@ blit_frame(program_data *pdata)
                                        video->video_frame, video->pitch,
                                        video->video_frame_sup1, video->pitch_sup1,
                                        video->video_frame_sup2, video->pitch_sup2);
-        free(video->video_frame);
-        free(video->video_frame_sup1);
-        free(video->video_frame_sup2);
-        
-        video->video_frame = NULL;
-        video->video_frame_sup1 = NULL;
-        video->video_frame_sup2 = NULL;
         
         if(ret < 0)
             goto error;
@@ -68,10 +61,21 @@ blit_frame(program_data *pdata)
         dbg_error("Video output frame not initialized?");
     }
     
+    
+    returning:
+    free(video->video_frame);
+    free(video->video_frame_sup1);
+    free(video->video_frame_sup2);
+    
+    video->video_frame = NULL;
+    video->video_frame_sup1 = NULL;
+    video->video_frame_sup2 = NULL;
+    
     return;
     
     error:
     dbg_error("%s\n", SDL_GetError());
+    goto returning;
 }
 
 /*
@@ -293,8 +297,9 @@ PlatformInitVideo(program_data *pdata)
                                                pdata->file.width,
                                                pdata->file.height);
     }
-    else if(pdata->video.type == VIDEO_YUV)
+    else if(pdata->file.video_format = VIDEO_YUV)
     {
+        dbg_error("Texture getting initialized.\n");
         background_texture = SDL_CreateTexture(renderer, 
                                                SDL_PIXELFORMAT_IYUV,
                                                SDL_TEXTUREACCESS_STREAMING,

@@ -589,18 +589,6 @@ process_video_frame(program_data *pdata, struct frame_info info)
              frame->format,
              AV_PIX_FMT_YUV420P);
     
-    modifContext = sws_getCachedContext(modifContext,
-                                        decoder->video_codec_context->width,
-                                        decoder->video_codec_context->height,
-                                        frame->format,
-                                        decoder->video_codec_context->width,  // dst width
-                                        decoder->video_codec_context->height, // dst height
-                                        //video_buffer->width,
-                                        //video_buffer->height,
-                                        AV_PIX_FMT_YUV420P,
-                                        SWS_BICUBIC,
-                                        NULL, NULL, NULL);
-    
     int32 pitch_Y = round_up_align(frame->width *
                                    av_get_bits_per_pixel(
         av_pix_fmt_desc_get(
@@ -618,20 +606,53 @@ process_video_frame(program_data *pdata, struct frame_info info)
     void *frame_U = malloc(pitch_U * (frame->height+1)/2);
     void *frame_V = malloc(pitch_V * (frame->height+1)/2);
     
-    uint8_t *ptrs[3] = { frame_Y, frame_U, frame_V };
-    int stride[3] = { pitch_Y, pitch_U, pitch_V };
     
-    sws_scale(modifContext,
-              (uint8 const* const*)frame->data,
-              frame->linesize,
-              0,
-              decoder->video_codec_context->height,
-              (uint8 *const *const)ptrs,
-              stride);
-    
-    copy_pixel_buffers(frame_Y, frame->data[0], pitch_Y, frame->linesize[0], frame->height);
-    copy_pixel_buffers(frame_U, frame->data[1], pitch_U, frame->linesize[1], (frame->height+1)/2);
-    copy_pixel_buffers(frame_V, frame->data[2], pitch_V, frame->linesize[2], (frame->height+1)/2);
+    if(frame->format != AV_PIX_FMT_YUV420P)
+    {
+        modifContext = sws_getCachedContext(modifContext,
+                                            decoder->video_codec_context->width,
+                                            decoder->video_codec_context->height,
+                                            frame->format,
+                                            decoder->video_codec_context->width,  // dst width
+                                            decoder->video_codec_context->height, // dst height
+                                            //video_buffer->width,
+                                            //video_buffer->height,
+                                            AV_PIX_FMT_YUV420P,
+                                            SWS_BICUBIC,
+                                            NULL, NULL, NULL);
+        
+        uint8_t *ptrs[3] = { frame_Y, frame_U, frame_V };
+        int stride[3] = { pitch_Y, pitch_U, pitch_V };
+        
+        sws_scale(modifContext,
+                  (uint8 const* const*)frame->data,
+                  frame->linesize,
+                  0,
+                  decoder->video_codec_context->height,
+                  (uint8 *const *const)ptrs,
+                  stride);
+    }
+    else
+    {
+        copy_pixel_buffers(frame_Y,
+                           frame->data[0],
+                           pitch_Y,
+                           frame->linesize[0],
+                           frame->height);
+        copy_pixel_buffers(frame_U,
+                           frame->data[1],
+                           pitch_U,
+                           frame->linesize[1],
+                           (frame->height+1)/2);
+        copy_pixel_buffers(frame_V,
+                           frame->data[2],
+                           pitch_V,
+                           frame->linesize[2],
+                           (frame->height+1)/2);
+    }
+    //copy_pixel_buffers(frame_Y, frame->data[0], pitch_Y, frame->linesize[0], frame->height);
+    //copy_pixel_buffers(frame_U, frame->data[1], pitch_U, frame->linesize[1], (frame->height+1)/2);
+    //copy_pixel_buffers(frame_V, frame->data[2], pitch_V, frame->linesize[2], (frame->height+1)/2);
     
     pdata->video.video_frame = frame_Y;
     pdata->video.video_frame_sup1 = frame_U;

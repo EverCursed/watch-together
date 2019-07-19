@@ -47,8 +47,8 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
         dbg_warn("Packet queue full.\n");
         return -1;
     }
-    dbg_info("Enqueueing packet.\n");
-    dbg_packet(packet);
+    //dbg_info("Enqueueing packet.\n");
+    //dbg_packet(packet);
     
     queue->array[queue->end] = packet;
     queue->n++;
@@ -72,8 +72,8 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
         queue->n--;
         queue->next = (queue->next + 1) % queue->maxn;
         
-        dbg_info("Dequeueing packet.\n");
-        dbg_packet((*packet));
+        //dbg_info("Dequeueing packet.\n");
+        //dbg_packet((*packet));
         
         SDL_UnlockMutex(queue->mutex);
         return 0;
