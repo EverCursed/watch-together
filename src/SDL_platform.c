@@ -234,7 +234,7 @@ PlatformPauseAudio(bool32 b)
 static void
 PlatformSleep(int32 ms)
 {
-    SDL_Delay(ms);
+    SDL_Delay(ms < 0 ? 0 : ms);
 }
 
 /// Platform create thread
