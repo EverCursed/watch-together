@@ -149,6 +149,9 @@ MainLoop(program_data *pdata)
         
         if(pdata->playing)
         {
+            bool32 need_video = 0;
+            bool32 need_audio = 0;
+            
             if(pdata->video.is_ready)
             {
                 dbg_warn("video.pts: %lf\n", pdata->video.pts);
@@ -169,6 +172,8 @@ MainLoop(program_data *pdata)
                         
                         current_video_frame_time = next_video_frame_time;
                         next_video_frame_time += 1000.0f*av_q2d(pdata->decoder.video_time_base);
+                        
+                        need_video = 1;
                     }
                     else
                     {
@@ -188,10 +193,17 @@ MainLoop(program_data *pdata)
                 free(pdata->audio.buffer);
                 
                 pdata->audio.is_ready = 0;
+                
+                need_audio = 1;
             }
             else
             {
                 dbg_warn("Audio is not ready.\n");
+            }
+            
+            if(need_audio || need_video)
+            {
+                PlatformConditionSignal(pdata->decoder.condition);
             }
         }
         
@@ -236,6 +248,7 @@ MainThread(program_data *pdata)
     
     MainLoop(pdata);
     
+    PlatformConditionSignal(pdata->decoder.condition);
     PlatformWaitThread(pdata->threads.decoder_thread, NULL);
     
     PlatformCloseAudio(pdata);

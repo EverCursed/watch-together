@@ -11,4 +11,9 @@ typedef struct _thread_info {
     SDL_Thread *thread;
 } thread_info;
 
+typedef struct _cond_info {
+    SDL_cond *cond;
+    SDL_mutex *mutex;
+} cond_info;
+
 #endif

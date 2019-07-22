@@ -256,6 +256,42 @@ PlatformWaitThread(thread_info thread, int32 *ret)
     SDL_WaitThread(thread.thread, ret);
 }
 
+static cond_info
+PlatformCreateConditionVar()
+{
+    cond_info c = {};
+    c.mutex = SDL_CreateMutex();
+    c.cond = SDL_CreateCond();
+    return c;
+}
+
+static int32
+PlatformConditionWait(cond_info c)
+{
+    SDL_LockMutex(c.mutex);
+    SDL_CondWait(c.cond, c.mutex);
+    SDL_UnlockMutex(c.mutex);
+    
+    return 0;
+}
+
+static int32
+PlatformConditionSignal(cond_info c)
+{
+    SDL_CondSignal(c.cond);
+    
+    return 0;
+}
+
+static bool32
+PlatformConditionDestroy(cond_info c)
+{
+    SDL_DestroyMutex(c.mutex);
+    SDL_DestroyCond(c.cond);
+    
+    return 0;
+}
+
 static uint32
 PlatformGetTime()
 {

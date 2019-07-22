@@ -120,6 +120,8 @@ do { } while(0)
 
 struct _platform_data;
 struct _thread_info;
+struct _cond_info;
+
 
 typedef struct _threads_info_all {
     struct _thread_info main_thread;
@@ -144,6 +146,8 @@ typedef struct _decoder_info {
     int audio_stream;
     
     const char *filename;
+    
+    cond_info condition;
 } decoder_info;
 
 typedef struct _pixel_buffer {

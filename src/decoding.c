@@ -635,6 +635,7 @@ DecodingThreadStart(void *ptr)
     open_file_info *file = &pdata->file;
     decoder_info *decoder = &pdata->decoder;
     
+    decoder->condition = PlatformCreateConditionVar();
     
     LoadPackets(pdata);
     SortPackets(pdata);
@@ -692,12 +693,15 @@ DecodingThreadStart(void *ptr)
         if(pq_is_empty(pdata->pq_video) && pq_is_empty(pdata->pq_audio))
             pdata->playback_finished = 1;
         else
-            PlatformSleep(10);
-    }
+        {
+            LoadPackets(pdata);
+            SortPackets(pdata);
+            
+            PlatformConditionWait(decoder->condition);
+        }
     }
     
-    PlatformSleep(33);
-    */
+    PlatformConditionDestroy(decoder->condition);
     
     return 0;
 }
