@@ -335,6 +335,18 @@ typedef struct _audio_queue_data {
     uint32 audio_queue_end;
 } audio_queue_data;
 
+typedef struct _playback_data {
+    int64 time_start;
+    int64 time_end;
+    real64 current_frame_time;
+    real64 next_frame_time;
+    
+    real64 playback_start;
+    real64 current_video_frame_time;
+    real64 next_video_frame_time;
+    real64 aggregated_pause_time;
+} playback_data;
+
 typedef struct _program_data {
     input_struct input;
     client_info client;
@@ -345,6 +357,7 @@ typedef struct _program_data {
     audio_queue_data aq_data;
     video_queue_data vq_data;
     decoder_info decoder;
+    playback_data playback;
     
     // TODO(Val): Will we need multiple packet queues?
     avpacket_queue *pq_main;

@@ -37,41 +37,33 @@ should_display(real64 display_time, real64 next_frame_time)
 static int32
 MainLoop(program_data *pdata)
 {
+    playback_data *playback = &pdata->playback;
     // times needed for application framerate.
-    int32 time_start;
-    int32 time_end;
-    real64 current_frame_time;
-    real64 next_frame_time;
-    
-    time_start = PlatformGetTime();
-    current_frame_time = time_start;
-    next_frame_time = current_frame_time + REFRESH_RATE;
+    playback->time_start = PlatformGetTime();
+    playback->current_frame_time = playback->time_start;
+    playback->next_frame_time = playback->current_frame_time + REFRESH_RATE;
     
     // times needed for video playback
-    real64 playback_start;
-    real64 current_video_frame_time;
-    real64 next_video_frame_time;
-    real64 aggregated_pause_time;
     
     dbg_print("audio time_base: %d/%d\n", pdata->decoder.audio_time_base.num, pdata->decoder.audio_time_base.den);
     
     // now start main loop
     while(pdata->running)
     {
-        dbg_print("time_start:\t\t\t%d\n"
+        dbg_print("time_start:\t\t\t%ld\n"
                   "current_frame_time:\t\t%f\n"
                   "next_frame_time:\t\t%f\n"
                   "current_video_frame_time:\t%f\n"
                   "next_video_frame_time:\t\t%f\n"
                   "tick:\t\t\t\t%d\n",
-                  time_start,
-                  current_frame_time, 
-                  next_frame_time,
-                  current_video_frame_time,
-                  next_video_frame_time,
+                  playback->time_start,
+                  playback->current_frame_time, 
+                  playback->next_frame_time,
+                  playback->current_video_frame_time,
+                  playback->next_video_frame_time,
                   pdata->tick);
         
-        time_start = PlatformGetTime();
+        playback->time_start = PlatformGetTime();
         
         if(pdata->file.open_failed)
         {
@@ -84,9 +76,9 @@ MainLoop(program_data *pdata)
         
         if(pdata->start_playback)
         {
-            playback_start = current_frame_time;
-            next_video_frame_time = next_frame_time + 1000.0f*av_q2d(pdata->decoder.video_time_base);
-            aggregated_pause_time = 0.0f;
+            playback->playback_start = playback->current_frame_time;
+            playback->next_video_frame_time = playback->next_frame_time + 1000.0f*av_q2d(pdata->decoder.video_time_base);
+            playback->aggregated_pause_time = 0.0f;
             
             pdata->start_playback = 0;
             pdata->playing = 1;
@@ -154,9 +146,10 @@ MainLoop(program_data *pdata)
             
             if(pdata->video.is_ready)
             {
-                dbg_warn("video.pts: %lf\n", pdata->video.pts);
-                if(should_display(pdata->video.pts*1000.0f, (next_frame_time - playback_start)))
+                if(should_display(pdata->video.pts*1000.0f,
+                                  (playback->next_frame_time - playback->playback_start)))
                 {
+                    dbg_warn("video.pts: %lf\n", pdata->video.pts);
                     //dbg_info("next_video_frame_time <= next_frame_time - MS_SAFETY_MARGIN\n");
                     if(pdata->video.is_ready)
                     {
@@ -170,8 +163,8 @@ MainLoop(program_data *pdata)
                         
                         pdata->video.is_ready = 0;
                         
-                        current_video_frame_time = next_video_frame_time;
-                        next_video_frame_time += 1000.0f*av_q2d(pdata->decoder.video_time_base);
+                        playback->current_video_frame_time = playback->next_video_frame_time;
+                        playback->next_video_frame_time += 1000.0f*av_q2d(pdata->decoder.video_time_base);
                         
                         need_video = 1;
                     }
@@ -180,10 +173,6 @@ MainLoop(program_data *pdata)
                         dbg_warn("Video was not ready.\n");
                         // TODO(Val): skip this frame
                     }
-                }
-                else
-                {
-                    
                 }
             }
             
@@ -207,14 +196,14 @@ MainLoop(program_data *pdata)
             }
         }
         
-        time_end = PlatformGetTime();
+        playback->time_end = PlatformGetTime();
         
-        dbg_print("Loop time: %d\n", time_end - time_start);
-        dbg_info("PlatformSleep(%lf)\n", next_frame_time - PlatformGetTime());
-        PlatformSleep(next_frame_time - PlatformGetTime());
+        dbg_print("Loop time: %ld\n", playback->time_end - playback->time_start);
+        dbg_info("PlatformSleep(%lf)\n", playback->next_frame_time - PlatformGetTime());
+        PlatformSleep(playback->next_frame_time - PlatformGetTime() - MS_SAFETY_MARGIN);
         
-        current_frame_time = next_frame_time;
-        next_frame_time += REFRESH_RATE;
+        playback->current_frame_time = playback->next_frame_time;
+        playback->next_frame_time += REFRESH_RATE;
     }
     
     return 0;
