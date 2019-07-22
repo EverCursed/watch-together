@@ -343,7 +343,7 @@ PlatformInitVideo(program_data *pdata)
     }
     
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
-    SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
+    //SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
 }
 
 static void
@@ -379,40 +379,40 @@ int resize_filter(void *userdata,
     /*
     if(event->window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
     {
-        dbg_error("SDL_WINDOWEVENT_SIZE_CHANGED filtered.\n");
-        
-        // NOTE(Val): This happens on any window resize 
-        
-        //SDL_Rect size;
-        //SDL_RenderSetViewport(renderer, NULL);
-        //SDL_WindowGet
-        
-        //int ret = SDL_RenderCopy(renderer, background_texture, NULL, NULL);
-        //if(ret)
-        //{
-        //dbg_error(SDL_GetError());
-        //dbg_print("\n");
-        //}
-        //SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
-        
-        //SDL_RenderPresent(renderer);
-        
-        //SDL_SetVideoMode(event->resize.w,event->resize.h,0,SDL_ANYFORMAT | SDL_RESIZABLE);
-        //draw();
-        return 0;
+    dbg_error("SDL_WINDOWEVENT_SIZE_CHANGED filtered.\n");
+    
+    // NOTE(Val): This happens on any window resize 
+    
+    //SDL_Rect size;
+    //SDL_RenderSetViewport(renderer, NULL);
+    //SDL_WindowGet
+    
+    //int ret = SDL_RenderCopy(renderer, background_texture, NULL, NULL);
+    //if(ret)
+    //{
+    //dbg_error(SDL_GetError());
+    //dbg_print("\n");
+    //}
+    //SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
+    
+    //SDL_RenderPresent(renderer);
+    
+    //SDL_SetVideoMode(event->resize.w,event->resize.h,0,SDL_ANYFORMAT | SDL_RESIZABLE);
+    //draw();
+    return 0;
     }
     else if(event->window.event == SDL_WINDOWEVENT_RESIZED)
     {
-        dbg_error("SDL_WINDOWEVENT_RESIZED filtered.\n");
-        
-        // NOTE(Val): This happens if the window is resized by the user.
-        
-        // NOTE(Val): This follows SDL_WINDOWEVENT_SIZE_CHANGED in all cases.
-        
-        
-        
-        
-        return 0;
+    dbg_error("SDL_WINDOWEVENT_RESIZED filtered.\n");
+    
+    // NOTE(Val): This happens if the window is resized by the user.
+    
+    // NOTE(Val): This follows SDL_WINDOWEVENT_SIZE_CHANGED in all cases.
+    
+    
+    
+    
+    return 0;
     }
     */
     return 1; // return 1 so all events are added to queue
@@ -578,11 +578,12 @@ int main(int argc, const char** argv)
     SDL_SetEventFilter(resize_filter, NULL);
 #endif
     
-    SDL_CreateWindowAndRenderer(1024,
-                                576,
+    SDL_CreateWindowAndRenderer(1280,
+                                720,
                                 SDL_WINDOW_RESIZABLE,
                                 &window,
                                 &renderer);
+    
     
     if(window == NULL || renderer == NULL)
     {
