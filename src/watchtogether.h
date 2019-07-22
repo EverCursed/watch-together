@@ -110,10 +110,10 @@ do { } while(0)
 #else
 
 #define dbg_print(...)
-#define dbg_error(x)
-#define dbg_info(x)
-#define dbg_success(x)
-#define dbg_warn(x)
+#define dbg_error(...)
+#define dbg_info(...)
+#define dbg_success(...)
+#define dbg_warn(...)
 #define dbg(x)
 
 #endif
@@ -317,7 +317,6 @@ typedef struct _video_queue_data {
     void *vq_U_buffer;
     void *vq_V_buffer;
     
-    
     uint32 vq_timestamps[NUM_FRAMES];
 } video_queue_data;
 
@@ -349,9 +348,6 @@ typedef struct _program_data {
     avpacket_queue *pq_stream;
     avpacket_queue *pq_video;
     avpacket_queue *pq_audio;
-    
-    real64 prevFrameTime;
-    real64 nextFrameTime;
     
     // TODO(Val): remove this or make it more organized. 
     real32 volume;

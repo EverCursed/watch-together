@@ -1,6 +1,8 @@
 #ifndef DEB_WT
 #define DEB_WT
 
+#include <SDL2/SDL.h>
+
 typedef struct _platform_data {
     
 } platform_data;

@@ -231,7 +231,6 @@ MainThread(program_data *pdata)
     pdata->playing = 0;
     pdata->paused = 0;
     
-    
     pdata->threads.decoder_thread =
         PlatformCreateThread(DecodingThreadStart, pdata, "decoder");
     
