@@ -439,7 +439,6 @@ PlatformGetInput(program_data *pdata)
             {
                 dbg_error("SDL_QUIT\n");
                 pdata->running = 0;
-                SDL_Quit();
                 return 0;
             } break;
             case SDL_WINDOWEVENT:
