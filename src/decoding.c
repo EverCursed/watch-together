@@ -74,7 +74,7 @@ get_frame(program_data *pdata, int32 stream)
     decoder_info *decoder = &pdata->decoder;
     AVCodecContext *dec_ctx;
     
-    AVPacket *pkt;// = av_packet_alloc();
+    AVPacket *pkt = NULL;// = av_packet_alloc();
     AVFrame *frame = av_frame_alloc();
     struct frame_info info = {.frame = frame, .type = 0, .ret = -1};
     
@@ -106,7 +106,7 @@ get_frame(program_data *pdata, int32 stream)
     {
         dbg_error("Unknown frame returned.\n");
         info.type = FRAME_UNKNOWN;
-        goto get_frame_failed;
+        goto no_packet_fail;
     }
     
     do {
@@ -182,7 +182,10 @@ get_frame(program_data *pdata, int32 stream)
     return info;
     
     get_frame_failed:
-    av_packet_unref(pkt);
+    if(pkt)
+        av_packet_unref(pkt);
+    
+    no_packet_fail:
     av_frame_free(&frame);
     info.ret = -1;
     return info;
