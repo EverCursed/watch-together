@@ -6,6 +6,7 @@
 //#include "audio_queue.c"
 //#include "video_queue.c"
 #include "decoding.c"
+#include "audio.c"
 
 //#include <time.h>
 // TODO(Val): NAT-T implementation, see how it works
@@ -182,11 +183,7 @@ MainLoop(program_data *pdata)
                 PlatformQueueAudio(&pdata->audio);
                 pdata->audio.total_queued += pdata->audio.duration;
                 
-                free(pdata->audio.buffer);
-                pdata->audio.buffer = NULL;
-                pdata->audio.is_ready = 0;
-                pdata->audio.duration = 0.0f;
-                pdata->audio.size = 0;
+                PrepareAudioOutput(&pdata->audio);
                 
                 need_audio = 1;
             }
