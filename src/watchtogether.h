@@ -225,6 +225,7 @@ typedef struct _output_audio {
     volatile bool32 is_ready;
     real64 pts;
     real64 duration;
+    real64 total_queued;
 } output_audio;
 
 #define VIDEO_RGB 1
@@ -339,13 +340,15 @@ typedef struct _audio_queue_data {
 typedef struct _playback_data {
     int64 time_start;
     int64 time_end;
-    real64 current_frame_time;
-    real64 next_frame_time;
+    volatile real64 current_frame_time;
+    volatile real64 next_frame_time;
     
-    real64 playback_start;
-    real64 current_video_frame_time;
-    real64 next_video_frame_time;
-    real64 aggregated_pause_time;
+    volatile real64 playback_start;
+    volatile real64 current_video_frame_time;
+    volatile real64 next_video_frame_time;
+    volatile real64 aggregated_pause_time;
+    
+    real64 frame_duration;
 } playback_data;
 
 typedef struct _program_data {

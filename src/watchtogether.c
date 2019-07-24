@@ -79,6 +79,7 @@ MainLoop(program_data *pdata)
             playback->playback_start = playback->current_frame_time;
             playback->next_video_frame_time = playback->next_frame_time + 1000.0f*av_q2d(pdata->decoder.video_time_base);
             playback->aggregated_pause_time = 0.0f;
+            //playback->frame_duration = ;
             
             pdata->start_playback = 0;
             pdata->playing = 1;
@@ -179,9 +180,13 @@ MainLoop(program_data *pdata)
             if(pdata->audio.is_ready)
             {
                 PlatformQueueAudio(&pdata->audio);
-                free(pdata->audio.buffer);
+                pdata->audio.total_queued += pdata->audio.duration;
                 
+                free(pdata->audio.buffer);
+                pdata->audio.buffer = NULL;
                 pdata->audio.is_ready = 0;
+                pdata->audio.duration = 0.0f;
+                pdata->audio.size = 0;
                 
                 need_audio = 1;
             }

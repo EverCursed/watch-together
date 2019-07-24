@@ -481,13 +481,13 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
     
-    uint32 size = av_samples_get_buffer_size(NULL,
-                                             decoder->audio_codec_context->channels,
-                                             frame->nb_samples,
-                                             decoder->audio_codec_context->sample_fmt,
-                                             1);
+    //uint32 size = av_samples_get_buffer_size(NULL,
+    //decoder->audio_codec_context->channels,
+    //frame->nb_samples,
+    //decoder->audio_codec_context->sample_fmt,
+    //1);
     
-    uint32 real_size = frame->linesize[0] * decoder->audio_codec_context->channels; 
+    uint32 real_size = frame->linesize[0] * decoder->audio_codec_context->channels;
     
     uint32 SampleCount = frame->nb_samples;
     uint32 Frequency = decoder->audio_codec_context->sample_rate;
@@ -497,7 +497,15 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     uint32 sample_fmt = decoder->audio_codec_context->sample_fmt; 
     uint32 bytes_per_sample = frame->linesize[0]/frame->nb_samples;
     
-    void *data = malloc(real_size);
+    void *data = pdata->audio.buffer;
+    if(data)
+    {
+        data = realloc(data, pdata->audio.size + real_size);
+    }
+    else
+    {
+        data = malloc(real_size);
+    }
     
     if(sample_fmt == AV_SAMPLE_FMT_U8P  ||
        sample_fmt == AV_SAMPLE_FMT_S16P ||
@@ -510,12 +518,14 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     }
     
     if(!is_planar)
-        memcpy(data, frame->data[0], real_size);
+    {
+        memcpy(data + pdata->audio.size, frame->data[0], real_size);
+    }
     else
     {
         // NOTE(Val): manually interleaving audio for however
         // many channels
-        uint8* dst = data;
+        uint8* dst = data + pdata->audio.size;
         uint32 channels = decoder->audio_codec_context->channels;
         uint32 length = frame->nb_samples; // in samples
         
@@ -534,11 +544,11 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     }
     
     pdata->audio.buffer = data;
-    pdata->audio.size = real_size;
-    pdata->audio.duration = (real64)SampleCount / (real64)Frequency;
+    pdata->audio.size += real_size;
+    pdata->audio.duration += 1000.0f * (real64)SampleCount / (real64)Frequency;
     dbg_info("Audio frame duration: %lf\n", pdata->audio.duration);
     
-    pdata->audio.is_ready = 1;
+    //pdata->audio.is_ready = 1;
     
     return 0;
 }
@@ -650,20 +660,45 @@ DecodingThreadStart(void *ptr)
         dbg_success("Processing loop start.\n");
         if(!pdata->audio.is_ready)
         {
+            // TODO(Val): Check this loop
             dbg_success("Audio not marked ready.\n");
+            
             if(!pq_is_empty(pdata->pq_audio))
             {
-                dbg_success("Audio packets not empty, starting to process.\n");
-                
-                struct frame_info f = get_frame(pdata, pdata->decoder.audio_stream);
-                
-                if(f.ret != -1)
-                {
-                    dbg_success("Processing audio.\n");
+                do {
+                    dbg_success("Audio packets not empty, starting to process.\n");
                     
-                    process_audio_frame(pdata, f);
-                    av_frame_free(&f.frame);
-                }
+                    struct frame_info f = get_frame(pdata, pdata->decoder.audio_stream);
+                    
+                    if(f.ret != -1)
+                    {
+                        dbg_success("Processing audio.\n");
+                        
+                        process_audio_frame(pdata, f);
+                        av_frame_free(&f.frame);
+                    }
+                    else
+                    {
+                        dbg_error("Audio queue was empty.\n");
+                    }
+                    
+                    
+                    dbg_info("total queued:\t%lf\n"
+                             "pdata->audio.duration:\t%lf\n"
+                             "sum:\t\t\t%lf\n"
+                             "playback start: %lf\n"
+                             "next frame time:\t%lf\n"
+                             "following frame time:\t%lf\n",
+                             pdata->audio.total_queued,
+                             pdata->audio.duration,
+                             pdata->audio.pts + pdata->audio.duration,
+                             pdata->playback.playback_start,
+                             pdata->playback.next_frame_time - pdata->playback.playback_start,
+                             pdata->playback.next_frame_time + pdata->client.refresh_rate - pdata->playback.playback_start);
+                    
+                } while((pdata->audio.total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_rate - pdata->playback.playback_start));
+                
+                pdata->audio.is_ready = 1;
             }
         }
         
