@@ -209,7 +209,7 @@ TogglePlayback(program_data *pdata)
     PlatformPauseAudio(pdata->paused);
 }
 
-#define PACKET_QUEUE_SIZE 20
+#define PACKET_QUEUE_SIZE 60
 static int32
 MainThread(program_data *pdata)
 {

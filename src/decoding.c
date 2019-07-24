@@ -728,15 +728,15 @@ DecodingThreadStart(void *ptr)
         }
         
         // TODO(Val): This may not be fool proof
-        if(pq_is_empty(pdata->pq_video) && pq_is_empty(pdata->pq_audio))
-            pdata->playback_finished = 1;
-        else
-        {
-            LoadPackets(pdata);
-            SortPackets(pdata);
-            
-            PlatformConditionWait(decoder->condition);
-        }
+        //if(pq_is_empty(pdata->pq_video) && pq_is_empty(pdata->pq_audio))
+        //pdata->playback_finished = 1;
+        //else
+        //{
+        LoadPackets(pdata);
+        SortPackets(pdata);
+        
+        PlatformConditionWait(decoder->condition);
+        //}
     }
     
     PlatformConditionDestroy(decoder->condition);
