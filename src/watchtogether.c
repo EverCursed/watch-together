@@ -181,7 +181,7 @@ MainLoop(program_data *pdata)
             if(pdata->audio.is_ready)
             {
                 PlatformQueueAudio(&pdata->audio);
-                pdata->audio.total_queued += pdata->audio.duration;
+                pdata->playback.audio_total_queued += pdata->audio.duration;
                 
                 PrepareAudioOutput(&pdata->audio);
                 

@@ -689,14 +689,14 @@ DecodingThreadStart(void *ptr)
                              "playback start: %lf\n"
                              "next frame time:\t%lf\n"
                              "following frame time:\t%lf\n",
-                             pdata->audio.total_queued,
+                             pdata->playback.audio_total_queued,
                              pdata->audio.duration,
                              pdata->audio.pts + pdata->audio.duration,
                              pdata->playback.playback_start,
                              pdata->playback.next_frame_time - pdata->playback.playback_start,
                              pdata->playback.next_frame_time + pdata->client.refresh_rate - pdata->playback.playback_start);
                     
-                } while((pdata->audio.total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_rate - pdata->playback.playback_start));
+                } while((pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_rate - pdata->playback.playback_start));
                 
                 pdata->audio.is_ready = 1;
             }
