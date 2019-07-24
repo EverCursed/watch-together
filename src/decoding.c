@@ -389,18 +389,20 @@ process_video_frame(program_data *pdata, struct frame_info info)
              frame->format,
              AV_PIX_FMT_YUV420P);
     
-    int32 pitch_Y = round_up_align(frame->width); //*
-    //av_get_bits_per_pixel(
-    //av_pix_fmt_desc_get(
-    //frame->format)));
-    int32 pitch_U = round_up_align(((frame->width+1)/2)); //*
-    //av_get_bits_per_pixel(
-    //av_pix_fmt_desc_get(
-    //frame->format)));
-    int32 pitch_V = round_up_align(((frame->width+1)/2)); //*
-    //av_get_bits_per_pixel(
-    //av_pix_fmt_desc_get(
-    //frame->format)));
+    
+    
+    int32 pitch_Y = round_up_align(frame->width *
+                                   av_get_bits_per_pixel(
+        av_pix_fmt_desc_get(
+        frame->format)));
+    int32 pitch_U = round_up_align(((frame->width+1)/2) *
+                                   av_get_bits_per_pixel(
+        av_pix_fmt_desc_get(
+        frame->format)));
+    int32 pitch_V = round_up_align(((frame->width+1)/2) *
+                                   av_get_bits_per_pixel(
+        av_pix_fmt_desc_get(
+        frame->format)));
     
     void *frame_Y = malloc(pitch_Y * frame->height);
     void *frame_U = malloc(pitch_U * (frame->height+1)/2);
@@ -481,11 +483,12 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
     
-    //uint32 size = av_samples_get_buffer_size(NULL,
-    //decoder->audio_codec_context->channels,
-    //frame->nb_samples,
-    //decoder->audio_codec_context->sample_fmt,
-    //1);
+    int32 size;
+    av_samples_get_buffer_size(&size,
+                               decoder->audio_codec_context->channels,
+                               frame->nb_samples,
+                               decoder->audio_codec_context->sample_fmt,
+                               0);
     
     uint32 real_size = frame->linesize[0] * decoder->audio_codec_context->channels;
     
@@ -724,6 +727,8 @@ DecodingThreadStart(void *ptr)
                 {
                     dbg_error("get_frame failed.\n");
                 }
+                
+                pdata->video.is_ready = 1;
             }
         }
         

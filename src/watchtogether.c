@@ -155,9 +155,6 @@ MainLoop(program_data *pdata)
                         
                         pdata->video.is_ready = 0;
                         
-                        playback->current_video_frame_time = playback->next_video_frame_time;
-                        playback->next_video_frame_time += 1000.0f*av_q2d(pdata->decoder.video_time_base);
-                        
                         need_video = 1;
                         need_flip = 1;
                     }
@@ -204,7 +201,9 @@ MainLoop(program_data *pdata)
         }
         
         playback->current_frame_time = playback->next_frame_time;
-        playback->next_frame_time += REFRESH_RATE;
+        playback->next_frame_time += pdata->client.refresh_rate;
+        playback->time_start = PlatformGetTime();
+        
     }
     
     return 0;
