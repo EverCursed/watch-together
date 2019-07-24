@@ -220,6 +220,8 @@ TogglePlayback(program_data *pdata)
 static int32
 MainThread(program_data *pdata)
 {
+    pdata->client.refresh_rate = REFRESH_RATE;
+    
     pdata->pq_main = init_avpacket_queue(PACKET_QUEUE_SIZE);
     pdata->pq_video = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
     pdata->pq_audio = init_avpacket_queue(PACKET_QUEUE_SIZE/2);

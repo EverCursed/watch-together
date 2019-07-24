@@ -211,6 +211,7 @@ typedef struct _client_info {
     uint32 bytes_per_pixel;
     bool32 fullscreen;
     
+    real64 refresh_rate;
 } client_info;
 
 typedef struct _output_audio {
