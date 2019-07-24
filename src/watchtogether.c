@@ -187,8 +187,6 @@ MainLoop(program_data *pdata)
             if(need_audio || need_video)
             {
                 PlatformConditionSignal(pdata->decoder.condition);
-                need_audio = 0;
-                need_video = 0;
             }
         }
         
