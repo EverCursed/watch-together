@@ -19,14 +19,6 @@
 #define MS_SAFETY_MARGIN 2.0f
 #define DECODE_TIME 16.6666666666f
 
-static real32
-get_timestamp(int64 time, AVRational time_base)
-{
-    dbg_print("time: %ld\t\ttime_base: %d/%d\n", time, time_base.num, time_base.den);
-    
-    return (real32)time*(real32)time_base.num/(real32)time_base.den;
-}
-
 inline static bool32
 should_display(real64 display_time, real64 next_frame_time)
 {
