@@ -150,13 +150,6 @@ typedef struct _decoder_info {
     cond_info condition;
 } decoder_info;
 
-typedef struct _pixel_buffer {
-    void* buffer;
-    uint32 width;
-    uint32 height;
-    uint32 pitch;
-} pixel_buffer;
-
 typedef struct _key_event {
     uint32 key;
     bool32 pressed;

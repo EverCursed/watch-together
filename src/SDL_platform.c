@@ -144,7 +144,7 @@ AudioCallback(void*  userdata,
 static void 
 PlatformInitAudio(program_data *pdata)
 {
-    dbg_info("PlatformInitAudio called.\n");
+    //dbg_info("PlatformInitAudio called.\n");
     
     open_file_info *file = &pdata->file;
     output_audio *output = &pdata->audio;

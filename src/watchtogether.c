@@ -17,14 +17,13 @@
 // TODO(Val): Test a variety of these, and see how long it's possible to go
 // NOTE(Val): This will directly affect our maximum refresh rate. 
 #define MS_SAFETY_MARGIN 2.0f
-#define DECODE_TIME 16.6666666666f
+#define DECODE_TIME      16.6666666666f
 
 inline static bool32
 should_display(real64 display_time, real64 next_frame_time)
 {
     // TODO(Val): This might need to be more elaborate
     return (display_time < next_frame_time);
-    //&& (display_time >= next_frame_time - video_frame_duration);
 }
 
 static int32
@@ -41,8 +40,10 @@ MainLoop(program_data *pdata)
     dbg_print("audio time_base: %d/%d\n", pdata->decoder.audio_time_base.num, pdata->decoder.audio_time_base.den);
     
     // now start main loop
+    playback->time_start = PlatformGetTime();
     while(pdata->running)
     {
+        /*
         dbg_print("time_start:\t\t\t%ld\n"
                   "current_frame_time:\t\t%f\n"
                   "next_frame_time:\t\t%f\n"
@@ -55,8 +56,7 @@ MainLoop(program_data *pdata)
                   playback->current_video_frame_time,
                   playback->next_video_frame_time,
                   pdata->tick);
-        
-        playback->time_start = PlatformGetTime();
+        */
         
         if(pdata->file.open_failed)
         {
@@ -148,7 +148,6 @@ MainLoop(program_data *pdata)
                     if(pdata->video.is_ready)
                     {
                         dbg_success("pdata->video.is_ready\n");
-                        // TODO(Val): update video frame;
                         PlatformUpdateFrame(pdata);
                         
                         free(pdata->video.video_frame);
@@ -164,7 +163,7 @@ MainLoop(program_data *pdata)
                     }
                     else
                     {
-                        dbg_warn("Video was not ready.\n");
+                        //dbg_warn("Video was not ready.\n");
                         // TODO(Val): skip this frame
                     }
                 }
@@ -181,7 +180,7 @@ MainLoop(program_data *pdata)
             }
             else
             {
-                dbg_warn("Audio is not ready.\n");
+                //dbg_warn("Audio is not ready.\n");
             }
             
             if(need_audio || need_video)
@@ -192,9 +191,9 @@ MainLoop(program_data *pdata)
         
         playback->time_end = PlatformGetTime();
         
-        dbg_print("Loop time: %ld\n", playback->time_end - playback->time_start);
-        dbg_info("PlatformSleep(%lf)\n", playback->next_frame_time - PlatformGetTime());
-        PlatformSleep(playback->next_frame_time - PlatformGetTime() - MS_SAFETY_MARGIN);
+        //dbg_print("Loop time: %ld\n", playback->time_end - playback->time_start);
+        //dbg_info("PlatformSleep(%lf)\n", playback->next_frame_time - PlatformGetTime());
+        PlatformSleep(playback->next_frame_time - playback->time_end - MS_SAFETY_MARGIN);
         
         PlatformFlipBuffers(pdata);
         
@@ -216,6 +215,8 @@ TogglePlayback(program_data *pdata)
 static int32
 MainThread(program_data *pdata)
 {
+    // NOTE(Val): Initialize things here that will last the entire runtime of the application
+    
     pdata->client.refresh_rate = REFRESH_RATE;
     
     pdata->pq_main = init_avpacket_queue(PACKET_QUEUE_SIZE);

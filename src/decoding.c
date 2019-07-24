@@ -382,7 +382,7 @@ process_video_frame(program_data *pdata, struct frame_info info)
     AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
     
-    dbg_info("Start processing video frame.\n");
+    //dbg_info("Start processing video frame.\n");
     
     dbg_warn("frame->format: %d\n"
              "new format   : %d\n",
