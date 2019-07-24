@@ -58,6 +58,7 @@ MainLoop(program_data *pdata)
                   playback->next_video_frame_time,
                   pdata->tick);
         */
+        bool32 need_flip = 0;
         
         if(pdata->file.open_failed)
         {
@@ -158,6 +159,7 @@ MainLoop(program_data *pdata)
                         playback->next_video_frame_time += 1000.0f*av_q2d(pdata->decoder.video_time_base);
                         
                         need_video = 1;
+                        need_flip = 1;
                     }
                     else
                     {
@@ -193,7 +195,13 @@ MainLoop(program_data *pdata)
         //dbg_info("PlatformSleep(%lf)\n", playback->next_frame_time - PlatformGetTime());
         PlatformSleep(playback->next_frame_time - playback->time_end - MS_SAFETY_MARGIN);
         
-        PlatformFlipBuffers(pdata);
+        if(need_flip)
+        {
+            PlatformFlipBuffers(pdata);
+            
+            playback->current_video_frame_time = playback->next_video_frame_time;
+            playback->next_video_frame_time += 1000.0f*av_q2d(pdata->decoder.video_time_base);
+        }
         
         playback->current_frame_time = playback->next_frame_time;
         playback->next_frame_time += REFRESH_RATE;
