@@ -307,36 +307,30 @@ file_open(open_file_info *file, decoder_info *decoder)
            sample_fmt == AV_SAMPLE_FMT_U8P)
         {
             fmt = SAMPLE_U8;
-            bytes_per_sample = 1;
         }
         else if(sample_fmt == AV_SAMPLE_FMT_S16 ||
                 sample_fmt == AV_SAMPLE_FMT_S16P)
         {
             fmt = SAMPLE_S16;
-            bytes_per_sample = 2;
         }
         else if(sample_fmt == AV_SAMPLE_FMT_S32 ||
                 sample_fmt == AV_SAMPLE_FMT_S32P)
         {
             fmt = SAMPLE_S32;
-            bytes_per_sample = 4;
         }
         else if(sample_fmt == AV_SAMPLE_FMT_S64)
         {
             fmt = SAMPLE_S64;
-            bytes_per_sample = 8;
         }
         else if(sample_fmt == AV_SAMPLE_FMT_FLT ||
                 sample_fmt == AV_SAMPLE_FMT_FLTP)
         {
             fmt = SAMPLE_FLOAT;
-            bytes_per_sample = 4;
         }
         else if(sample_fmt == AV_SAMPLE_FMT_DBL ||
                 sample_fmt == AV_SAMPLE_FMT_DBLP)
         {
             fmt = SAMPLE_DOUBLE;
-            bytes_per_sample = 8;
         }
         else
         {
@@ -345,7 +339,7 @@ file_open(open_file_info *file, decoder_info *decoder)
         }
         
         file->sample_rate = decoder->audio_codec_context->sample_rate;
-        file->bytes_per_sample = bytes_per_sample;
+        file->bytes_per_sample = av_get_bytes_per_sample(sample_fmt);
         file->channels = decoder->audio_codec_context->channels;
         file->sample_format = fmt;
         
@@ -470,6 +464,15 @@ process_video_frame(program_data *pdata, struct frame_info info)
     return 0;
 }
 
+
+#define copy_bytes(dst, src, bytes)\
+do {\
+    for(int i = 0; i < bytes; i++)\
+    {\
+        *((dst)+i) = *((src)+i);\
+    }\
+} while(0)
+
 static int32
 process_audio_frame(program_data *pdata, struct frame_info info)
 {
@@ -483,22 +486,29 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
     
-    int32 size;
-    av_samples_get_buffer_size(&size,
-                               decoder->audio_codec_context->channels,
-                               frame->nb_samples,
-                               decoder->audio_codec_context->sample_fmt,
-                               0);
-    
-    uint32 real_size = frame->linesize[0] * decoder->audio_codec_context->channels;
+    int32 size = av_samples_get_buffer_size(NULL,
+                                            //decoder->audio_codec_context->channels,
+                                            frame->channels,
+                                            frame->nb_samples,
+                                            //decoder->audio_codec_context->sample_fmt,
+                                            frame->format,
+                                            1);
     
     uint32 SampleCount = frame->nb_samples;
     uint32 Frequency = decoder->audio_codec_context->sample_rate;
     uint32 Channels = decoder->audio_codec_context->channels;
     
-    bool32 is_planar = 0;
     uint32 sample_fmt = decoder->audio_codec_context->sample_fmt; 
+    bool32 is_planar = av_sample_fmt_is_planar(sample_fmt);
     uint32 bytes_per_sample = frame->linesize[0]/frame->nb_samples;
+    
+    uint32 real_size = size; frame->linesize[0] * decoder->audio_codec_context->channels;
+    
+    //dbg_error("Audio frame size:\n"
+    //"av_samples_get_buffer_size:    %d\n"
+    //"frame->linesize[0] * channels: %d\n\n",
+    //size, real_size);
+    
     
     void *data = pdata->audio.buffer;
     if(data)
@@ -510,16 +520,6 @@ process_audio_frame(program_data *pdata, struct frame_info info)
         data = malloc(real_size);
     }
     
-    if(sample_fmt == AV_SAMPLE_FMT_U8P  ||
-       sample_fmt == AV_SAMPLE_FMT_S16P ||
-       sample_fmt == AV_SAMPLE_FMT_S32P ||
-       sample_fmt == AV_SAMPLE_FMT_S64P ||
-       sample_fmt == AV_SAMPLE_FMT_FLTP ||
-       sample_fmt == AV_SAMPLE_FMT_DBLP)
-    {
-        is_planar = 1;
-    }
-    
     if(!is_planar)
     {
         memcpy(data + pdata->audio.size, frame->data[0], real_size);
@@ -529,19 +529,14 @@ process_audio_frame(program_data *pdata, struct frame_info info)
         // NOTE(Val): manually interleaving audio for however
         // many channels
         uint8* dst = data + pdata->audio.size;
-        uint32 channels = decoder->audio_codec_context->channels;
-        uint32 length = frame->nb_samples; // in samples
         
-        for(int s = 0; s < length; s++)
+        for(int s = 0; s < SampleCount; s++)
         {
-            for(int c = 0; c < channels; c++)
+            for(int c = 0; c < Channels; c++)
             {
-                for(int b = 0; b < bytes_per_sample; b++)
-                {
-                    *(dst +
-                      s*channels*bytes_per_sample +
-                      bytes_per_sample*c + b) = *(frame->data[c] + s*bytes_per_sample + b);
-                }
+                copy_bytes(dst + (s*Channels*bytes_per_sample) + c*bytes_per_sample,
+                           frame->data[c] + s*bytes_per_sample,
+                           bytes_per_sample);
             }
         }
     }
@@ -549,9 +544,7 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     pdata->audio.buffer = data;
     pdata->audio.size += real_size;
     pdata->audio.duration += 1000.0f * (real64)SampleCount / (real64)Frequency;
-    dbg_info("Audio frame duration: %lf\n", pdata->audio.duration);
-    
-    //pdata->audio.is_ready = 1;
+    //dbg_info("Audio frame duration: %lf\n", pdata->audio.duration);
     
     return 0;
 }

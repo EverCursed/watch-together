@@ -141,7 +141,7 @@ PlatformInitAudio(program_data *pdata)
     
     SDL_AudioSpec DesiredAudioSpec = {};
     SDL_AudioSpec ReceivedAudioSpec = {};
-    uint32 bytes_per_sample = 0;
+    int32 bytes_per_sample = file->bytes_per_sample;
     
     DesiredAudioSpec.freq = file->sample_rate;
     
@@ -149,22 +149,18 @@ PlatformInitAudio(program_data *pdata)
     if(file->sample_format == SAMPLE_U8)
     {
         DesiredAudioSpec.format = AUDIO_U8;
-        bytes_per_sample = 1;
     }
     else if(file->sample_format == SAMPLE_S16)
     {
         DesiredAudioSpec.format = AUDIO_S16;
-        bytes_per_sample = 2;
     }
     else if(file->sample_format == SAMPLE_S32)
     {
         DesiredAudioSpec.format = AUDIO_S32;
-        bytes_per_sample = 4;
     }
     else if(file->sample_format == SAMPLE_FLOAT)
     {
         DesiredAudioSpec.format = AUDIO_F32;
-        bytes_per_sample = 4;
     }
     else
     {
