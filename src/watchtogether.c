@@ -6,6 +6,7 @@
 //#include "audio_queue.c"
 //#include "video_queue.c"
 #include "decoding.c"
+#include "video.c"
 #include "audio.c"
 
 //#include <time.h>
@@ -149,10 +150,7 @@ MainLoop(program_data *pdata)
                     {
                         dbg_success("pdata->video.is_ready\n");
                         PlatformUpdateFrame(pdata);
-                        
-                        free(pdata->video.video_frame);
-                        free(pdata->video.video_frame_sup1);
-                        free(pdata->video.video_frame_sup2);
+                        PrepareVideoOutput(&pdata->video);
                         
                         pdata->video.is_ready = 0;
                         

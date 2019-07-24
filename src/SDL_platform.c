@@ -60,21 +60,11 @@ blit_frame(program_data *pdata)
         dbg_error("Video output frame not initialized?");
     }
     
-    
-    returning:
-    free(video->video_frame);
-    free(video->video_frame_sup1);
-    free(video->video_frame_sup2);
-    
-    video->video_frame = NULL;
-    video->video_frame_sup1 = NULL;
-    video->video_frame_sup2 = NULL;
-    
     return;
     
     error:
     dbg_error("%s\n", SDL_GetError());
-    goto returning;
+    return;
 }
 
 /*
