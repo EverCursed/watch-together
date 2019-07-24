@@ -198,6 +198,8 @@ MainLoop(program_data *pdata)
         dbg_info("PlatformSleep(%lf)\n", playback->next_frame_time - PlatformGetTime());
         PlatformSleep(playback->next_frame_time - PlatformGetTime() - MS_SAFETY_MARGIN);
         
+        PlatformFlipBuffers(pdata);
+        
         playback->current_frame_time = playback->next_frame_time;
         playback->next_frame_time += REFRESH_RATE;
     }

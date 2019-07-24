@@ -317,7 +317,14 @@ PlatformUpdateFrame(program_data *pdata)
     // Render the UI on top of video frame
     SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
     
+    return 0;
+}
+
+static int32
+PlatformFlipBuffers(program_data *pdata)
+{
     SDL_RenderPresent(renderer);
+    
     return 0;
 }
 

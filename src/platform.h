@@ -4,6 +4,9 @@
 static uint32
 PlatformGetTime();
 
+static int32
+PlatformFlipBuffers(program_data *);
+
 static int
 PlatformGetInput(program_data *);
 
