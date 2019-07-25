@@ -500,15 +500,9 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     
     uint32 sample_fmt = decoder->audio_codec_context->sample_fmt; 
     bool32 is_planar = av_sample_fmt_is_planar(sample_fmt);
-    uint32 bytes_per_sample = frame->linesize[0]/frame->nb_samples;
+    uint32 bytes_per_sample = av_get_bytes_per_sample(sample_fmt);//frame->linesize[0]/frame->nb_samples;
     
-    uint32 real_size = size; frame->linesize[0] * decoder->audio_codec_context->channels;
-    
-    //dbg_error("Audio frame size:\n"
-    //"av_samples_get_buffer_size:    %d\n"
-    //"frame->linesize[0] * channels: %d\n\n",
-    //size, real_size);
-    
+    uint32 real_size = size; // frame->linesize[0] * decoder->audio_codec_context->channels;
     
     void *data = pdata->audio.buffer;
     if(data)
@@ -530,9 +524,9 @@ process_audio_frame(program_data *pdata, struct frame_info info)
         // many channels
         uint8* dst = data + pdata->audio.size;
         
-        for(int s = 0; s < SampleCount; s++)
+        for(int c = 0; c < Channels; c++)
         {
-            for(int c = 0; c < Channels; c++)
+            for(int s = 0; s < SampleCount; s++)
             {
                 copy_bytes(dst + (s*Channels*bytes_per_sample) + c*bytes_per_sample,
                            frame->data[c] + s*bytes_per_sample,
@@ -546,12 +540,10 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     pdata->audio.duration += 1000.0f * (real64)SampleCount / (real64)Frequency;
     //dbg_info("Audio frame duration: %lf\n", pdata->audio.duration);
     
+    //pdata->audio.is_ready = 1;
+    
     return 0;
 }
-
-#define SLEEP_DURATION 5
-
-// decoding loop, only here temporarily
 
 static void
 SortPackets(program_data *pdata)
@@ -677,6 +669,7 @@ DecodingThreadStart(void *ptr)
                     {
                         dbg_error("Audio queue was empty.\n");
                     }
+                    
                     
                     
                     dbg_info("total queued:\t%lf\n"
