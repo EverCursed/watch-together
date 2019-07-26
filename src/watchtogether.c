@@ -20,6 +20,8 @@
 #define MS_SAFETY_MARGIN 2.0f
 #define DECODE_TIME      16.6666666666f
 
+#define PACKET_QUEUE_SIZE 60
+
 inline static bool32
 should_display(real64 display_time, real64 next_frame_time)
 {
@@ -216,7 +218,60 @@ TogglePlayback(program_data *pdata)
     PlatformPauseAudio(pdata->paused);
 }
 
-#define PACKET_QUEUE_SIZE 60
+static bool32
+InitQueues(program_data *pdata)
+{
+    pdata->pq_main = init_avpacket_queue(PACKET_QUEUE_SIZE);
+    pdata->pq_video = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
+    pdata->pq_audio = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
+    
+    return 0;
+}
+
+static bool32
+TerminateQueues(program_data *pdata)
+{
+    close_avpacket_queue(pdata->pq_audio);
+    close_avpacket_queue(pdata->pq_video);
+    close_avpacket_queue(pdata->pq_main);
+    
+    return 0;
+}
+
+static bool32
+OpenFile(program_data *pdata)
+{
+    if(!DecodingFileOpen(&pdata->file, &pdata->decoder))
+    {
+        PlatformInitAudio(pdata);
+        PlatformInitVideo(pdata);
+        
+        pdata->threads.decoder_thread =
+            PlatformCreateThread(DecodingThreadStart, pdata, "decoder");
+        
+        pdata->file.file_ready = 1;
+        pdata->playing = 1;
+        pdata->paused = 1;
+        
+        return 0;
+    }
+    else goto open_failed;
+    
+    open_failed:
+    return -1;
+}
+
+static bool32
+CloseFile(program_data *pdata)
+{
+    PlatformConditionSignal(pdata->decoder.condition);
+    PlatformWaitThread(pdata->threads.decoder_thread, NULL);
+    
+    PlatformCloseAudio(pdata);
+    
+    return 0;
+}
+
 static int32
 MainThread(program_data *pdata)
 {
@@ -224,29 +279,23 @@ MainThread(program_data *pdata)
     
     pdata->client.refresh_rate = REFRESH_RATE;
     
-    pdata->pq_main = init_avpacket_queue(PACKET_QUEUE_SIZE);
-    pdata->pq_video = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
-    pdata->pq_audio = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
+    // NOTE(Val): Temporarily here
+    InitQueues(pdata);
     
-    file_open(&pdata->file, &pdata->decoder);
-    PlatformInitAudio(pdata);
-    PlatformInitVideo(pdata);
+    if(!OpenFile(pdata))
+    {
+        MainLoop(pdata);
+        
+        // NOTE(Val): Temporarily here
+        CloseFile(pdata);
+    }
+    else
+    {
+        dbg_error("File isn't found.\n");
+        pdata->running = 0;
+    }
     
-    pdata->file.file_ready = 1;
-    pdata->playing = 0;
-    pdata->paused = 0;
+    TerminateQueues(pdata);
     
-    pdata->threads.decoder_thread =
-        PlatformCreateThread(DecodingThreadStart, pdata, "decoder");
-    
-    MainLoop(pdata);
-    
-    PlatformConditionSignal(pdata->decoder.condition);
-    PlatformWaitThread(pdata->threads.decoder_thread, NULL);
-    
-    PlatformCloseAudio(pdata);
-    
-    close_avpacket_queue(pdata->pq_audio);
-    close_avpacket_queue(pdata->pq_video);
-    close_avpacket_queue(pdata->pq_main);
+    return 0;
 }

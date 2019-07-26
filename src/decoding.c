@@ -192,7 +192,7 @@ get_frame(program_data *pdata, int32 stream)
 }
 
 static int32
-file_open(open_file_info *file, decoder_info *decoder)
+DecodingFileOpen(open_file_info *file, decoder_info *decoder)
 {
     // Open video file
     dbg_print("avformat version: %d - %d\n", LIBAVFORMAT_VERSION_INT, avformat_version());
