@@ -383,25 +383,24 @@ process_video_frame(program_data *pdata, struct frame_info info)
              frame->format,
              AV_PIX_FMT_YUV420P);
     
-    
+    int32 fmt = AV_PIX_FMT_YUV420P;
     
     int32 pitch_Y = round_up_align(frame->width *
                                    av_get_bits_per_pixel(
         av_pix_fmt_desc_get(
-        frame->format)));
+        fmt)));
     int32 pitch_U = round_up_align(((frame->width+1)/2) *
                                    av_get_bits_per_pixel(
         av_pix_fmt_desc_get(
-        frame->format)));
+        fmt)));
     int32 pitch_V = round_up_align(((frame->width+1)/2) *
                                    av_get_bits_per_pixel(
         av_pix_fmt_desc_get(
-        frame->format)));
+        fmt)));
     
     void *frame_Y = malloc(pitch_Y * frame->height);
     void *frame_U = malloc(pitch_U * (frame->height+1)/2);
     void *frame_V = malloc(pitch_V * (frame->height+1)/2);
-    
     
     if(frame->format != AV_PIX_FMT_YUV420P)
     {
@@ -411,7 +410,7 @@ process_video_frame(program_data *pdata, struct frame_info info)
                                             frame->format,
                                             decoder->video_codec_context->width,  // dst width
                                             decoder->video_codec_context->height, // dst height
-                                            AV_PIX_FMT_YUV420P,
+                                            fmt,
                                             SWS_BICUBIC, //SWS_BILINEAR | SWS_ACCURATE_RND,
                                             NULL, NULL, NULL);
         
