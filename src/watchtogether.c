@@ -13,8 +13,6 @@
 // TODO(Val): NAT-T implementation, see how it works
 // TODO(Val): Encryption
 
-// TODO(Val): Find a way to get the refresh rate of the screen, for now this is a define
-#define REFRESH_RATE     16.666666666666f
 // TODO(Val): Test a variety of these, and see how long it's possible to go
 // NOTE(Val): This will directly affect our maximum refresh rate. 
 #define MS_SAFETY_MARGIN 2.0f
@@ -36,7 +34,7 @@ MainLoop(program_data *pdata)
     // times needed for application framerate.
     playback->time_start = PlatformGetTime();
     playback->current_frame_time = playback->time_start;
-    playback->next_frame_time = playback->current_frame_time + REFRESH_RATE;
+    playback->next_frame_time = playback->current_frame_time + pdata->client.refresh_target;
     
     // times needed for video playback
     
@@ -203,7 +201,7 @@ MainLoop(program_data *pdata)
         }
         
         playback->current_frame_time = playback->next_frame_time;
-        playback->next_frame_time += pdata->client.refresh_rate;
+        playback->next_frame_time += pdata->client.refresh_target;
         playback->time_start = PlatformGetTime();
         
     }
@@ -264,6 +262,10 @@ OpenFile(program_data *pdata)
 static bool32
 CloseFile(program_data *pdata)
 {
+    pdata->file.file_ready = 0;
+    pdata->playing = 0;
+    pdata->paused = 0;
+    
     PlatformConditionSignal(pdata->decoder.condition);
     PlatformWaitThread(pdata->threads.decoder_thread, NULL);
     
@@ -277,7 +279,9 @@ MainThread(program_data *pdata)
 {
     // NOTE(Val): Initialize things here that will last the entire runtime of the application
     
-    pdata->client.refresh_rate = REFRESH_RATE;
+    pdata->client.refresh_target = 1000.0 / (real64)pdata->hardware.monitor_refresh_rate;
+    
+    dbg_info("Client refresh target time set to %lfs.\n", pdata->client.refresh_target);
     
     // NOTE(Val): Temporarily here
     InitQueues(pdata);

@@ -670,7 +670,7 @@ DecodingThreadStart(void *ptr)
                     }
                     
                     
-                    
+                    /*
                     dbg_info("total queued:\t%lf\n"
                              "pdata->audio.duration:\t%lf\n"
                              "sum:\t\t\t%lf\n"
@@ -683,8 +683,8 @@ DecodingThreadStart(void *ptr)
                              pdata->playback.playback_start,
                              pdata->playback.next_frame_time - pdata->playback.playback_start,
                              pdata->playback.next_frame_time + pdata->client.refresh_rate - pdata->playback.playback_start);
-                    
-                } while((pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_rate - pdata->playback.playback_start));
+                    */
+                } while((pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
                 
                 pdata->audio.is_ready = 1;
             }

@@ -198,13 +198,20 @@ typedef struct _input_struct {
     mouse_info mouse;
 } input_struct;
 
+typedef struct _hardware_info {
+    int32 monitor_refresh_rate;
+    int32 monitor_width;
+    int32 monitor_height;
+    
+} hardware_info;
+
 typedef struct _client_info {
     uint32 output_width;
     uint32 output_height;
     uint32 bytes_per_pixel;
     bool32 fullscreen;
     
-    real64 refresh_rate;
+    real64 refresh_target;
 } client_info;
 
 typedef struct _output_audio {
@@ -355,6 +362,7 @@ typedef struct _program_data {
     video_queue_data vq_data;
     decoder_info decoder;
     playback_data playback;
+    hardware_info hardware;
     
     // TODO(Val): Will we need multiple packet queues?
     avpacket_queue *pq_main;

@@ -603,9 +603,14 @@ int main(int argc, const char** argv)
     else
         pdata->file.filename = TESTING_FILE;
     
-    //Deb_ResizePixelBuffer(renderer);
+    SDL_DisplayMode display_info;
+    // TODO(Val): For now this just picks 0th monitor. Make this better.
+    SDL_GetCurrentDisplayMode(0, &display_info);
+    pdata->hardware.monitor_refresh_rate = display_info.refresh_rate;
+    pdata->hardware.monitor_width = display_info.w;
+    pdata->hardware.monitor_height = display_info.h;
     
-    //pdata->threads.main_thread = PlatformCreateThread(MainLoop, pdata, "main");
+    
     MainThread(pdata);
     
     //ProcessInput(pdata);
