@@ -294,14 +294,19 @@ PlatformUpdateFrame(program_data *pdata)
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
     SDL_RenderClear(renderer);
     
+    void* pixels;
+    int pitch; 
+    
+    SDL_LockTexture(background_texture, NULL, &pixels, &pitch);
     ret = SDL_RenderCopy(renderer, background_texture, NULL, NULL);
     if(ret)
     {
         dbg_error("%s\n", SDL_GetError());
     }
+    SDL_UnlockTexture(background_texture);
     
     // Render the UI on top of video frame
-    SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
+    //SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
     
     return 0;
 }
