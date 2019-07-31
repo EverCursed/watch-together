@@ -1,0 +1,33 @@
+version(1);
+project_name = "WatchTogether";
+patterns = {
+"*.c",
+"*.cpp",
+"*.h",
+};
+blacklist_patterns = {
+".*",
+};
+load_paths_base = {
+ { "./src", .relative = true, .recursive = true, },
+};
+load_paths = {
+ { load_paths_base, .os = "win", },
+ { load_paths_base, .os = "linux", },
+ { load_paths_base, .os = "mac", },
+};
+
+command_list = {
+ { .name = "build",
+   .out = "*compilation*", .footer_panel = true, .save_dirty_files = true,
+   .cmd = { { "make" , .os = "win"   },
+            { "make", .os = "linux" },
+            { "make", .os = "mac"   }, }, },
+ { .name = "run",
+   .out = "*run*", .footer_panel = true, .save_dirty_files = false,
+   .cmd = { { "./bin/watchtogether.exe", .os = "win"   },
+            { "./bin/watchtogether" , .os = "linux" },
+            { "./bin/watchtogether" , .os = "mac"   }, }, },
+};
+fkey_command[1] = "build";
+fkey_command[2] = "run";

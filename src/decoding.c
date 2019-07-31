@@ -370,6 +370,8 @@ copy_pixel_buffers(void *dst,
 
 global struct SwsContext* modifContext = NULL;
 
+#define DIRECT_COPY
+
 static int32
 process_video_frame(program_data *pdata, struct frame_info info)
 {
@@ -386,6 +388,7 @@ process_video_frame(program_data *pdata, struct frame_info info)
     
     int32 fmt = AV_PIX_FMT_YUV420P;
     
+#ifndef DIRECT_COPY
     int32 pitch_Y = round_up_align(frame->width *
                                    av_get_bits_per_pixel(
         av_pix_fmt_desc_get(
@@ -402,6 +405,11 @@ process_video_frame(program_data *pdata, struct frame_info info)
     void *frame_Y = malloc(pitch_Y * frame->height);
     void *frame_U = malloc(pitch_U * (frame->height+1)/2);
     void *frame_V = malloc(pitch_V * (frame->height+1)/2);
+#else
+    void *frame_Y = malloc(frame->linesize[0] * frame->height);
+    void *frame_U = malloc(frame->linesize[1] * (frame->height+1)/2);
+    void *frame_V = malloc(frame->linesize[2] * (frame->height+1)/2);
+#endif
     
     if(frame->format != AV_PIX_FMT_YUV420P)
     {
@@ -416,8 +424,12 @@ process_video_frame(program_data *pdata, struct frame_info info)
                                             NULL, NULL, NULL);
         
         uint8_t *ptrs[3] = { frame_Y, frame_U, frame_V };
-        int stride[3] = { pitch_Y, pitch_U, pitch_V };
         
+#ifndef DIRECT_COPY
+        int stride[3] = { pitch_Y, pitch_U, pitch_V };
+#else
+        int stride[3] = { frame->linesize[0], frame->linesize[1], frame->linesize[2] }; 
+#endif
         sws_scale(modifContext,
                   (uint8 const* const*)frame->data,
                   frame->linesize,
@@ -428,6 +440,7 @@ process_video_frame(program_data *pdata, struct frame_info info)
     }
     else
     {
+#ifndef DIRECT_COPY
         copy_pixel_buffers(frame_Y,
                            frame->data[0],
                            pitch_Y,
@@ -443,15 +456,26 @@ process_video_frame(program_data *pdata, struct frame_info info)
                            pitch_V,
                            frame->linesize[2],
                            (frame->height+1)/2);
+#else
+        memcpy(frame_Y, frame->data[0], frame->linesize[0] * frame->height); 
+        memcpy(frame_U, frame->data[1], frame->linesize[1] * (frame->height+1)/2); 
+        memcpy(frame_V, frame->data[2], frame->linesize[2] * (frame->height+1)/2); 
+#endif
     }
     
     pdata->video.video_frame = frame_Y;
     pdata->video.video_frame_sup1 = frame_U;
     pdata->video.video_frame_sup2 = frame_V;
     
+#ifndef DIRECT_COPY
     pdata->video.pitch = pitch_Y;
     pdata->video.pitch_sup1 = pitch_U;
     pdata->video.pitch_sup2 = pitch_V;
+#else
+    pdata->video.pitch = frame->linesize[0];
+    pdata->video.pitch_sup1 = frame->linesize[1];
+    pdata->video.pitch_sup2 = frame->linesize[2];
+#endif
     
     pdata->video.width = frame->width;
     pdata->video.height = frame->height;
@@ -675,17 +699,17 @@ DecodingThreadStart(void *ptr)
                     
                     /*
                     dbg_info("total queued:\t%lf\n"
-                             "pdata->audio.duration:\t%lf\n"
-                             "sum:\t\t\t%lf\n"
-                             "playback start: %lf\n"
-                             "next frame time:\t%lf\n"
-                             "following frame time:\t%lf\n",
-                             pdata->playback.audio_total_queued,
-                             pdata->audio.duration,
-                             pdata->audio.pts + pdata->audio.duration,
-                             pdata->playback.playback_start,
-                             pdata->playback.next_frame_time - pdata->playback.playback_start,
-                             pdata->playback.next_frame_time + pdata->client.refresh_rate - pdata->playback.playback_start);
+                    "pdata->audio.duration:\t%lf\n"
+                    "sum:\t\t\t%lf\n"
+                    "playback start: %lf\n"
+                    "next frame time:\t%lf\n"
+                    "following frame time:\t%lf\n",
+                    pdata->playback.audio_total_queued,
+                    pdata->audio.duration,
+                    pdata->audio.pts + pdata->audio.duration,
+                    pdata->playback.playback_start,
+                    pdata->playback.next_frame_time - pdata->playback.playback_start,
+                    pdata->playback.next_frame_time + pdata->client.refresh_rate - pdata->playback.playback_start);
                     */
                 } while(!pdata->file.file_finished && (pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
                 
