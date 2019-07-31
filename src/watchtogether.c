@@ -3,8 +3,6 @@
 #include "kbkeys.h"
 
 #include "packet_queue.c"
-//#include "audio_queue.c"
-//#include "video_queue.c"
 #include "decoding.c"
 #include "video.c"
 #include "audio.c"
