@@ -44,6 +44,9 @@ blit_frame(program_data *pdata)
                                        video->video_frame_sup1, video->pitch_sup1,
                                        video->video_frame_sup2, video->pitch_sup2);
         
+        free(video->video_frame);
+        free(video->video_frame_sup1);
+        free(video->video_frame_sup2);
         if(ret < 0)
             goto error;
     }
