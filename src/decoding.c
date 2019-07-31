@@ -112,7 +112,7 @@ get_frame(program_data *pdata, int32 stream)
     do {
         ret = peek_packet(queue, &pkt, 0);
         if(ret == -1)
-            goto get_frame_failed;
+            goto no_packet_fail;
         
         ret = avcodec_send_packet(dec_ctx, pkt);
         dbg_info("avcodec_send_packet\tret: %d\n", ret);
@@ -124,7 +124,7 @@ get_frame(program_data *pdata, int32 stream)
         }
         else if(ret == AVERROR_EOF)
         {
-            pdata->file.file_finished = 1;
+            //pdata->file.file_finished = 1;
             // TODO(Val): Mark file as finished
             dbg_error("AVERROR(EOF)\n");
             // NOTE(Val): Decoder flushed
@@ -271,6 +271,7 @@ DecodingFileOpen(open_file_info *file, decoder_info *decoder)
         
         file->width = decoder->video_codec_context->width;
         file->height = decoder->video_codec_context->height;
+        
         
         AVRational time = decoder->format_context->streams[decoder->video_stream]->avg_frame_rate;
         file->fps = (real32)time.num/(real32)time.den;
@@ -504,13 +505,10 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     uint32 real_size = size; // frame->linesize[0] * decoder->audio_codec_context->channels;
     
     void *data = pdata->audio.buffer;
-    if(data)
+    if(!data)
     {
-        data = realloc(data, pdata->audio.size + real_size);
-    }
-    else
-    {
-        data = malloc(real_size);
+        dbg_error("Audio buffer wasn't allocated. Returning.\n");
+        return -1;
     }
     
     if(!is_planar)
@@ -578,7 +576,8 @@ static void
 LoadPackets(program_data *pdata)
 {
     while(!pq_is_full(pdata->pq_main) &&
-          !pdata->file.file_finished)
+          !pdata->file.file_finished &&
+          pdata->running)
     {
         AVPacket *pkt = av_packet_alloc();
         
@@ -595,8 +594,8 @@ LoadPackets(program_data *pdata)
         }
     }
     
-    if(pq_is_empty(pdata->pq_main))
-        pdata->file.file_finished = 1;
+    //if(pq_is_empty(pdata->pq_main))
+    //pdata->file.file_finished = 1;
 }
 
 static void
@@ -637,11 +636,15 @@ DecodingThreadStart(void *ptr)
     
     decoder->condition = PlatformCreateConditionVar();
     
-    LoadPackets(pdata);
-    SortPackets(pdata);
+    while(!pq_is_full(pdata->pq_audio) && !pq_is_full(pdata->pq_video))
+    {
+        LoadPackets(pdata);
+        SortPackets(pdata);
+    }
     
     pdata->start_playback = 1;
     
+    //ProfilerStart("decoder.prof.log");
     while(pdata->running && !pdata->playback_finished)
     {
         dbg_success("Processing loop start.\n");
@@ -684,7 +687,7 @@ DecodingThreadStart(void *ptr)
                              pdata->playback.next_frame_time - pdata->playback.playback_start,
                              pdata->playback.next_frame_time + pdata->client.refresh_rate - pdata->playback.playback_start);
                     */
-                } while((pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
+                } while(!pdata->file.file_finished && (pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
                 
                 pdata->audio.is_ready = 1;
             }
@@ -725,11 +728,16 @@ DecodingThreadStart(void *ptr)
         LoadPackets(pdata);
         SortPackets(pdata);
         
-        PlatformConditionWait(decoder->condition);
+        dbg_info("Decoder: Starting condition wait.\n");
+        
+        PlatformConditionWait(&decoder->condition);
+        dbg_success("Decoder: Thread woken up.\n");
         //}
     }
     
-    PlatformConditionDestroy(decoder->condition);
+    //ProfilerStop();
+    
+    PlatformConditionDestroy(&decoder->condition);
     
     return 0;
 }

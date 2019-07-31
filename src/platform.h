@@ -29,13 +29,13 @@ static cond_info
 PlatformCreateConditionVar();
 
 static int32
-PlatformConditionWait(cond_info);
+PlatformConditionWait(cond_info *);
 
 static int32
-PlatformConditionSignal(cond_info);
+PlatformConditionSignal(cond_info *);
 
 static bool32
-PlatformConditionDestroy(cond_info);
+PlatformConditionDestroy(cond_info *);
 
 static void
 PlatformInitAudio(program_data *);

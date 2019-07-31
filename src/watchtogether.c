@@ -16,7 +16,6 @@
 // TODO(Val): Test a variety of these, and see how long it's possible to go
 // NOTE(Val): This will directly affect our maximum refresh rate. 
 #define MS_SAFETY_MARGIN 2.0f
-#define DECODE_TIME      16.6666666666f
 
 #define PACKET_QUEUE_SIZE 60
 
@@ -25,6 +24,64 @@ should_display(real64 display_time, real64 next_frame_time)
 {
     // TODO(Val): This might need to be more elaborate
     return (display_time < next_frame_time);
+}
+
+static int32
+ProcessInput(program_data *pdata)
+{
+    // Get input
+    // TODO(Val): Introduce some kind of timing system to see how long keys are held
+    //if(pdata->running)
+    PlatformGetInput(pdata);
+    
+    // Process input
+    int keys = pdata->input.keyboard.n;
+    for(int i = 0; i < keys && pdata->running; i++)
+    {
+        key_event e = pdata->input.keyboard.events[i];
+        
+        switch(e.key)
+        {
+            case KB_F4:
+            {
+                if(e.alt)
+                {
+                    pdata->running = 0;
+                }
+            } break;
+            case KB_ESCAPE:
+            {
+                pdata->running = 0;
+            } break;
+            case KB_UP:
+            {
+                if(e.pressed)
+                {
+                    pdata->volume += 0.025f;
+                    
+                    if(pdata->volume > 1.0f) pdata->volume = 1.0f;
+                }
+            }
+            case KB_DOWN:
+            {
+                if(e.pressed)
+                {
+                    pdata->volume -= 0.025f;
+                    
+                    if(pdata->volume < 0.0f) pdata->volume = 0.0f;
+                }
+            }
+            case KB_ENTER:
+            {
+                if(e.pressed && e.alt)
+                {
+                    PlatformToggleFullscreen(pdata);
+                }
+            }
+        }
+    }
+    pdata->input.keyboard.n = 0;
+    
 }
 
 static int32
@@ -40,8 +97,8 @@ MainLoop(program_data *pdata)
     
     dbg_print("audio time_base: %d/%d\n", pdata->decoder.audio_time_base.num, pdata->decoder.audio_time_base.den);
     
+    //ProfilerStart("main.prof.log");
     // now start main loop
-    playback->time_start = PlatformGetTime();
     while(pdata->running)
     {
         /*
@@ -80,60 +137,9 @@ MainLoop(program_data *pdata)
             pdata->playing = 1;
         }
         
-        // Get input
-        // TODO(Val): Introduce some kind of timing system to see how long keys are held
-        //if(pdata->running)
-        PlatformGetInput(pdata);
-        
-        // Process input
-        int keys = pdata->input.keyboard.n;
-        for(int i = 0; i < keys && pdata->running; i++)
-        {
-            key_event e = pdata->input.keyboard.events[i];
-            
-            switch(e.key)
-            {
-                case KB_F4:
-                {
-                    if(e.alt)
-                    {
-                        pdata->running = 0;
-                    }
-                } break;
-                case KB_ESCAPE:
-                {
-                    pdata->running = 0;
-                } break;
-                case KB_UP:
-                {
-                    if(e.pressed)
-                    {
-                        pdata->volume += 0.025f;
-                        
-                        if(pdata->volume > 1.0f) pdata->volume = 1.0f;
-                    }
-                }
-                case KB_DOWN:
-                {
-                    if(e.pressed)
-                    {
-                        pdata->volume -= 0.025f;
-                        
-                        if(pdata->volume < 0.0f) pdata->volume = 0.0f;
-                    }
-                }
-                case KB_ENTER:
-                {
-                    if(e.pressed && e.alt)
-                    {
-                        PlatformToggleFullscreen(pdata);
-                    }
-                }
-            }
-        }
-        pdata->input.keyboard.n = 0;
-        
         // TODO(Val): Draw UI
+        
+        ProcessInput(pdata);
         
         if(pdata->playing)
         {
@@ -145,8 +151,6 @@ MainLoop(program_data *pdata)
                 if(should_display(pdata->video.pts*1000.0f,
                                   (playback->next_frame_time - playback->playback_start)))
                 {
-                    dbg_warn("video.pts: %lf\n", pdata->video.pts);
-                    //dbg_info("next_video_frame_time <= next_frame_time - MS_SAFETY_MARGIN\n");
                     if(pdata->video.is_ready)
                     {
                         dbg_success("pdata->video.is_ready\n");
@@ -160,7 +164,7 @@ MainLoop(program_data *pdata)
                     }
                     else
                     {
-                        //dbg_warn("Video was not ready.\n");
+                        dbg_error("Video was not ready.\n");
                         // TODO(Val): skip this frame
                     }
                 }
@@ -182,7 +186,9 @@ MainLoop(program_data *pdata)
             
             if(need_audio || need_video)
             {
-                PlatformConditionSignal(pdata->decoder.condition);
+                dbg_info("Video or audio needed.\n");
+                PlatformConditionSignal(&pdata->decoder.condition);
+                
             }
         }
         
@@ -190,7 +196,8 @@ MainLoop(program_data *pdata)
         
         //dbg_print("Loop time: %ld\n", playback->time_end - playback->time_start);
         //dbg_info("PlatformSleep(%lf)\n", playback->next_frame_time - PlatformGetTime());
-        PlatformSleep(playback->next_frame_time - playback->time_end - MS_SAFETY_MARGIN);
+        
+        PlatformSleep(playback->next_frame_time - playback->time_end - 1);
         
         if(need_flip)
         {
@@ -206,6 +213,7 @@ MainLoop(program_data *pdata)
         
     }
     
+    //ProfilerStop();
     return 0;
 }
 
@@ -214,6 +222,20 @@ TogglePlayback(program_data *pdata)
 {
     pdata->paused = !pdata->paused;
     PlatformPauseAudio(pdata->paused);
+}
+
+static bool32
+AllocateBuffers(program_data *pdata)
+{
+    // NOTE(Val): Allocate audio buffer
+    int32 bytes_per_sample = pdata->file.bytes_per_sample;
+    int32 sample_rate = pdata->file.sample_rate;
+    int32 channels = pdata->file.channels;
+    int32 seconds = 1;
+    
+    pdata->audio.buffer = malloc(bytes_per_sample*sample_rate*channels*seconds);
+    
+    // TODO(Val): Allocate video buffers
 }
 
 static bool32
@@ -244,6 +266,8 @@ OpenFile(program_data *pdata)
         PlatformInitAudio(pdata);
         PlatformInitVideo(pdata);
         
+        AllocateBuffers(pdata);
+        
         pdata->threads.decoder_thread =
             PlatformCreateThread(DecodingThreadStart, pdata, "decoder");
         
@@ -266,7 +290,7 @@ CloseFile(program_data *pdata)
     pdata->playing = 0;
     pdata->paused = 0;
     
-    PlatformConditionSignal(pdata->decoder.condition);
+    PlatformConditionSignal(&pdata->decoder.condition);
     PlatformWaitThread(pdata->threads.decoder_thread, NULL);
     
     PlatformCloseAudio(pdata);

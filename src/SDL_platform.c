@@ -219,7 +219,9 @@ PlatformPauseAudio(bool32 b)
 static void
 PlatformSleep(int32 ms)
 {
-    SDL_Delay(ms < 0 ? 0 : ms);
+    int st = ms <= 0 ? 0 : ms;
+    dbg_warn("Sleeping for %d ms.\n", st);
+    SDL_Delay(st);
 }
 
 /// Platform create thread
@@ -248,32 +250,39 @@ PlatformCreateConditionVar()
     cond_info c = {};
     c.mutex = SDL_CreateMutex();
     c.cond = SDL_CreateCond();
+    c.test = 0;
     return c;
 }
 
 static int32
-PlatformConditionWait(cond_info c)
+PlatformConditionWait(cond_info *c)
 {
-    SDL_LockMutex(c.mutex);
-    SDL_CondWait(c.cond, c.mutex);
-    SDL_UnlockMutex(c.mutex);
+    SDL_LockMutex(c->mutex);
+    while(!c->test)
+    {
+        SDL_CondWait(c->cond, c->mutex);
+    }
+    SDL_UnlockMutex(c->mutex);
     
     return 0;
 }
 
 static int32
-PlatformConditionSignal(cond_info c)
+PlatformConditionSignal(cond_info *c)
 {
-    SDL_CondSignal(c.cond);
+    SDL_LockMutex(c->mutex);
+    c->test = 1;
+    SDL_CondSignal(c->cond);
+    SDL_UnlockMutex(c->mutex);
     
     return 0;
 }
 
 static bool32
-PlatformConditionDestroy(cond_info c)
+PlatformConditionDestroy(cond_info *c)
 {
-    SDL_DestroyMutex(c.mutex);
-    SDL_DestroyCond(c.cond);
+    SDL_DestroyMutex(c->mutex);
+    SDL_DestroyCond(c->cond);
     
     return 0;
 }

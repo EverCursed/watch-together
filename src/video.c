@@ -10,17 +10,17 @@ PrepareVideoOutput(output_video *video)
     
     if(video->video_frame)
     {
-        free(video->video_frame);
+        //free(video->video_frame);
         video->video_frame = NULL;
         
         if(video->video_frame_sup1)
         {
-            free(video->video_frame_sup1);
+            //free(video->video_frame_sup1);
             video->video_frame_sup1 = NULL;
         }
         if(video->video_frame_sup2)
         {
-            free(video->video_frame_sup2);
+            //free(video->video_frame_sup2);
             video->video_frame_sup2 = NULL;
         }
         

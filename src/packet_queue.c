@@ -84,6 +84,33 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
     }
 }
 
+static int32
+dequeue_next(avpacket_queue *queue, AVPacket **packet)
+{
+    if(queue->n == 0)
+    {
+        dbg_warn("Packet queue empty.\n");
+        return -1;
+    }
+    
+    if(!SDL_LockMutex(queue->mutex))
+    {
+        *packet = queue->array[queue->next];
+        queue->n--;
+        queue->next = (queue->next + 1) % queue->maxn;
+        
+        //dbg_info("Dequeueing packet.\n");
+        //dbg_packet((*packet));
+        
+        SDL_UnlockMutex(queue->mutex);
+        return 0;
+    }
+    else
+    {
+        return -1;
+    }
+}
+
 // TODO(Val): Should we make another reference? Will need to unref manually then.
 static int32
 peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)

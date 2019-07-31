@@ -14,6 +14,7 @@ typedef struct _thread_info {
 typedef struct _cond_info {
     SDL_cond *cond;
     SDL_mutex *mutex;
+    bool32 test;
 } cond_info;
 
 #endif
