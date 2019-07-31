@@ -237,6 +237,14 @@ AllocateBuffers(program_data *pdata)
 }
 
 static bool32
+DeallocateBuffers(program_data *pdata)
+{
+    free(pdata->audio.buffer);
+    
+    return 0;
+}
+
+static bool32
 InitQueues(program_data *pdata)
 {
     pdata->pq_main = init_avpacket_queue(PACKET_QUEUE_SIZE);
@@ -290,6 +298,8 @@ CloseFile(program_data *pdata)
     
     PlatformConditionSignal(&pdata->decoder.condition);
     PlatformWaitThread(pdata->threads.decoder_thread, NULL);
+    
+    DeallocateBuffers(pdata);
     
     PlatformCloseAudio(pdata);
     
