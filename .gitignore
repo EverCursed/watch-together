@@ -1,6 +1,5 @@
 bin/*
 *.obj
-*.4coder
 */Thumbs.db
 data/*test
 include
