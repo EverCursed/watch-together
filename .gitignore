@@ -3,4 +3,5 @@ bin/*
 */Thumbs.db
 data/*test
 include
+lib
 backup*
