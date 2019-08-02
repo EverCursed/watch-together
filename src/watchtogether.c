@@ -6,6 +6,7 @@
 #include "decoding.c"
 #include "video.c"
 #include "audio.c"
+#include "playback.c"
 
 //#include <time.h>
 // TODO(Val): NAT-T implementation, see how it works
@@ -17,11 +18,21 @@
 
 #define PACKET_QUEUE_SIZE 60
 
-inline static bool32
-should_display(real64 display_time, real64 next_frame_time)
+static void
+TogglePlayback(program_data *pdata)
 {
-    // TODO(Val): This might need to be more elaborate
-    return (display_time < next_frame_time);
+    if(!pdata->paused)
+    {
+        pdata->playback.pause_started = PlatformGetTime();
+    }
+    else
+    {
+        real64 time = PlatformGetTime();
+        pdata->playback.aggregated_pause_time += (time - pdata->playback.pause_started);
+    }
+    
+    pdata->paused = !pdata->paused;
+    PlatformPauseAudio(pdata->paused);
 }
 
 static int32
@@ -76,6 +87,10 @@ ProcessInput(program_data *pdata)
                     PlatformToggleFullscreen(pdata);
                 }
             }
+            case KB_SPACE:
+            {
+                TogglePlayback(pdata);
+            }
         }
     }
     pdata->input.keyboard.n = 0;
@@ -83,36 +98,86 @@ ProcessInput(program_data *pdata)
 }
 
 static int32
+ProcessPlayback(program_data *pdata)
+{
+    playback_data *playback = &pdata->playback;
+    
+    if(!pdata->paused &&
+       pdata->playing)
+    {
+        bool32 need_video = 0;
+        bool32 need_audio = 0;
+        
+        if(should_display(playback, pdata->video.pts*1000.0f))
+        {
+            if(pdata->video.is_ready)
+            {
+                dbg_success("pdata->video.is_ready\n");
+                PlatformUpdateFrame(pdata);
+                PrepareVideoOutput(&pdata->video);
+                
+                pdata->video.is_ready = 0;
+                
+                increment_video_times(playback, 1000.0f*av_q2d(pdata->decoder.video_time_base));
+                
+                need_video = 1;
+                //need_flip = 1;
+            }
+            else
+            {
+                dbg_error("Video was not ready.\n");
+                // TODO(Val): skip this frame
+            }
+        }
+        
+        // TODO(Val): Delay playing this until we can't delay any more.
+        
+        if(should_queue(playback))
+        {
+            if(pdata->audio.is_ready)
+            {
+                PlatformQueueAudio(&pdata->audio);
+                
+                increment_audio_times(playback, pdata->audio.duration);
+                
+                PrepareAudioOutput(&pdata->audio);
+                
+                //pdata->audio.required_duration = 
+                need_audio = 1;
+            }
+            else
+            {
+                dbg_error("Audio is not ready.\n");
+            }
+        }
+        if(need_audio || need_video)
+        {
+            dbg_info("Video or audio needed.\n");
+            PlatformConditionSignal(&pdata->decoder.condition);
+            
+        }
+    }
+    
+    //playback->time_end = PlatformGetTime();
+    
+    return 0;
+}
+
+static int32
 MainLoop(program_data *pdata)
 {
     playback_data *playback = &pdata->playback;
     // times needed for application framerate.
-    playback->time_start = PlatformGetTime();
-    playback->current_frame_time = playback->time_start;
+    //playback->current_frame_time = playback->time_start;
     playback->next_frame_time = playback->current_frame_time + pdata->client.refresh_target;
     
     // times needed for video playback
     
     dbg_print("audio time_base: %d/%d\n", pdata->decoder.audio_time_base.num, pdata->decoder.audio_time_base.den);
     
-    //ProfilerStart("main.prof.log");
     // now start main loop
     while(pdata->running)
     {
-        /*
-        dbg_print("time_start:\t\t\t%ld\n"
-                  "current_frame_time:\t\t%f\n"
-                  "next_frame_time:\t\t%f\n"
-                  "current_video_frame_time:\t%f\n"
-                  "next_video_frame_time:\t\t%f\n"
-                  "tick:\t\t\t\t%d\n",
-                  playback->time_start,
-                  playback->current_frame_time, 
-                  playback->next_frame_time,
-                  playback->current_video_frame_time,
-                  playback->next_video_frame_time,
-                  pdata->tick);
-        */
         bool32 need_flip = 0;
         
         if(pdata->file.open_failed)
@@ -126,9 +191,7 @@ MainLoop(program_data *pdata)
         
         if(pdata->start_playback)
         {
-            playback->playback_start = playback->current_frame_time;
-            playback->next_video_frame_time = playback->next_frame_time + 1000.0f*av_q2d(pdata->decoder.video_time_base);
-            playback->aggregated_pause_time = 0.0f;
+            init_playback_time(playback, PlatformGetTime(), pdata->client.refresh_target);
             //playback->frame_duration = ;
             
             pdata->start_playback = 0;
@@ -139,87 +202,25 @@ MainLoop(program_data *pdata)
         
         ProcessInput(pdata);
         
-        if(pdata->playing)
+        if(!pdata->paused && pdata->playing)
         {
-            bool32 need_video = 0;
-            bool32 need_audio = 0;
+            ProcessPlayback(pdata);
             
-            if(pdata->video.is_ready)
-            {
-                if(should_display(pdata->video.pts*1000.0f,
-                                  (playback->next_frame_time - playback->playback_start)))
-                {
-                    if(pdata->video.is_ready)
-                    {
-                        dbg_success("pdata->video.is_ready\n");
-                        PlatformUpdateFrame(pdata);
-                        PrepareVideoOutput(&pdata->video);
-                        
-                        pdata->video.is_ready = 0;
-                        
-                        need_video = 1;
-                        need_flip = 1;
-                    }
-                    else
-                    {
-                        dbg_error("Video was not ready.\n");
-                        // TODO(Val): skip this frame
-                    }
-                }
-            }
-            
-            if(pdata->audio.is_ready)
-            {
-                PlatformQueueAudio(&pdata->audio);
-                pdata->playback.audio_total_queued += pdata->audio.duration;
-                
-                PrepareAudioOutput(&pdata->audio);
-                
-                need_audio = 1;
-            }
-            else
-            {
-                //dbg_warn("Audio is not ready.\n");
-            }
-            
-            if(need_audio || need_video)
-            {
-                dbg_info("Video or audio needed.\n");
-                PlatformConditionSignal(&pdata->decoder.condition);
-                
-            }
+            playback->playback_time += pdata->client.refresh_target;
         }
-        
-        playback->time_end = PlatformGetTime();
-        
         //dbg_print("Loop time: %ld\n", playback->time_end - playback->time_start);
         //dbg_info("PlatformSleep(%lf)\n", playback->next_frame_time - PlatformGetTime());
         
-        PlatformSleep(playback->next_frame_time - playback->time_end - 1);
+        PlatformSleep(playback->next_frame_time - PlatformGetTime() - 1);
         
-        if(need_flip)
-        {
-            PlatformFlipBuffers(pdata);
-            
-            playback->current_video_frame_time = playback->next_video_frame_time;
-            playback->next_video_frame_time += 1000.0f*av_q2d(pdata->decoder.video_time_base);
-        }
+        // TODO(Val): Let's try to present at a constant interval
+        PlatformFlipBuffers(pdata);
         
         playback->current_frame_time = playback->next_frame_time;
         playback->next_frame_time += pdata->client.refresh_target;
-        playback->time_start = PlatformGetTime();
-        
     }
     
-    //ProfilerStop();
     return 0;
-}
-
-static void
-TogglePlayback(program_data *pdata)
-{
-    pdata->paused = !pdata->paused;
-    PlatformPauseAudio(pdata->paused);
 }
 
 static bool32

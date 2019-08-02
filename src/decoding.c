@@ -711,7 +711,11 @@ DecodingThreadStart(void *ptr)
                     pdata->playback.next_frame_time - pdata->playback.playback_start,
                     pdata->playback.next_frame_time + pdata->client.refresh_rate - pdata->playback.playback_start);
                     */
-                } while(!pdata->file.file_finished && (pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
+                    
+                    // TODO(Val): This while doesn't work with pausing, as frame time increases while it's paused.
+                } while(pdata->audio.duration < pdata->client.refresh_target*2);
+                //} while(!pdata->file.file_finished &&
+                //(pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
                 
                 pdata->audio.is_ready = 1;
             }

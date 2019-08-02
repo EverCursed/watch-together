@@ -8,6 +8,8 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 
+#include "playback.h"
+
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -225,6 +227,7 @@ typedef struct _output_audio {
     volatile bool32 is_ready;
     real64 pts;
     real64 duration;
+    real64 required_duration;
 } output_audio;
 
 #define VIDEO_RGB 1
@@ -336,20 +339,7 @@ typedef struct _audio_queue_data {
     uint32 audio_queue_end;
 } audio_queue_data;
 
-typedef struct _playback_data {
-    int64 time_start;
-    int64 time_end;
-    volatile real64 current_frame_time;
-    volatile real64 next_frame_time;
-    
-    volatile real64 playback_start;
-    volatile real64 current_video_frame_time;
-    volatile real64 next_video_frame_time;
-    volatile real64 aggregated_pause_time;
-    
-    real64 audio_total_queued;
-    real64 frame_duration;
-} playback_data;
+typedef struct _playback_data playback_data;
 
 typedef struct _program_data {
     input_struct input;

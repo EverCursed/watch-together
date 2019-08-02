@@ -47,6 +47,7 @@ blit_frame(program_data *pdata)
         free(video->video_frame);
         free(video->video_frame_sup1);
         free(video->video_frame_sup2);
+        
         if(ret < 0)
             goto error;
     }
@@ -344,7 +345,6 @@ PlatformInitVideo(program_data *pdata)
     }
     else if(pdata->file.video_format = VIDEO_YUV)
     {
-        dbg_error("Texture getting initialized.\n");
         background_texture = SDL_CreateTexture(renderer, 
                                                SDL_PIXELFORMAT_IYUV,
                                                SDL_TEXTUREACCESS_STREAMING,
@@ -352,8 +352,8 @@ PlatformInitVideo(program_data *pdata)
                                                pdata->file.height);
     }
     
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
-    //SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+    SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
 }
 
 static void
@@ -587,8 +587,8 @@ int main(int argc, const char** argv)
     SDL_SetEventFilter(resize_filter, NULL);
 #endif
     
-    SDL_CreateWindowAndRenderer(1280,
-                                720,
+    SDL_CreateWindowAndRenderer(1024,
+                                576,
                                 SDL_WINDOW_RESIZABLE,
                                 &window,
                                 &renderer);
