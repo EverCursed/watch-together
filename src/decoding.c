@@ -110,7 +110,7 @@ get_frame(program_data *pdata, avpacket_queue *queue)
             goto no_packet_fail;
         
         ret = avcodec_send_packet(dec_ctx, pkt);
-        dbg_info("avcodec_send_packet\tret: %d\n", ret);
+        //dbg_info("avcodec_send_packet\tret: %d\n", ret);
         
         if(ret == AVERROR(EAGAIN))
         {
@@ -145,7 +145,7 @@ get_frame(program_data *pdata, avpacket_queue *queue)
         }
         
         ret = avcodec_receive_frame(dec_ctx, frame);
-        dbg_info("avcodec_receive_frame\tret: %d\n", ret);
+        //dbg_info("avcodec_receive_frame\tret: %d\n", ret);
         
         if(ret == AVERROR(EAGAIN))
         {
@@ -173,7 +173,7 @@ get_frame(program_data *pdata, avpacket_queue *queue)
     
     //av_packet_unref(pkt);
     info.ret = 0;
-    dbg_success("Returning from decoding.\n");
+    //dbg_success("Returning from decoding.\n");
     return info;
     
     get_frame_failed:
@@ -376,11 +376,6 @@ process_video_frame(program_data *pdata, struct frame_info info)
     
     //dbg_info("Start processing video frame.\n");
     
-    dbg_warn("frame->format: %d\n"
-             "new format   : %d\n",
-             frame->format,
-             AV_PIX_FMT_YUV420P);
-    
     int32 fmt = AV_PIX_FMT_YUV420P;
     
 #ifndef DIRECT_COPY
@@ -574,12 +569,12 @@ SortPackets(program_data *pdata)
         
         if(pkt->stream_index == pdata->decoder.video_stream)
         {
-            dbg_info("Queued video packet.\n");
+            //dbg_info("Queued video packet.\n");
             enqueue_packet(pdata->pq_video, pkt);
         }
         else if(pkt->stream_index == pdata->decoder.audio_stream)
         {
-            dbg_info("Queued audio packet.\n");
+            //dbg_info("Queued audio packet.\n");
             enqueue_packet(pdata->pq_audio, pkt);
         }
         else
@@ -666,7 +661,7 @@ DecodingThreadStart(void *ptr)
     //ProfilerStart("decoder.prof.log");
     while(pdata->running && !pdata->playback_finished)
     {
-        dbg_success("Processing loop start.\n");
+        //dbg_success("Processing loop start.\n");
         if(!pdata->audio.is_ready)
         {
             // TODO(Val): Check this loop
@@ -707,7 +702,7 @@ DecodingThreadStart(void *ptr)
                     pdata->playback.next_frame_time + pdata->client.refresh_rate - pdata->playback.playback_start);
                     */
                     
-                    // TODO(Val): This while doesn't work with pausing, as frame time increases while it's paused.
+                    // TODO(Val): This will only function while we don't miss frames
                 } while(pdata->audio.duration < pdata->client.refresh_target*2);
                 //} while(!pdata->file.file_finished &&
                 //(pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
@@ -749,10 +744,10 @@ DecodingThreadStart(void *ptr)
         LoadPackets(pdata);
         SortPackets(pdata);
         
-        dbg_info("Decoder: Starting condition wait.\n");
+        //dbg_info("Decoder: Starting condition wait.\n");
         
         PlatformConditionWait(&decoder->condition);
-        dbg_success("Decoder: Thread woken up.\n");
+        //dbg_success("Decoder: Thread woken up.\n");
         //}
     }
     

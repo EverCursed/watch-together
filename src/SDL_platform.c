@@ -224,7 +224,7 @@ static void
 PlatformSleep(int32 ms)
 {
     int st = ms <= 0 ? 0 : ms;
-    dbg_warn("Sleeping for %d ms.\n", st);
+    //dbg_warn("Sleeping for %d ms.\n", st);
     SDL_Delay(st);
 }
 
