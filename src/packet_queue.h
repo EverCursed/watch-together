@@ -1,6 +1,17 @@
 #ifndef PACKET_QUEUE
 #define PACKET_QUEUE
 
+#define dbg_packet(p) \
+do { \
+    dbg_info("Packet:\n" \
+    "\tpos:\t%ld\n" \
+    "\tindex:\t%d\n" \
+    "\tpts:\t%ld\n", \
+    p->pos, \
+    p->stream_index, \
+    p->pts); \
+} while(0)
+
 typedef struct _avpacket_queue avpacket_queue;
 
 static avpacket_queue* init_avpacket_queue(int32 n);

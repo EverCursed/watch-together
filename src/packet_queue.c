@@ -12,17 +12,6 @@ This holds a queue of AVPacket structs. This is a buffer for
 
 // TODO(Val): Think about how the packets should be free'd.
 
-#define dbg_packet(p) \
-do { \
-    dbg_info("Packet:\n" \
-    "\tpos:\t%ld\n" \
-    "\tindex:\t%d\n" \
-    "\tpts:\t%ld\n", \
-    p->pos, \
-    p->stream_index, \
-    p->pts); \
-} while(0)
-
 static avpacket_queue*
 init_avpacket_queue(int32 n)
 {

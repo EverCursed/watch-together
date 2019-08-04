@@ -69,7 +69,7 @@ get_packet(program_data *pdata, AVPacket *packet)
 }
 
 static struct frame_info
-get_frame(program_data *pdata, int32 stream)
+get_frame(program_data *pdata, avpacket_queue *queue)
 {
     decoder_info *decoder = &pdata->decoder;
     AVCodecContext *dec_ctx;
@@ -84,22 +84,17 @@ get_frame(program_data *pdata, int32 stream)
     }
     
     int32 ret = 0;
-    avpacket_queue *queue = NULL;
     
     // set the type of frame.
-    if(stream == decoder->video_stream)
+    if(queue == pdata->pq_video)
     {
         // TODO(Val): Temporarily converting everything to YUV
         info.type = FRAME_VIDEO;
-        
-        queue = pdata->pq_video;
         dec_ctx = decoder->video_codec_context;
     }
-    else if(stream == decoder->audio_stream)
+    else if(queue == pdata->pq_audio)
     {
         info.type = FRAME_AUDIO;
-        
-        queue = pdata->pq_audio;
         dec_ctx = decoder->audio_codec_context;
     }
     else
@@ -120,7 +115,7 @@ get_frame(program_data *pdata, int32 stream)
         if(ret == AVERROR(EAGAIN))
         {
             dbg_error("AVERROR(EAGAIN)\n");
-            // NOTE(Val): This means a frame must be read before we can send another packet
+            // TODO(Val): This means a frame must be read before we can send another packet
         }
         else if(ret == AVERROR_EOF)
         {
@@ -682,7 +677,7 @@ DecodingThreadStart(void *ptr)
                 do {
                     dbg_success("Audio packets not empty, starting to process.\n");
                     
-                    struct frame_info f = get_frame(pdata, pdata->decoder.audio_stream);
+                    struct frame_info f = get_frame(pdata, pdata->pq_audio);
                     
                     if(f.ret != -1)
                     {
@@ -728,9 +723,7 @@ DecodingThreadStart(void *ptr)
             {
                 dbg_success("Video packets not empty, starting to process.\n");
                 
-                struct frame_info f = get_frame(pdata, pdata->decoder.video_stream);
-                
-                dbg_info("frame type: %d\n", f.frame->format); 
+                struct frame_info f = get_frame(pdata, pdata->pq_video);
                 
                 if(f.ret != -1)
                 {
