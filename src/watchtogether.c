@@ -70,7 +70,7 @@ ProcessInput(program_data *pdata)
                     
                     if(pdata->volume > 1.0f) pdata->volume = 1.0f;
                 }
-            }
+            } break;
             case KB_DOWN:
             {
                 if(e.pressed)
@@ -79,18 +79,19 @@ ProcessInput(program_data *pdata)
                     
                     if(pdata->volume < 0.0f) pdata->volume = 0.0f;
                 }
-            }
+            } break;
             case KB_ENTER:
             {
                 if(e.pressed && e.alt)
                 {
                     PlatformToggleFullscreen(pdata);
                 }
-            }
+            } break;
             case KB_SPACE:
             {
-                TogglePlayback(pdata);
-            }
+                if(e.pressed)
+                    TogglePlayback(pdata);
+            } break;
         }
     }
     pdata->input.keyboard.n = 0;
@@ -102,62 +103,58 @@ ProcessPlayback(program_data *pdata)
 {
     playback_data *playback = &pdata->playback;
     
-    if(!pdata->paused &&
-       pdata->playing)
+    bool32 need_video = 0;
+    bool32 need_audio = 0;
+    
+    if(should_display(playback, pdata->video.pts*1000.0f))
     {
-        bool32 need_video = 0;
-        bool32 need_audio = 0;
-        
-        if(should_display(playback, pdata->video.pts*1000.0f))
+        if(pdata->video.is_ready)
         {
-            if(pdata->video.is_ready)
-            {
-                dbg_success("pdata->video.is_ready\n");
-                PlatformUpdateFrame(pdata);
-                PrepareVideoOutput(&pdata->video);
-                
-                pdata->video.is_ready = 0;
-                
-                increment_video_times(playback, 1000.0f*av_q2d(pdata->decoder.video_time_base));
-                
-                need_video = 1;
-                //need_flip = 1;
-            }
-            else
-            {
-                dbg_error("Video was not ready.\n");
-                // TODO(Val): skip this frame
-            }
-        }
-        
-        // TODO(Val): Delay playing this until we can't delay any more.
-        
-        if(should_queue(playback))
-        {
-            if(pdata->audio.is_ready)
-            {
-                PlatformQueueAudio(&pdata->audio);
-                
-                increment_audio_times(playback, pdata->audio.duration);
-                
-                PrepareAudioOutput(&pdata->audio);
-                
-                //pdata->audio.required_duration = 
-                need_audio = 1;
-            }
-            else
-            {
-                dbg_error("Audio is not ready.\n");
-            }
-        }
-        if(need_audio || need_video)
-        {
-            dbg_info("Video or audio needed.\n");
-            PlatformConditionSignal(&pdata->decoder.condition);
+            dbg_success("pdata->video.is_ready\n");
+            PlatformUpdateFrame(pdata);
+            PrepareVideoOutput(&pdata->video);
             
+            pdata->video.is_ready = 0;
+            
+            increment_video_times(playback, 1000.0f*av_q2d(pdata->decoder.video_time_base));
+            
+            need_video = 1;
+            //need_flip = 1;
+        }
+        else
+        {
+            dbg_error("Video was not ready.\n");
+            // TODO(Val): skip this frame
         }
     }
     
+    // TODO(Val): Delay playing this until we can't delay any more.
+    
+    if(should_queue(playback))
+    {
+        if(pdata->audio.is_ready)
+        {
+            PlatformQueueAudio(&pdata->audio);
+            
+            increment_audio_times(playback, pdata->audio.duration);
+            
+            PrepareAudioOutput(&pdata->audio);
+            
+            //pdata->audio.required_duration = 
+            need_audio = 1;
+        }
+        else
+        {
+            dbg_error("Audio is not ready.\n");
+        }
+    }
+    
+    if(need_audio || need_video)
+    {
+        dbg_info("Video or audio needed.\n");
+        PlatformConditionSignal(&pdata->decoder.condition);
+        
+    }
     //playback->time_end = PlatformGetTime();
     
     return 0;
@@ -196,6 +193,8 @@ MainLoop(program_data *pdata)
             
             pdata->start_playback = 0;
             pdata->playing = 1;
+            
+            TogglePlayback(pdata);
         }
         
         // TODO(Val): Draw UI
