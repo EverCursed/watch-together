@@ -656,7 +656,7 @@ DecodingThreadStart(void *ptr)
         SortPackets(pdata);
     }
     
-    pdata->start_playback = 1;
+    bool32 start_notified = 0;
     
     //ProfilerStart("decoder.prof.log");
     while(pdata->running && !pdata->playback_finished)
@@ -702,8 +702,10 @@ DecodingThreadStart(void *ptr)
                     pdata->playback.next_frame_time + pdata->client.refresh_rate - pdata->playback.playback_start);
                     */
                     
+                    if(!pdata->running)
+                        break;
                     // TODO(Val): This will only function while we don't miss frames
-                } while(pdata->audio.duration < pdata->client.refresh_target*2);
+                } while(pdata->audio.duration < pdata->client.refresh_target*1.5);
                 //} while(!pdata->file.file_finished &&
                 //(pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
                 
@@ -744,6 +746,11 @@ DecodingThreadStart(void *ptr)
         LoadPackets(pdata);
         SortPackets(pdata);
         
+        if(!start_notified && pdata->audio.is_ready && pdata->video.is_ready)
+        {
+            start_notified = 1;
+            pdata->start_playback = 1;
+        }
         //dbg_info("Decoder: Starting condition wait.\n");
         
         PlatformConditionWait(&decoder->condition);

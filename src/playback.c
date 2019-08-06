@@ -45,7 +45,10 @@ increment_audio_times(playback_data *playback, real64 duration)
 static bool32
 should_display(playback_data *playback, real64 video_ts)
 {
-    return video_ts < get_playback_time(playback, playback->next_frame_time);
+    real64 n = get_playback_time(playback, playback->next_frame_time);
+    real64 c = get_playback_time(playback, playback->current_frame_time);
+    return (video_ts < n &&
+            video_ts >= c);
 }
 
 static bool32
