@@ -140,7 +140,6 @@ ProcessPlayback(program_data *pdata)
         
         // TODO(Val): skip this frame
     }
-    // TODO(Val): Delay playing this until we can't delay any more.
     
     if(pdata->audio.is_ready)
     {
@@ -167,7 +166,7 @@ ProcessPlayback(program_data *pdata)
     
     if(need_audio || need_video)
     {
-        //dbg_info("Video or audio needed.\n");
+        dbg_warn("Video or audio needed.\n");
         PlatformConditionSignal(&pdata->decoder.condition);
     }
     
@@ -186,7 +185,7 @@ MainLoop(program_data *pdata)
     
     // times needed for video playback
     
-    dbg_print("audio time_base: %d/%d\n", pdata->decoder.audio_time_base.num, pdata->decoder.audio_time_base.den);
+    //dbg_print("audio time_base: %d/%d\n", pdata->decoder.audio_time_base.num, pdata->decoder.audio_time_base.den);
     
     // now start main loop
     while(pdata->running)
@@ -208,6 +207,7 @@ MainLoop(program_data *pdata)
             pdata->playing = 1;
             
             //TogglePlayback(pdata);
+            dbg_warn("Playback started!\n");
         }
         
         // TODO(Val): Draw UI
@@ -219,6 +219,10 @@ MainLoop(program_data *pdata)
             ProcessPlayback(pdata);
             
             playback->playback_time += pdata->client.refresh_target;
+        }
+        else
+        {
+            dbg_error("Not playing or paused.\n");
         }
         //dbg_print("Loop time: %ld\n", playback->time_end - playback->time_start);
         //dbg_info("PlatformSleep(%lf)\n", playback->next_frame_time - PlatformGetTime());

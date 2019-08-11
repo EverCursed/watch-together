@@ -713,6 +713,10 @@ DecodingThreadStart(void *ptr)
                 
                 pdata->audio.is_ready = 1;
             }
+            else
+            {
+                dbg_error("There were no audio packets.\n");
+            }
         }
         
         if(!pdata->video.is_ready)
