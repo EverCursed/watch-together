@@ -9,6 +9,7 @@
 #include <libavformat/avformat.h>
 
 #include "playback.h"
+#include "message_queue.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -342,6 +343,7 @@ typedef struct _audio_queue_data {
 } audio_queue_data;
 
 typedef struct _playback_data playback_data;
+typedef struct _message_queue message_queue;
 
 typedef struct _program_data {
     input_struct input;
@@ -355,6 +357,7 @@ typedef struct _program_data {
     decoder_info decoder;
     playback_data playback;
     hardware_info hardware;
+    message_queue messages;
     
     // TODO(Val): Will we need multiple packet queues?
     avpacket_queue *pq_main;

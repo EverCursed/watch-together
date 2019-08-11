@@ -7,6 +7,7 @@
 #include "video.c"
 #include "audio.c"
 #include "playback.c"
+#include "message_queue.c"
 
 //#include <time.h>
 // TODO(Val): NAT-T implementation, see how it works
@@ -90,12 +91,59 @@ ProcessInput(program_data *pdata)
             case KB_SPACE:
             {
                 if(e.pressed)
-                    TogglePlayback(pdata);
+                    AddMessage(&pdata->messages, MSG_PAUSE, 
+                               NO_ARG,
+                               NO_ARG,
+                               NO_ARG,
+                               NO_ARG,
+                               NO_ARG,
+                               PlatformGetTime());
+                //TogglePlayback(pdata);
             } break;
         }
     }
     pdata->input.keyboard.n = 0;
     
+}
+
+static void
+ProcessMessages(program_data *pdata)
+{
+    while(!MessagesEmpty(&pdata->messages) && pdata->running)
+    {
+        message m;
+        GetMessage(&pdata->messages, &m);
+        
+        switch(m.msg)
+        {
+            case MSG_NO_MORE_MESSAGES:
+            dbg_error("No message returned. Check message queue bookkeeping.\n");
+            break;
+            case MSG_START_PLAYBACK:
+            
+            break;
+            case MSG_STOP_PLAYBACK:
+            
+            break;
+            case MSG_PAUSE:
+            
+            break;
+            case MSG_SEEK:
+            
+            break;
+            case MSG_CONNECT:
+            
+            break;
+            case MSG_WINDOW_RESIZED:
+            
+            break;
+            case MSG_CLOSE:
+            pdata->running = 0;
+            break;
+            default:
+            dbg_warn("Unknown message in message queue: %d\n", m.msg);
+        }
+    }
 }
 
 static int32
@@ -213,6 +261,7 @@ MainLoop(program_data *pdata)
         // TODO(Val): Draw UI
         
         ProcessInput(pdata);
+        ProcessMessages(pdata);
         
         if(pdata->playing && !pdata->paused)
         {
