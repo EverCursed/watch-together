@@ -214,6 +214,8 @@ typedef struct _client_info {
     bool32 fullscreen;
     
     real64 refresh_target;
+    real64 current_frame_time;
+    real64 next_refresh_time;
 } client_info;
 
 typedef struct _output_audio {

@@ -108,7 +108,7 @@ ProcessPlayback(program_data *pdata)
     
     if(pdata->video.is_ready)
     {
-        if(should_display(playback, pdata->video.pts*1000.0f))
+        if(should_display(playback, pdata->video.pts))
         {
             dbg_success("pdata->video.is_ready\n");
             PlatformUpdateFrame(pdata);
@@ -116,10 +116,22 @@ ProcessPlayback(program_data *pdata)
             
             pdata->video.is_ready = 0;
             
-            increment_video_times(playback, 1000.0f*av_q2d(pdata->decoder.video_time_base));
+            //increment_video_times(playback, av_q2d(pdata->decoder.video_time_base));
             
             need_video = 1;
             //need_flip = 1;
+        }
+        else if(should_skip(playback, pdata->video.pts))
+        {
+            dbg_warn("Skipping frame.\n");
+            
+            PrepareVideoOutput(&pdata->video);
+            pdata->video.is_ready = 0;
+        }
+        else
+        {
+            dbg_warn("Not time to display yet.\n");
+            dbg_print("video_pts: %lf\n", pdata->video.pts);
         }
     }
     else
@@ -130,9 +142,9 @@ ProcessPlayback(program_data *pdata)
     }
     // TODO(Val): Delay playing this until we can't delay any more.
     
-    if(should_queue(playback))
+    if(pdata->audio.is_ready)
     {
-        if(pdata->audio.is_ready)
+        if(should_queue(playback))
         {
             PlatformQueueAudio(&pdata->audio);
             
@@ -145,8 +157,12 @@ ProcessPlayback(program_data *pdata)
         }
         else
         {
-            dbg_error("Audio is not ready.\n");
+            dbg_error("should_queue(playback) failed.\n");
         }
+    }
+    else
+    {
+        dbg_error("Audio is not ready.\n");
     }
     
     if(need_audio || need_video)
@@ -154,7 +170,8 @@ ProcessPlayback(program_data *pdata)
         //dbg_info("Video or audio needed.\n");
         PlatformConditionSignal(&pdata->decoder.condition);
     }
-    //playback->time_end = PlatformGetTime();
+    
+    update_playback_time(playback);
     
     return 0;
 }
@@ -163,9 +180,9 @@ static int32
 MainLoop(program_data *pdata)
 {
     playback_data *playback = &pdata->playback;
-    // times needed for application framerate.
-    //playback->current_frame_time = playback->time_start;
-    playback->next_frame_time = playback->current_frame_time + pdata->client.refresh_target;
+    client_info *client = &pdata->client;
+    
+    client->next_refresh_time = (PlatformGetTime() +  client->refresh_target)/1000.0;
     
     // times needed for video playback
     
@@ -174,8 +191,6 @@ MainLoop(program_data *pdata)
     // now start main loop
     while(pdata->running)
     {
-        bool32 need_flip = 0;
-        
         if(pdata->file.open_failed)
         {
             pdata->file.open_failed = 0;
@@ -187,8 +202,7 @@ MainLoop(program_data *pdata)
         
         if(pdata->start_playback)
         {
-            init_playback_time(playback, PlatformGetTime(), pdata->client.refresh_target);
-            //playback->frame_duration = ;
+            start_playback(playback, PlatformGetTime());
             
             pdata->start_playback = 0;
             pdata->playing = 1;
@@ -209,13 +223,13 @@ MainLoop(program_data *pdata)
         //dbg_print("Loop time: %ld\n", playback->time_end - playback->time_start);
         //dbg_info("PlatformSleep(%lf)\n", playback->next_frame_time - PlatformGetTime());
         
-        PlatformSleep(playback->next_frame_time - PlatformGetTime());
+        PlatformSleep(client->next_refresh_time - PlatformGetTime() - 1);
         
         // TODO(Val): Let's try to present at a constant interval
         PlatformFlipBuffers(pdata);
         
-        playback->current_frame_time = playback->next_frame_time;
-        playback->next_frame_time += pdata->client.refresh_target;
+        client->current_frame_time = client->next_refresh_time;
+        client->next_refresh_time += client->refresh_target;
     }
     
     return 0;
@@ -311,6 +325,9 @@ MainThread(program_data *pdata)
     // NOTE(Val): Initialize things here that will last the entire runtime of the application
     
     pdata->client.refresh_target = 1000.0 / (real64)pdata->hardware.monitor_refresh_rate;
+    pdata->playback.current_frame_time = &pdata->client.current_frame_time;
+    pdata->playback.next_frame_time = &pdata->client.next_refresh_time;
+    pdata->playback.refresh_target = &pdata->client.refresh_target;
     
     dbg_info("Client refresh target time set to %lfs.\n", pdata->client.refresh_target);
     

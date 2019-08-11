@@ -647,6 +647,7 @@ DecodingThreadStart(void *ptr)
     program_data *pdata = ptr;
     open_file_info *file = &pdata->file;
     decoder_info *decoder = &pdata->decoder;
+    playback_data *playback = &pdata->playback;
     
     decoder->condition = PlatformCreateConditionVar();
     
@@ -705,7 +706,8 @@ DecodingThreadStart(void *ptr)
                     if(!pdata->running)
                         break;
                     // TODO(Val): This will only function while we don't miss frames
-                } while(pdata->audio.duration < pdata->client.refresh_target*1.5);
+                } while(playback->audio_total_queued + pdata->audio.duration < 
+                        *playback->next_frame_time);
                 //} while(!pdata->file.file_finished &&
                 //(pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
                 
