@@ -164,7 +164,7 @@ ProcessPlayback(program_data *pdata)
             
             pdata->video.is_ready = 0;
             
-            //increment_video_times(playback, av_q2d(pdata->decoder.video_time_base));
+            increment_video_times(playback, av_q2d(pdata->decoder.video_time_base));
             
             need_video = 1;
             //need_flip = 1;
@@ -174,6 +174,9 @@ ProcessPlayback(program_data *pdata)
             dbg_warn("Skipping frame.\n");
             
             PrepareVideoOutput(&pdata->video);
+            
+            increment_video_times(playback, av_q2d(pdata->decoder.video_time_base));
+            
             pdata->video.is_ready = 0;
         }
         else

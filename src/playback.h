@@ -27,7 +27,7 @@ typedef struct _playback_data {
 } playback_data;
 
 static int32
-increment_video_times(playback_data *playback);
+increment_video_times(playback_data *playback, real64 video_time_base);
 
 static int32
 increment_audio_times(playback_data *playback, real64 duration);

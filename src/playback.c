@@ -4,10 +4,10 @@
 #define AUDIO_QUEUE_MARGIN 2.0
 
 static int32
-increment_video_times(playback_data *playback)
+increment_video_times(playback_data *playback, real64 video_time_base)
 {
-    //playback->current_video_frame_time = playback->next_video_frame_time;
-    //playback->next_video_frame_time += video_time_base;
+    playback->current_video_frame_time = playback->next_video_frame_time;
+    playback->next_video_frame_time += video_time_base;
     
     return 0;
 }
@@ -52,10 +52,16 @@ get_playback_time(playback_data *playback)
     return playback->playback_time;
 }
 
+static real64
+get_next_playback_time(playback_data *playback)
+{
+    
+}
+
 static bool32
 should_skip(playback_data *playback, real64 video_ts)
 {
-    return (*playback->next_frame_time - *playback->refresh_target < video_ts);
+    return (playback->playback_time > video_ts);
 }
 
 static bool32
