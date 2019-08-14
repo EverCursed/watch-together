@@ -14,4 +14,6 @@ uint32 round_up_align(uint32 val)
     //return val + (BYTES_ALIGNMENT - (val % BYTES_ALIGNMENT));
 }
 
+#define MS(real) (real/1000.0)
+
 #endif

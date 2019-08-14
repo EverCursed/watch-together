@@ -221,10 +221,9 @@ PlatformPauseAudio(bool32 b)
 }
 
 static void
-PlatformSleep(int32 ms)
+PlatformSleep(real64 s)
 {
-    int st = ms <= 0 ? 0 : ms;
-    //dbg_warn("Sleeping for %d ms.\n", st);
+    int st = s < 0 ? 0 : s * 1000.0;
     SDL_Delay(st);
 }
 
@@ -292,10 +291,12 @@ PlatformConditionDestroy(cond_info *c)
     return 0;
 }
 
-static uint32
+static real64
 PlatformGetTime()
 {
-    return SDL_GetTicks();
+    real64 ticks = (real64)SDL_GetTicks();
+    dbg_info("PlatformGetTime(): %lf\n", ticks);
+    return ticks/1000.0f;
 }
 
 static int32

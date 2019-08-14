@@ -270,12 +270,14 @@ DecodingFileOpen(open_file_info *file, decoder_info *decoder)
         
         AVRational time = decoder->format_context->streams[decoder->video_stream]->avg_frame_rate;
         file->fps = (real32)time.num/(real32)time.den;
-        file->target_time = (real32)time.den/(real32)time.num * 1000.0f;
+        file->target_time = (real32)time.den/(real32)time.num * 1.0f;
         
         file->has_video = 1;
         
         decoder->video_time_base = //av_inv_q(
             decoder->format_context->streams[decoder->video_stream]->time_base;
+        
+        
     }
     
     if(decoder->audio_stream >= 0)
@@ -548,7 +550,7 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     
     pdata->audio.buffer = data;
     pdata->audio.size += real_size;
-    pdata->audio.duration += 1000.0f * (real64)SampleCount / (real64)Frequency;
+    pdata->audio.duration += 1.0f * (real64)SampleCount / (real64)Frequency;
     //dbg_info("Audio frame duration: %lf\n", pdata->audio.duration);
     
     //pdata->audio.is_ready = 1;

@@ -1,7 +1,7 @@
 #ifndef WT_PLATFORM
 #define WT_PLATFORM
 
-static uint32
+static real64
 PlatformGetTime();
 
 static int32
@@ -17,7 +17,7 @@ static int32
 PlatformUpdateFrame(program_data *);
 
 static void
-PlatformSleep(int32);
+PlatformSleep(real64);
 
 static thread_info
 PlatformCreateThread(int32 (*f)(void *), void *, char *);

@@ -1,7 +1,8 @@
 #include "defines.h"
 #include "playback.h"
 
-#define AUDIO_QUEUE_MARGIN 2.0
+#define AUDIO_QUEUE_MARGIN 0.002
+#define VIDEO_QUEUE_MARGIN 0.002
 
 static int32
 increment_video_times(playback_data *playback, real64 video_time_base)
