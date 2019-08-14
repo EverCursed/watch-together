@@ -266,6 +266,7 @@ PlatformConditionWait(cond_info *c)
     {
         SDL_CondWait(c->cond, c->mutex);
     }
+    c->test = 0;
     SDL_UnlockMutex(c->mutex);
     
     return 0;
