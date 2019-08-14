@@ -28,24 +28,24 @@ should_display(playback_data *playback, real64 video_ts)
     return (video_ts < n &&
             video_ts >= n + *playback->refresh_target);
 }
-
+/*
 static void
 update_playback_time(playback_data *playback)
 {
-    dbg_print("update_playback_time:\n"
-              "\tcurrent_frame_time: %lf\n"
-              "\taggregated_pause_time: %lf\n"
-              "\tplayback_start: %lf\n",
-              *playback->current_frame_time,
-              playback->aggregated_pause_time,
-              playback->playback_start);
-    
-    playback->playback_time = 
-        *playback->current_frame_time -
-        playback->aggregated_pause_time -
-        playback->playback_start;
-}
+dbg_print("update_playback_time:\n"
+"\tcurrent_frame_time: %lf\n"
+"\taggregated_pause_time: %lf\n"
+"\tplayback_start: %lf\n",
+*playback->current_frame_time,
+playback->aggregated_pause_time,
+playback->playback_start);
 
+playback->playback_time = 
+*playback->current_frame_time -
+playback->aggregated_pause_time -
+playback->playback_start;
+}
+*/
 static real64
 get_playback_time(playback_data *playback)
 {

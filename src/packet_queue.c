@@ -69,6 +69,7 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
     }
     else
     {
+        dbg_error("Couldn't lock mutex. dequeue_packed() failed.\n");
         return -1;
     }
 }
@@ -96,6 +97,7 @@ dequeue_next(avpacket_queue *queue, AVPacket **packet)
     }
     else
     {
+        dbg_error("Couldn't lock mutex. dequeue_packed() failed.\n");
         return -1;
     }
 }

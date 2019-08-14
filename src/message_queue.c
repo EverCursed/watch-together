@@ -39,6 +39,7 @@ GetMessage(message_queue *q, message *m)
     else
     {
         m->msg = MSG_NO_MORE_MESSAGES;
+        dbg_error("There were no more messages.\n");
         return -1;
     }
 }
