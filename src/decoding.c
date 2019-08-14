@@ -181,6 +181,7 @@ get_frame(program_data *pdata, avpacket_queue *queue)
         av_packet_unref(pkt);
     
     no_packet_fail:
+    dbg_error("There were no packets in queue.\n");
     av_frame_free(&frame);
     info.ret = -1;
     return info;
@@ -550,7 +551,7 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     
     pdata->audio.buffer = data;
     pdata->audio.size += real_size;
-    pdata->audio.duration += 1.0f * (real64)SampleCount / (real64)Frequency;
+    pdata->audio.duration += (real64)SampleCount / (real64)Frequency;
     //dbg_info("Audio frame duration: %lf\n", pdata->audio.duration);
     
     //pdata->audio.is_ready = 1;
@@ -653,7 +654,9 @@ DecodingThreadStart(void *ptr)
     
     decoder->condition = PlatformCreateConditionVar();
     
-    while(!pq_is_full(pdata->pq_audio) && !pq_is_full(pdata->pq_video))
+    while(!pq_is_full(pdata->pq_audio) &&
+          !pq_is_full(pdata->pq_video) &&
+          !pdata->file.file_finished)
     {
         LoadPackets(pdata);
         SortPackets(pdata);
@@ -709,7 +712,7 @@ DecodingThreadStart(void *ptr)
                         break;
                     // TODO(Val): This will only function while we don't miss frames
                 } while(playback->audio_total_queued + pdata->audio.duration < 
-                        *playback->next_frame_time);
+                        get_next_playback_time(playback));
                 //} while(!pdata->file.file_finished &&
                 //(pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
                 
@@ -721,29 +724,36 @@ DecodingThreadStart(void *ptr)
             }
         }
         
-        if(!pdata->video.is_ready)
+        if(!pdata->video.is_ready && !pq_is_empty(pdata->pq_video))
         {
-            dbg_success("Video not marked ready.\n");
-            if(!pq_is_empty(pdata->pq_video))
+            struct frame_info f = get_frame(pdata, pdata->pq_video);
+            
+            if(f.ret != -1)
             {
-                dbg_success("Video packets not empty, starting to process.\n");
+                dbg_success("Processing video.\n");
                 
-                struct frame_info f = get_frame(pdata, pdata->pq_video);
-                
-                if(f.ret != -1)
+                int32 ret = process_video_frame(pdata, f);
+                if(ret < 0)
                 {
-                    dbg_success("Processing video.\n");
-                    
-                    process_video_frame(pdata, f);
-                    av_frame_free(&f.frame);
-                }
-                else
-                {
-                    dbg_error("get_frame failed.\n");
+                    dbg_error("process_video_frame() failed.\n");
                 }
                 
-                pdata->video.is_ready = 1;
+                av_frame_free(&f.frame);
             }
+            else
+            {
+                dbg_error("get_frame failed.\n");
+            }
+            
+            pdata->video.is_ready = 1;
+        }
+        else if(!pdata->video.is_ready)
+        {
+            dbg_error("No video packets to process.\n");
+        }
+        else
+        {
+            
         }
         
         // TODO(Val): This may not be fool proof
@@ -751,8 +761,6 @@ DecodingThreadStart(void *ptr)
         //pdata->playback_finished = 1;
         //else
         //{
-        LoadPackets(pdata);
-        SortPackets(pdata);
         
         if(!start_notified && pdata->audio.is_ready && pdata->video.is_ready)
         {
@@ -761,12 +769,18 @@ DecodingThreadStart(void *ptr)
         }
         //dbg_info("Decoder: Starting condition wait.\n");
         
+        while(!pq_is_full(pdata->pq_audio) &&
+              !pq_is_full(pdata->pq_video) &&
+              !pdata->file.file_finished)
+        {
+            LoadPackets(pdata);
+            SortPackets(pdata);
+        }
+        
         PlatformConditionWait(&decoder->condition);
         //dbg_success("Decoder: Thread woken up.\n");
         //}
     }
-    
-    //ProfilerStop();
     
     PlatformConditionDestroy(&decoder->condition);
     

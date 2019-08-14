@@ -17,16 +17,29 @@ static int32
 increment_audio_times(playback_data *playback, real64 duration)
 {
     playback->audio_total_queued += duration;
-    
     return 0;
 }
 
 static bool32
 should_display(playback_data *playback, real64 video_ts)
 {
-    real64 n = get_playback_time(playback) + *playback->refresh_target;
-    return (video_ts < n &&
-            video_ts >= n + *playback->refresh_target);
+    real64 playback_time = get_playback_time(playback);
+    real64 n = playback_time + *playback->refresh_target;
+    
+    bool32 result = (playback_time <= video_ts &&
+                     video_ts <= n);
+    
+    dbg_print("should_display(): %lf <= %lf  < %lf\t",
+              playback_time,
+              video_ts,
+              n);
+    
+    if(result)
+        dbg_success("YES\n");
+    else
+        dbg_warn("NO\n");
+    
+    return result;
 }
 /*
 static void
@@ -47,34 +60,43 @@ playback->playback_start;
 }
 */
 static real64
-get_playback_time(playback_data *playback)
+get_playback_time(playback_data *p)
 {
-    update_playback_time(playback);
-    return playback->playback_time;
+    return (*p->current_frame_time - p->aggregated_pause_time - p->playback_start);
 }
 
 static real64
-get_next_playback_time(playback_data *playback)
+get_next_playback_time(playback_data *p)
 {
-    
+    return get_playback_time(p) + *p->refresh_target;
 }
 
 static bool32
 should_skip(playback_data *playback, real64 video_ts)
 {
-    return (playback->playback_time > video_ts);
+    return (get_playback_time(playback) > video_ts);
 }
 
 static bool32
 should_queue(playback_data *playback)
 {
-    dbg_print("should_queue(): %lf <= %lf && %lf >= %lf\n",
-              playback->audio_total_queued - AUDIO_QUEUE_MARGIN,
-              (get_playback_time(playback) + *playback->refresh_target),
-              playback->audio_total_queued - AUDIO_QUEUE_MARGIN,
-              get_playback_time(playback));
-    return (playback->audio_total_queued - AUDIO_QUEUE_MARGIN <= (get_playback_time(playback) + *playback->refresh_target) &&
-            playback->audio_total_queued - AUDIO_QUEUE_MARGIN >= get_playback_time(playback));
+    real64 playback_time = get_playback_time(playback);
+    real64 n = playback_time + *playback->refresh_target;
+    
+    bool32 result = ((playback_time <= playback->audio_total_queued) &&
+                     (playback->audio_total_queued < n));
+    
+    dbg_print("should_queue(): %lf <= %lf < %lf\t",
+              playback_time,
+              playback->audio_total_queued,
+              n);
+    
+    if(result)
+        dbg_success("YES\n");
+    else
+        dbg_warn("NO\n");
+    
+    return result;
 }
 
 static real64
@@ -87,10 +109,11 @@ static void
 start_playback(playback_data *p, real64 time)
 {
     p->playback_start = time + *p->refresh_target;
-    p->playback_time = -*p->refresh_target;
+    //p->playback_time = -*p->refresh_target;
     
-    p->current_video_frame_time = p->playback_time;
-    p->next_video_frame_time = p->playback_start;// playback->next_frame_time + 1000.0*av_q2d(pdata->decoder.video_time_base);
+    //p->current_video_frame_time = get_playback_time(p);
+    //p->next_video_frame_time = p->playback_start;// playback->next_frame_time + 1000.0*av_q2d(pdata->decoder.video_time_base);
+    p->started_playing = 0;
     
     p->aggregated_pause_time = 0.0;
     p->pause_started = 0.0;

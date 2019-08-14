@@ -2,10 +2,12 @@
 #define PLAYBACK
 
 typedef struct _playback_data {
-    real64 frame_duration;
+    bool32 started_playing;
+    
+    //real64 frame_duration;
     
     real64 playback_start;            // platform time when playback was started
-    real64 playback_time;             // how long the file has been playing for
+    //real64 playback_time;             // how long the file has been playing for
     
     //real64 current_frame_time;        // time this frame was displayed
     //real64 next_frame_time;           // time next frame will be displayed
@@ -43,6 +45,9 @@ get_playback_current_time(playback_data *playback);
 
 static real64
 get_playback_time(playback_data *playback);
+
+static real64
+get_next_playback_time(playback_data *playback);
 
 static void
 start_playback(playback_data *p, real64 time);

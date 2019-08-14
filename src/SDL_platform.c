@@ -54,7 +54,7 @@ blit_frame(program_data *pdata)
     else if(pdata->video.type == VIDEO_RGB)
     {
         int ret = SDL_UpdateTexture(background_texture, NULL, video->video_frame, video->pitch);
-        free(video->video_frame);
+        //free(video->video_frame);
         
         if(ret < 0)
             goto error;
@@ -104,7 +104,6 @@ PlatformQueueAudio(output_audio *audio)
     if(ret < 0)
     {
         dbg_error("%s\n", SDL_GetError());
-        
         return -1;
     }
     
@@ -203,7 +202,7 @@ PlatformInitAudio(program_data *pdata)
         
         pdata->audio_format = ReceivedAudioSpec.format;
         
-        SDL_PauseAudioDevice(AudioID, 0);
+        //SDL_PauseAudioDevice(AudioID, 0);
     }
     //printf("%s\n", SDL_GetError());
 }
@@ -260,25 +259,35 @@ PlatformCreateConditionVar()
 static int32
 PlatformConditionWait(cond_info *c)
 {
+    /*
     SDL_LockMutex(c->mutex);
     while(!c->test)
     {
         SDL_CondWait(c->cond, c->mutex);
+        PlatformSleep(0.001);
     }
     c->test = 0;
     SDL_UnlockMutex(c->mutex);
+    */
     
+    while(!c->test)
+    {
+        PlatformSleep(0.001);
+    }
+    c->test = 0;
     return 0;
 }
 
 static int32
 PlatformConditionSignal(cond_info *c)
 {
+    /*
     SDL_LockMutex(c->mutex);
     c->test = 1;
     SDL_CondSignal(c->cond);
     SDL_UnlockMutex(c->mutex);
-    
+    */
+    c->test = 1;
     return 0;
 }
 
@@ -361,6 +370,7 @@ PlatformInitVideo(program_data *pdata)
 static void
 PlatformToggleFullscreen(program_data *pdata)
 {
+    dbg_success("TOGGLING FULLSCREEN\n");
     SDL_SetWindowFullscreen(window, pdata->is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
     pdata->is_fullscreen = !pdata->is_fullscreen;
 }
