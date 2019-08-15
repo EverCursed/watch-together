@@ -179,6 +179,8 @@ get_frame(program_data *pdata, avpacket_queue *queue)
     get_frame_failed:
     if(pkt)
         av_packet_unref(pkt);
+    info.ret = -1;
+    return info;
     
     no_packet_fail:
     dbg_error("There were no packets in queue.\n");
