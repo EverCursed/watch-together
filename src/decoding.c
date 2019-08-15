@@ -353,22 +353,21 @@ DecodingFileOpen(open_file_info *file, decoder_info *decoder)
 #define AUDIO_FRAME 1
 #define VIDEO_FRAME 2
 
-static void
-copy_pixel_buffers(void *dst,
-                   void *src,
+static inline void
+copy_pixel_buffers(uint8 *dst,
                    int32 pitch_dst,
+                   uint8 *src,
                    int32 pitch_src,
                    int32 height)
 {
+    int32 width = pitch_src < pitch_dst ? pitch_src : pitch_dst;
     for(int i = 0; i < height; i++)
     {
-        memcpy(dst + i*pitch_dst, src + i*pitch_src, pitch_src);
+        memcpy(dst + i*pitch_dst, src + i*pitch_src, pitch_src < pitch_dst ? pitch_src : pitch_dst);
     }
 }
 
 global struct SwsContext* modifContext = NULL;
-
-#define DIRECT_COPY
 
 static int32
 process_video_frame(program_data *pdata, struct frame_info info)
@@ -377,32 +376,7 @@ process_video_frame(program_data *pdata, struct frame_info info)
     AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
     
-    //dbg_info("Start processing video frame.\n");
-    
     int32 fmt = AV_PIX_FMT_YUV420P;
-    
-#ifndef DIRECT_COPY
-    int32 pitch_Y = round_up_align(frame->width *
-                                   av_get_bits_per_pixel(
-        av_pix_fmt_desc_get(
-        fmt)));
-    int32 pitch_U = round_up_align(((frame->width+1)/2) *
-                                   av_get_bits_per_pixel(
-        av_pix_fmt_desc_get(
-        fmt)));
-    int32 pitch_V = round_up_align(((frame->width+1)/2) *
-                                   av_get_bits_per_pixel(
-        av_pix_fmt_desc_get(
-        fmt)));
-    
-    void *frame_Y = malloc(pitch_Y * frame->height);
-    void *frame_U = malloc(pitch_U * (frame->height+1)/2);
-    void *frame_V = malloc(pitch_V * (frame->height+1)/2);
-#else
-    void *frame_Y = malloc(frame->linesize[0] * frame->height);
-    void *frame_U = malloc(frame->linesize[1] * (frame->height+1)/2);
-    void *frame_V = malloc(frame->linesize[2] * (frame->height+1)/2);
-#endif
     
     if(frame->format != AV_PIX_FMT_YUV420P)
     {
@@ -410,73 +384,55 @@ process_video_frame(program_data *pdata, struct frame_info info)
                                             decoder->video_codec_context->width,
                                             decoder->video_codec_context->height,
                                             frame->format,
-                                            decoder->video_codec_context->width,  // dst width
-                                            decoder->video_codec_context->height, // dst height
+                                            pdata->video.width,  // dst width
+                                            pdata->video.height, // dst height
                                             fmt,
                                             SWS_BICUBIC, //SWS_BILINEAR | SWS_ACCURATE_RND,
                                             NULL, NULL, NULL);
         
-        uint8_t *ptrs[3] = { frame_Y, frame_U, frame_V };
+        uint8_t *ptrs[3] = {
+            pdata->video.video_frame,//frame_Y,
+            pdata->video.video_frame_sup1,//frame_U,
+            pdata->video.video_frame_sup2,//frame_V
+        };
         
-#ifndef DIRECT_COPY
-        int stride[3] = { pitch_Y, pitch_U, pitch_V };
-#else
-        int stride[3] = { frame->linesize[0], frame->linesize[1], frame->linesize[2] }; 
-#endif
+        int stride[3] = {
+            pdata->video.pitch, //pitch_Y,
+            pdata->video.pitch_sup1, //pitch_U,
+            pdata->video.pitch_sup2, //pitch_V
+        };
+        
         sws_scale(modifContext,
                   (uint8 const* const*)frame->data,
                   frame->linesize,
                   0,
                   decoder->video_codec_context->height,
-                  (uint8 *const *const)ptrs,
+                  (uint8* const* const)ptrs,
                   stride);
     }
     else
     {
-#ifndef DIRECT_COPY
-        copy_pixel_buffers(frame_Y,
+        copy_pixel_buffers(pdata->video.video_frame,
+                           pdata->video.pitch,
                            frame->data[0],
-                           pitch_Y,
                            frame->linesize[0],
                            frame->height);
-        copy_pixel_buffers(frame_U,
+        
+        copy_pixel_buffers(pdata->video.video_frame_sup1,
+                           pdata->video.pitch_sup1,
                            frame->data[1],
-                           pitch_U,
                            frame->linesize[1],
                            (frame->height+1)/2);
-        copy_pixel_buffers(frame_V,
+        
+        copy_pixel_buffers(pdata->video.video_frame_sup2,
+                           pdata->video.pitch_sup2,
                            frame->data[2],
-                           pitch_V,
                            frame->linesize[2],
                            (frame->height+1)/2);
-#else
-        memcpy(frame_Y, frame->data[0], frame->linesize[0] * frame->height); 
-        memcpy(frame_U, frame->data[1], frame->linesize[1] * (frame->height+1)/2); 
-        memcpy(frame_V, frame->data[2], frame->linesize[2] * (frame->height+1)/2); 
-#endif
     }
     
-    pdata->video.video_frame = frame_Y;
-    pdata->video.video_frame_sup1 = frame_U;
-    pdata->video.video_frame_sup2 = frame_V;
-    
-#ifndef DIRECT_COPY
-    pdata->video.pitch = pitch_Y;
-    pdata->video.pitch_sup1 = pitch_U;
-    pdata->video.pitch_sup2 = pitch_V;
-#else
-    pdata->video.pitch = frame->linesize[0];
-    pdata->video.pitch_sup1 = frame->linesize[1];
-    pdata->video.pitch_sup2 = frame->linesize[2];
-#endif
-    
-    pdata->video.width = frame->width;
-    pdata->video.height = frame->height;
     pdata->video.type = VIDEO_YUV;
     pdata->video.pts = frame->pts * av_q2d(pdata->decoder.video_time_base); 
-    dbg_info("Video pts: %lf\n", pdata->video.pts);
-    
-    pdata->video.is_ready = 1;
     
     return 0;
 }

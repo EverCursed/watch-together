@@ -13,4 +13,6 @@ uint32 round_up_align(uint32 val)
 
 #define MS(real) (real/1000.0)
 
+#define smallest(a, b) (a < b ? a : b)
+
 #endif

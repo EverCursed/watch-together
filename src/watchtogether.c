@@ -162,7 +162,7 @@ static void
 ProcessVideo(program_data *pdata)
 {
     PlatformUpdateFrame(pdata);
-    PrepareVideoOutput(&pdata->video);
+    //PrepareVideoOutput(&pdata->video);
     
     increment_video_times(&pdata->playback, av_q2d(pdata->decoder.video_time_base));
     
@@ -172,7 +172,7 @@ ProcessVideo(program_data *pdata)
 static void
 SkipVideoFrame(program_data *pdata)
 {
-    PrepareVideoOutput(&pdata->video);
+    //PrepareVideoOutput(&pdata->video);
     
     increment_video_times(&pdata->playback, av_q2d(pdata->decoder.video_time_base));
     
@@ -335,12 +335,36 @@ AllocateBuffers(program_data *pdata)
     int32 seconds = 1;
     
     pdata->audio.buffer = malloc(bytes_per_sample*sample_rate*channels*seconds);
+    
+    // NOTE(Val): Allocate video buffers
+    // NOTE(Val): Currently this forces a conversion to YUV. 
+    //            Therefore, it is not sensitive to various pixel sizes
+    pdata->video.pitch = round_up_align(pdata->file.width);
+    pdata->video.pitch_sup1 = round_up_align((pdata->file.width+1)/2);
+    pdata->video.pitch_sup2 = round_up_align((pdata->file.width+1)/2);
+    
+    pdata->video.video_frame = malloc(pdata->video.pitch * pdata->file.height);
+    pdata->video.video_frame_sup1 = malloc(pdata->video.pitch_sup1 * (pdata->file.height+1)/2);
+    pdata->video.video_frame_sup2 = malloc(pdata->video.pitch_sup2 * (pdata->file.height+1)/2);
+    
+    pdata->video.width = pdata->file.width;
+    pdata->video.height = pdata->file.height;
 }
 
 static bool32
 DeallocateBuffers(program_data *pdata)
 {
     free(pdata->audio.buffer);
+    
+    free(pdata->video.video_frame);
+    free(pdata->video.video_frame_sup1);
+    free(pdata->video.video_frame_sup2);
+    
+    pdata->audio.buffer = NULL;
+    
+    pdata->video.video_frame = NULL;
+    pdata->video.video_frame_sup1 = NULL;
+    pdata->video.video_frame_sup2 = NULL;
     
     return 0;
 }
@@ -401,6 +425,8 @@ CloseFile(program_data *pdata)
     pdata->paused = 0;
     
     PlatformConditionSignal(&pdata->decoder.condition);
+    
+    // TODO(Val): This will block forever, need to fix
     PlatformWaitThread(pdata->threads.decoder_thread, NULL);
     
     DeallocateBuffers(pdata);
