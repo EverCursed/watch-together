@@ -99,9 +99,8 @@ ProcessInput(program_data *pdata)
                                 pdata->client.current_frame_time);
             } break;
         }
+        pdata->input.keyboard.n = 0;
     }
-    pdata->input.keyboard.n = 0;
-    
 }
 
 static void
@@ -224,7 +223,7 @@ ProcessPlayback(program_data *pdata)
     }
     else
     {
-        dbg_error("Audio is not ready or not time to play.\n");
+        //dbg_error("Audio is not ready or not time to play.\n");
     }
     
     if(need_audio || need_video)

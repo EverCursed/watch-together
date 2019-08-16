@@ -414,23 +414,40 @@ process_video_frame(program_data *pdata, struct frame_info info)
     }
     else
     {
-        copy_pixel_buffers(pdata->video.video_frame,
-                           pdata->video.pitch,
-                           frame->data[0],
-                           frame->linesize[0],
-                           frame->height);
-        
-        copy_pixel_buffers(pdata->video.video_frame_sup1,
-                           pdata->video.pitch_sup1,
-                           frame->data[1],
-                           frame->linesize[1],
-                           (frame->height+1)/2);
-        
-        copy_pixel_buffers(pdata->video.video_frame_sup2,
-                           pdata->video.pitch_sup2,
-                           frame->data[2],
-                           frame->linesize[2],
-                           (frame->height+1)/2);
+        if(frame->linesize[0] == pdata->video.pitch)
+        {
+            dbg_error("Linesizes (yuv420p):\n"
+                      "\tlinesize[0]: %d\n"
+                      "\tlinesize[1]: %d\n"
+                      "\tlinesize[2]: %d\n",
+                      frame->linesize[0],
+                      frame->linesize[1],
+                      frame->linesize[2]);
+            
+            memcpy(pdata->video.video_frame, frame->data[0], pdata->video.pitch * pdata->video.height);
+            memcpy(pdata->video.video_frame_sup1, frame->data[1], pdata->video.pitch_sup1 * (pdata->video.height+1)/2);
+            memcpy(pdata->video.video_frame_sup2, frame->data[2], pdata->video.pitch_sup2 * (pdata->video.height+1)/2);
+        }
+        else
+        {
+            copy_pixel_buffers(pdata->video.video_frame,
+                               pdata->video.pitch,
+                               frame->data[0],
+                               frame->linesize[0],
+                               frame->height);
+            
+            copy_pixel_buffers(pdata->video.video_frame_sup1,
+                               pdata->video.pitch_sup1,
+                               frame->data[1],
+                               frame->linesize[1],
+                               (frame->height+1)/2);
+            
+            copy_pixel_buffers(pdata->video.video_frame_sup2,
+                               pdata->video.pitch_sup2,
+                               frame->data[2],
+                               frame->linesize[2],
+                               (frame->height+1)/2);
+        }
     }
     
     pdata->video.type = VIDEO_YUV;

@@ -45,7 +45,10 @@ blit_frame(program_data *pdata)
                                        video->video_frame_sup2, video->pitch_sup2);
         
         if(ret < 0)
+        {
+            dbg_error("SDL_UpdateYUVTexture failed.\n");
             goto error;
+        }
     }
     else if(pdata->video.type == VIDEO_RGB)
     {
@@ -300,8 +303,8 @@ static real64
 PlatformGetTime()
 {
     real64 ticks = (real64)SDL_GetTicks();
-    dbg_info("PlatformGetTime(): %lf\n", ticks);
-    return ticks/1000.0f;
+    dbg_info("PlatformGetTime(): %lf\n", ticks/1000.0);
+    return ticks/1000.0;
 }
 
 static int32
