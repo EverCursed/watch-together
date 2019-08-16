@@ -46,6 +46,12 @@ typedef struct _message_queue {
     int32 max;
 } message_queue;
 
+#define AddMessage0(q,m,t) AddMessage(q, m, NO_ARG, NO_ARG, NO_ARG, NO_ARG, NO_ARG, t)
+#define AddMessage1(q,m,a,t) AddMessage(q, m, a, NO_ARG, NO_ARG, NO_ARG, NO_ARG, t)
+#define AddMessage2(q,m,a,b,t) AddMessage(q, m, a, b, NO_ARG, NO_ARG, NO_ARG, t)
+#define AddMessage3(q,m,a,b,c,t) AddMessage(q, m, a, b, c, NO_ARG, NO_ARG, t)
+#define AddMessage4(q,m,a,b,c,d,t) AddMessage(q, m, a, b, c, d, NO_ARG, t)
+#define AddMessage5(q,m,a,b,c,d,e,t) AddMessage(q, m, a, b, c, d, e, t)
 
 static void InitMessageQueue(message_queue *q);
 static void AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, real64 time);

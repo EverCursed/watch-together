@@ -61,7 +61,10 @@ ProcessInput(program_data *pdata)
             } break;
             case KB_ESCAPE:
             {
-                pdata->running = 0;
+                if(e.pressed)
+                    AddMessage0(&pdata->messages,
+                                MSG_CLOSE,
+                                pdata->client.current_frame_time);
             } break;
             case KB_UP:
             {
@@ -84,17 +87,16 @@ ProcessInput(program_data *pdata)
             case KB_ENTER:
             {
                 if(e.pressed && e.alt)
-                    AddMessage(&pdata->messages,
-                               MSG_TOGGLE_FULLSCREEN,
-                               NO_ARG, NO_ARG, NO_ARG, NO_ARG, NO_ARG,
-                               pdata->client.current_frame_time);
+                    AddMessage0(&pdata->messages,
+                                MSG_TOGGLE_FULLSCREEN,
+                                pdata->client.current_frame_time);
             } break;
             case KB_SPACE:
             {
                 if(e.pressed)
-                    AddMessage(&pdata->messages, MSG_PAUSE, 
-                               NO_ARG, NO_ARG, NO_ARG, NO_ARG, NO_ARG,
-                               pdata->client.current_frame_time);
+                    AddMessage0(&pdata->messages,
+                                MSG_PAUSE,
+                                pdata->client.current_frame_time);
             } break;
         }
     }
