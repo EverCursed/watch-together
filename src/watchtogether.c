@@ -84,21 +84,17 @@ ProcessInput(program_data *pdata)
             case KB_ENTER:
             {
                 if(e.pressed && e.alt)
-                {
-                    PlatformToggleFullscreen(pdata);
-                }
+                    AddMessage(&pdata->messages,
+                               MSG_TOGGLE_FULLSCREEN,
+                               NO_ARG, NO_ARG, NO_ARG, NO_ARG, NO_ARG,
+                               pdata->client.current_frame_time);
             } break;
             case KB_SPACE:
             {
                 if(e.pressed)
                     AddMessage(&pdata->messages, MSG_PAUSE, 
-                               NO_ARG,
-                               NO_ARG,
-                               NO_ARG,
-                               NO_ARG,
-                               NO_ARG,
-                               PlatformGetTime());
-                //TogglePlayback(pdata);
+                               NO_ARG, NO_ARG, NO_ARG, NO_ARG, NO_ARG,
+                               pdata->client.current_frame_time);
             } break;
         }
     }
@@ -119,6 +115,9 @@ ProcessMessages(program_data *pdata)
             case MSG_NO_MORE_MESSAGES:
             dbg_error("No message returned. Check message queue bookkeeping.\n");
             break;
+            case MSG_TOGGLE_FULLSCREEN:
+            PlatformToggleFullscreen(pdata);
+            break;
             case MSG_START_PLAYBACK:
             
             break;
@@ -126,7 +125,7 @@ ProcessMessages(program_data *pdata)
             
             break;
             case MSG_PAUSE:
-            
+            TogglePlayback(pdata);
             break;
             case MSG_SEEK:
             
@@ -375,6 +374,8 @@ InitQueues(program_data *pdata)
     pdata->pq_main = init_avpacket_queue(PACKET_QUEUE_SIZE);
     pdata->pq_video = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
     pdata->pq_audio = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
+    
+    InitMessageQueue(&pdata->messages);
     
     return 0;
 }

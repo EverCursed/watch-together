@@ -3,7 +3,7 @@
 
 #include "defines.h"
 
-#define MSG_QUEUE_SIZE 15
+#define MSG_QUEUE_SIZE 16
 
 #define MSG_NO_MORE_MESSAGES   0
 #define MSG_START_PLAYBACK     1
@@ -13,6 +13,7 @@
 #define MSG_CONNECT            5
 #define MSG_WINDOW_RESIZED     6
 #define MSG_CLOSE              7
+#define MSG_TOGGLE_FULLSCREEN  8
 
 typedef struct _arg {
     union {
@@ -46,7 +47,7 @@ typedef struct _message_queue {
 } message_queue;
 
 
-static void InitQueue(message_queue *q);
+static void InitMessageQueue(message_queue *q);
 static void AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, real64 time);
 static int32 GetMessage(message_queue *q, message *m);
 static void ClearMessages(message_queue *q);

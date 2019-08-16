@@ -1,7 +1,9 @@
 #include "message_queue.h"
 
+// TODO(Val): Add way to close queue? Although I don't know when we would want to stop getting input
+
 static void
-InitQueue(message_queue *q)
+InitMessageQueue(message_queue *q)
 {
     q->start = 0;
     q->end = 0;
@@ -14,7 +16,7 @@ AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, re
 {
     if(q->n < q->max)
     {
-        message *message = &q->queue[q->end++];
+        message *message = &q->queue[q->end];
         
         message->msg = m;
         
@@ -25,6 +27,9 @@ AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, re
         message->arg5 = a5;
         
         message->time = time;
+        
+        q->end = (q->end + 1) % q->max;
+        q->n++;
     }
 }
 
@@ -33,7 +38,11 @@ GetMessage(message_queue *q, message *m)
 {
     if(q->n > 0)
     {
-        *m = q->queue[q->start++];
+        *m = q->queue[q->start];
+        
+        q->start = (q->start + 1) % q->max;
+        q->n--;
+        
         return 0;
     }
     else
