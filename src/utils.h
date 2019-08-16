@@ -8,10 +8,11 @@
 
 uint32 round_up_align(uint32 val)
 {
-    //uint32 temp = (val + (BYTES_ALIGNMENT-1));
-    //return temp - (temp % BYTES_ALIGNMENT);
-    return (val + (BYTES_ALIGNMENT-1)) & 0xFFF0;
-    //return val + (BYTES_ALIGNMENT - (val % BYTES_ALIGNMENT));
+    return (val + BYTES_ALIGNMENT - 1)  - (((val + BYTES_ALIGNMENT - 1) % BYTES_ALIGNMENT));
 }
+
+#define MS(real) (real/1000.0)
+
+#define smallest(a, b) (a < b ? a : b)
 
 #endif

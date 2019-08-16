@@ -69,7 +69,7 @@ get_packet(program_data *pdata, AVPacket *packet)
 }
 
 static struct frame_info
-get_frame(program_data *pdata, int32 stream)
+get_frame(program_data *pdata, avpacket_queue *queue)
 {
     decoder_info *decoder = &pdata->decoder;
     AVCodecContext *dec_ctx;
@@ -84,22 +84,17 @@ get_frame(program_data *pdata, int32 stream)
     }
     
     int32 ret = 0;
-    avpacket_queue *queue = NULL;
     
     // set the type of frame.
-    if(stream == decoder->video_stream)
+    if(queue == pdata->pq_video)
     {
         // TODO(Val): Temporarily converting everything to YUV
         info.type = FRAME_VIDEO;
-        
-        queue = pdata->pq_video;
         dec_ctx = decoder->video_codec_context;
     }
-    else if(stream == decoder->audio_stream)
+    else if(queue == pdata->pq_audio)
     {
         info.type = FRAME_AUDIO;
-        
-        queue = pdata->pq_audio;
         dec_ctx = decoder->audio_codec_context;
     }
     else
@@ -115,12 +110,12 @@ get_frame(program_data *pdata, int32 stream)
             goto no_packet_fail;
         
         ret = avcodec_send_packet(dec_ctx, pkt);
-        dbg_info("avcodec_send_packet\tret: %d\n", ret);
+        //dbg_info("avcodec_send_packet\tret: %d\n", ret);
         
         if(ret == AVERROR(EAGAIN))
         {
             dbg_error("AVERROR(EAGAIN)\n");
-            // NOTE(Val): This means a frame must be read before we can send another packet
+            // TODO(Val): This means a frame must be read before we can send another packet
         }
         else if(ret == AVERROR_EOF)
         {
@@ -150,7 +145,7 @@ get_frame(program_data *pdata, int32 stream)
         }
         
         ret = avcodec_receive_frame(dec_ctx, frame);
-        dbg_info("avcodec_receive_frame\tret: %d\n", ret);
+        //dbg_info("avcodec_receive_frame\tret: %d\n", ret);
         
         if(ret == AVERROR(EAGAIN))
         {
@@ -178,14 +173,17 @@ get_frame(program_data *pdata, int32 stream)
     
     //av_packet_unref(pkt);
     info.ret = 0;
-    dbg_success("Returning from decoding.\n");
+    //dbg_success("Returning from decoding.\n");
     return info;
     
     get_frame_failed:
     if(pkt)
         av_packet_unref(pkt);
+    info.ret = -1;
+    return info;
     
     no_packet_fail:
+    dbg_error("There were no packets in queue.\n");
     av_frame_free(&frame);
     info.ret = -1;
     return info;
@@ -275,12 +273,14 @@ DecodingFileOpen(open_file_info *file, decoder_info *decoder)
         
         AVRational time = decoder->format_context->streams[decoder->video_stream]->avg_frame_rate;
         file->fps = (real32)time.num/(real32)time.den;
-        file->target_time = (real32)time.den/(real32)time.num * 1000.0f;
+        file->target_time = (real32)time.den/(real32)time.num * 1.0f;
         
         file->has_video = 1;
         
         decoder->video_time_base = //av_inv_q(
             decoder->format_context->streams[decoder->video_stream]->time_base;
+        
+        
     }
     
     if(decoder->audio_stream >= 0)
@@ -355,22 +355,21 @@ DecodingFileOpen(open_file_info *file, decoder_info *decoder)
 #define AUDIO_FRAME 1
 #define VIDEO_FRAME 2
 
-static void
-copy_pixel_buffers(void *dst,
-                   void *src,
+static inline void
+copy_pixel_buffers(uint8 *dst,
                    int32 pitch_dst,
+                   uint8 *src,
                    int32 pitch_src,
                    int32 height)
 {
+    int32 width = pitch_src < pitch_dst ? pitch_src : pitch_dst;
     for(int i = 0; i < height; i++)
     {
-        memcpy(dst + i*pitch_dst, src + i*pitch_src, pitch_src);
+        memcpy(dst + i*pitch_dst, src + i*pitch_src, pitch_src < pitch_dst ? pitch_src : pitch_dst);
     }
 }
 
 global struct SwsContext* modifContext = NULL;
-
-#define DIRECT_COPY
 
 static int32
 process_video_frame(program_data *pdata, struct frame_info info)
@@ -379,37 +378,7 @@ process_video_frame(program_data *pdata, struct frame_info info)
     AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
     
-    //dbg_info("Start processing video frame.\n");
-    
-    dbg_warn("frame->format: %d\n"
-             "new format   : %d\n",
-             frame->format,
-             AV_PIX_FMT_YUV420P);
-    
     int32 fmt = AV_PIX_FMT_YUV420P;
-    
-#ifndef DIRECT_COPY
-    int32 pitch_Y = round_up_align(frame->width *
-                                   av_get_bits_per_pixel(
-        av_pix_fmt_desc_get(
-        fmt)));
-    int32 pitch_U = round_up_align(((frame->width+1)/2) *
-                                   av_get_bits_per_pixel(
-        av_pix_fmt_desc_get(
-        fmt)));
-    int32 pitch_V = round_up_align(((frame->width+1)/2) *
-                                   av_get_bits_per_pixel(
-        av_pix_fmt_desc_get(
-        fmt)));
-    
-    void *frame_Y = malloc(pitch_Y * frame->height);
-    void *frame_U = malloc(pitch_U * (frame->height+1)/2);
-    void *frame_V = malloc(pitch_V * (frame->height+1)/2);
-#else
-    void *frame_Y = malloc(frame->linesize[0] * frame->height);
-    void *frame_U = malloc(frame->linesize[1] * (frame->height+1)/2);
-    void *frame_V = malloc(frame->linesize[2] * (frame->height+1)/2);
-#endif
     
     if(frame->format != AV_PIX_FMT_YUV420P)
     {
@@ -417,73 +386,55 @@ process_video_frame(program_data *pdata, struct frame_info info)
                                             decoder->video_codec_context->width,
                                             decoder->video_codec_context->height,
                                             frame->format,
-                                            decoder->video_codec_context->width,  // dst width
-                                            decoder->video_codec_context->height, // dst height
+                                            pdata->video.width,  // dst width
+                                            pdata->video.height, // dst height
                                             fmt,
                                             SWS_BICUBIC, //SWS_BILINEAR | SWS_ACCURATE_RND,
                                             NULL, NULL, NULL);
         
-        uint8_t *ptrs[3] = { frame_Y, frame_U, frame_V };
+        uint8_t *ptrs[3] = {
+            pdata->video.video_frame,//frame_Y,
+            pdata->video.video_frame_sup1,//frame_U,
+            pdata->video.video_frame_sup2,//frame_V
+        };
         
-#ifndef DIRECT_COPY
-        int stride[3] = { pitch_Y, pitch_U, pitch_V };
-#else
-        int stride[3] = { frame->linesize[0], frame->linesize[1], frame->linesize[2] }; 
-#endif
+        int stride[3] = {
+            pdata->video.pitch, //pitch_Y,
+            pdata->video.pitch_sup1, //pitch_U,
+            pdata->video.pitch_sup2, //pitch_V
+        };
+        
         sws_scale(modifContext,
                   (uint8 const* const*)frame->data,
                   frame->linesize,
                   0,
                   decoder->video_codec_context->height,
-                  (uint8 *const *const)ptrs,
+                  (uint8* const* const)ptrs,
                   stride);
     }
     else
     {
-#ifndef DIRECT_COPY
-        copy_pixel_buffers(frame_Y,
+        copy_pixel_buffers(pdata->video.video_frame,
+                           pdata->video.pitch,
                            frame->data[0],
-                           pitch_Y,
                            frame->linesize[0],
                            frame->height);
-        copy_pixel_buffers(frame_U,
+        
+        copy_pixel_buffers(pdata->video.video_frame_sup1,
+                           pdata->video.pitch_sup1,
                            frame->data[1],
-                           pitch_U,
                            frame->linesize[1],
                            (frame->height+1)/2);
-        copy_pixel_buffers(frame_V,
+        
+        copy_pixel_buffers(pdata->video.video_frame_sup2,
+                           pdata->video.pitch_sup2,
                            frame->data[2],
-                           pitch_V,
                            frame->linesize[2],
                            (frame->height+1)/2);
-#else
-        memcpy(frame_Y, frame->data[0], frame->linesize[0] * frame->height); 
-        memcpy(frame_U, frame->data[1], frame->linesize[1] * (frame->height+1)/2); 
-        memcpy(frame_V, frame->data[2], frame->linesize[2] * (frame->height+1)/2); 
-#endif
     }
     
-    pdata->video.video_frame = frame_Y;
-    pdata->video.video_frame_sup1 = frame_U;
-    pdata->video.video_frame_sup2 = frame_V;
-    
-#ifndef DIRECT_COPY
-    pdata->video.pitch = pitch_Y;
-    pdata->video.pitch_sup1 = pitch_U;
-    pdata->video.pitch_sup2 = pitch_V;
-#else
-    pdata->video.pitch = frame->linesize[0];
-    pdata->video.pitch_sup1 = frame->linesize[1];
-    pdata->video.pitch_sup2 = frame->linesize[2];
-#endif
-    
-    pdata->video.width = frame->width;
-    pdata->video.height = frame->height;
     pdata->video.type = VIDEO_YUV;
     pdata->video.pts = frame->pts * av_q2d(pdata->decoder.video_time_base); 
-    dbg_info("Video pts: %lf\n", pdata->video.pts);
-    
-    pdata->video.is_ready = 1;
     
     return 0;
 }
@@ -558,7 +509,7 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     
     pdata->audio.buffer = data;
     pdata->audio.size += real_size;
-    pdata->audio.duration += 1000.0f * (real64)SampleCount / (real64)Frequency;
+    pdata->audio.duration += (real64)SampleCount / (real64)Frequency;
     //dbg_info("Audio frame duration: %lf\n", pdata->audio.duration);
     
     //pdata->audio.is_ready = 1;
@@ -579,12 +530,12 @@ SortPackets(program_data *pdata)
         
         if(pkt->stream_index == pdata->decoder.video_stream)
         {
-            dbg_info("Queued video packet.\n");
+            //dbg_info("Queued video packet.\n");
             enqueue_packet(pdata->pq_video, pkt);
         }
         else if(pkt->stream_index == pdata->decoder.audio_stream)
         {
-            dbg_info("Queued audio packet.\n");
+            //dbg_info("Queued audio packet.\n");
             enqueue_packet(pdata->pq_audio, pkt);
         }
         else
@@ -657,21 +608,24 @@ DecodingThreadStart(void *ptr)
     program_data *pdata = ptr;
     open_file_info *file = &pdata->file;
     decoder_info *decoder = &pdata->decoder;
+    playback_data *playback = &pdata->playback;
     
     decoder->condition = PlatformCreateConditionVar();
     
-    while(!pq_is_full(pdata->pq_audio) && !pq_is_full(pdata->pq_video))
+    while(!pq_is_full(pdata->pq_audio) &&
+          !pq_is_full(pdata->pq_video) &&
+          !pdata->file.file_finished)
     {
         LoadPackets(pdata);
         SortPackets(pdata);
     }
     
-    pdata->start_playback = 1;
+    bool32 start_notified = 0;
     
     //ProfilerStart("decoder.prof.log");
     while(pdata->running && !pdata->playback_finished)
     {
-        dbg_success("Processing loop start.\n");
+        //dbg_success("Processing loop start.\n");
         if(!pdata->audio.is_ready)
         {
             // TODO(Val): Check this loop
@@ -682,7 +636,7 @@ DecodingThreadStart(void *ptr)
                 do {
                     dbg_success("Audio packets not empty, starting to process.\n");
                     
-                    struct frame_info f = get_frame(pdata, pdata->decoder.audio_stream);
+                    struct frame_info f = get_frame(pdata, pdata->pq_audio);
                     
                     if(f.ret != -1)
                     {
@@ -711,37 +665,53 @@ DecodingThreadStart(void *ptr)
                     pdata->playback.next_frame_time - pdata->playback.playback_start,
                     pdata->playback.next_frame_time + pdata->client.refresh_rate - pdata->playback.playback_start);
                     */
-                } while(!pdata->file.file_finished && (pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
+                    
+                    if(!pdata->running)
+                        break;
+                    // TODO(Val): This will only function while we don't miss frames
+                } while(playback->audio_total_queued + pdata->audio.duration < 
+                        get_next_playback_time(playback));
+                //} while(!pdata->file.file_finished &&
+                //(pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
                 
                 pdata->audio.is_ready = 1;
             }
+            else
+            {
+                dbg_error("There were no audio packets.\n");
+            }
         }
         
-        if(!pdata->video.is_ready)
+        if(!pdata->video.is_ready && !pq_is_empty(pdata->pq_video))
         {
-            dbg_success("Video not marked ready.\n");
-            if(!pq_is_empty(pdata->pq_video))
+            struct frame_info f = get_frame(pdata, pdata->pq_video);
+            
+            if(f.ret != -1)
             {
-                dbg_success("Video packets not empty, starting to process.\n");
+                dbg_success("Processing video.\n");
                 
-                struct frame_info f = get_frame(pdata, pdata->decoder.video_stream);
-                
-                dbg_info("frame type: %d\n", f.frame->format); 
-                
-                if(f.ret != -1)
+                int32 ret = process_video_frame(pdata, f);
+                if(ret < 0)
                 {
-                    dbg_success("Processing video.\n");
-                    
-                    process_video_frame(pdata, f);
-                    av_frame_free(&f.frame);
-                }
-                else
-                {
-                    dbg_error("get_frame failed.\n");
+                    dbg_error("process_video_frame() failed.\n");
                 }
                 
-                pdata->video.is_ready = 1;
+                av_frame_free(&f.frame);
             }
+            else
+            {
+                dbg_error("get_frame failed.\n");
+            }
+            
+            pdata->video.is_ready = 1;
+        }
+        else if(!pdata->video.is_ready)
+        {
+            dbg_error("No video packets to process.\n");
+        }
+        else
+        {
+            
         }
         
         // TODO(Val): This may not be fool proof
@@ -749,17 +719,26 @@ DecodingThreadStart(void *ptr)
         //pdata->playback_finished = 1;
         //else
         //{
-        LoadPackets(pdata);
-        SortPackets(pdata);
         
-        dbg_info("Decoder: Starting condition wait.\n");
+        if(!start_notified && pdata->audio.is_ready && pdata->video.is_ready)
+        {
+            start_notified = 1;
+            pdata->start_playback = 1;
+        }
+        //dbg_info("Decoder: Starting condition wait.\n");
+        
+        while(!pq_is_full(pdata->pq_audio) &&
+              !pq_is_full(pdata->pq_video) &&
+              !pdata->file.file_finished)
+        {
+            LoadPackets(pdata);
+            SortPackets(pdata);
+        }
         
         PlatformConditionWait(&decoder->condition);
-        dbg_success("Decoder: Thread woken up.\n");
+        //dbg_success("Decoder: Thread woken up.\n");
         //}
     }
-    
-    //ProfilerStop();
     
     PlatformConditionDestroy(&decoder->condition);
     

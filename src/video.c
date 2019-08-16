@@ -28,8 +28,7 @@ PrepareVideoOutput(output_video *video)
     }
     else
     {
-        dbg_error("PlatformPrepareVideo() failed for some reason.\n");
-        
+        dbg_error("PrepareVideoOutput() failed for some reason.\n");
         return -1;
     }
 }

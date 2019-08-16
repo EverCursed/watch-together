@@ -44,16 +44,13 @@ blit_frame(program_data *pdata)
                                        video->video_frame_sup1, video->pitch_sup1,
                                        video->video_frame_sup2, video->pitch_sup2);
         
-        free(video->video_frame);
-        free(video->video_frame_sup1);
-        free(video->video_frame_sup2);
         if(ret < 0)
             goto error;
     }
     else if(pdata->video.type == VIDEO_RGB)
     {
         int ret = SDL_UpdateTexture(background_texture, NULL, video->video_frame, video->pitch);
-        free(video->video_frame);
+        //free(video->video_frame);
         
         if(ret < 0)
             goto error;
@@ -103,7 +100,6 @@ PlatformQueueAudio(output_audio *audio)
     if(ret < 0)
     {
         dbg_error("%s\n", SDL_GetError());
-        
         return -1;
     }
     
@@ -202,7 +198,7 @@ PlatformInitAudio(program_data *pdata)
         
         pdata->audio_format = ReceivedAudioSpec.format;
         
-        SDL_PauseAudioDevice(AudioID, 0);
+        //SDL_PauseAudioDevice(AudioID, 0);
     }
     //printf("%s\n", SDL_GetError());
 }
@@ -220,10 +216,9 @@ PlatformPauseAudio(bool32 b)
 }
 
 static void
-PlatformSleep(int32 ms)
+PlatformSleep(real64 s)
 {
-    int st = ms <= 0 ? 0 : ms;
-    dbg_warn("Sleeping for %d ms.\n", st);
+    int st = s < 0 ? 0 : s * 1000.0;
     SDL_Delay(st);
 }
 
@@ -260,24 +255,35 @@ PlatformCreateConditionVar()
 static int32
 PlatformConditionWait(cond_info *c)
 {
+    /*
     SDL_LockMutex(c->mutex);
     while(!c->test)
     {
         SDL_CondWait(c->cond, c->mutex);
+        PlatformSleep(0.001);
     }
+    c->test = 0;
     SDL_UnlockMutex(c->mutex);
+    */
     
+    while(!c->test)
+    {
+        PlatformSleep(0.001);
+    }
+    c->test = 0;
     return 0;
 }
 
 static int32
 PlatformConditionSignal(cond_info *c)
 {
+    /*
     SDL_LockMutex(c->mutex);
     c->test = 1;
     SDL_CondSignal(c->cond);
     SDL_UnlockMutex(c->mutex);
-    
+    */
+    c->test = 1;
     return 0;
 }
 
@@ -290,10 +296,12 @@ PlatformConditionDestroy(cond_info *c)
     return 0;
 }
 
-static uint32
+static real64
 PlatformGetTime()
 {
-    return SDL_GetTicks();
+    real64 ticks = (real64)SDL_GetTicks();
+    dbg_info("PlatformGetTime(): %lf\n", ticks);
+    return ticks/1000.0f;
 }
 
 static int32
@@ -344,7 +352,6 @@ PlatformInitVideo(program_data *pdata)
     }
     else if(pdata->file.video_format = VIDEO_YUV)
     {
-        dbg_error("Texture getting initialized.\n");
         background_texture = SDL_CreateTexture(renderer, 
                                                SDL_PIXELFORMAT_IYUV,
                                                SDL_TEXTUREACCESS_STREAMING,
@@ -352,13 +359,14 @@ PlatformInitVideo(program_data *pdata)
                                                pdata->file.height);
     }
     
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
-    //SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+    SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
 }
 
 static void
 PlatformToggleFullscreen(program_data *pdata)
 {
+    dbg_success("TOGGLING FULLSCREEN\n");
     SDL_SetWindowFullscreen(window, pdata->is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
     pdata->is_fullscreen = !pdata->is_fullscreen;
 }
@@ -587,8 +595,8 @@ int main(int argc, const char** argv)
     SDL_SetEventFilter(resize_filter, NULL);
 #endif
     
-    SDL_CreateWindowAndRenderer(1280,
-                                720,
+    SDL_CreateWindowAndRenderer(1024,
+                                576,
                                 SDL_WINDOW_RESIZABLE,
                                 &window,
                                 &renderer);
