@@ -81,7 +81,7 @@ static bool32
 should_queue(playback_data *playback)
 {
     real64 playback_time = get_playback_time(playback);
-    real64 n = playback_time + *playback->refresh_target;
+    real64 n = playback_time + (*playback->refresh_target*2);
     
     bool32 result = ((playback_time <= playback->audio_total_queued) &&
                      (playback->audio_total_queued < n));
