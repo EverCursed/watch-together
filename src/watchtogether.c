@@ -24,11 +24,11 @@ TogglePlayback(program_data *pdata)
 {
     if(!pdata->paused)
     {
-        pdata->playback.pause_started = PlatformGetTime();
+        pdata->playback.pause_started = *pdata->playback.current_frame_time;
     }
     else
     {
-        real64 time = PlatformGetTime();
+        real64 time = *pdata->playback.current_frame_time;
         pdata->playback.aggregated_pause_time += (time - pdata->playback.pause_started);
     }
     
