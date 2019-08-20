@@ -8,10 +8,10 @@ ifeq ($(OS),Windows_NT)
 else
 	INCLUDE_DIR=/usr/local/include
 	LIB_DIR=.lib
-	LIB_FLAGS=-lSDL2 `pkg-config --cflags --libs libavcodec libavutil libavformat libswscale` #-l:libavformat.so.58 -lm -lz -l:libavcodec.so -pthread -l:libswscale.so -l:libavutil.so -l:libswresample.so -lXv -lX11 -lXext 
+	LIB_FLAGS=-lSDL2 `pkg-config --cflags --libs libavcodec libavutil libavformat libswscale libsrtp2` #-l:libavformat.so.58 -lm -lz -l:libavcodec.so -pthread -l:libswscale.so -l:libavutil.so -l:libswresample.so -lXv -lX11 -lXext 
 endif
 
-CFLAGS=-I$(INCLUDE_DIR) -O3 -no-pie
+CFLAGS= -Wall -I$(INCLUDE_DIR) -O3 -no-pie
 
 DBGFLAGS=-DDEBUG -fno-omit-frame-pointer
 

@@ -19,14 +19,10 @@
 
 global SDL_AudioDeviceID AudioID = -1;
 global bool32 audio_initialized = 0;
-global float ms_target = 33.33333333333333333333f;
 global SDL_Window *window = NULL;
 global SDL_Renderer *renderer = NULL;
 global SDL_Texture *background_texture;
 global SDL_Texture *ui_texture;
-global uint8 silence;
-global uint32 texture_width;
-global uint32 texture_height;
 
 global program_data *pdata;
 
@@ -109,6 +105,7 @@ PlatformQueueAudio(output_audio *audio)
     return 0;
 }
 
+/*
 static void
 AudioCallback(void*  userdata,
               Uint8* stream,
@@ -132,7 +129,7 @@ AudioCallback(void*  userdata,
         memset(stream, silence, len); 
     }
 }
-
+*/
 static void 
 PlatformInitAudio(program_data *pdata)
 {
@@ -239,7 +236,7 @@ PlatformCreateThread(int32 (*f)(void *), void *data, char* name)
     return info;
 }
 
-static int32
+static void
 PlatformWaitThread(thread_info thread, int32 *ret)
 {
     SDL_WaitThread(thread.thread, ret);
@@ -353,7 +350,7 @@ PlatformInitVideo(program_data *pdata)
                                                pdata->file.width,
                                                pdata->file.height);
     }
-    else if(pdata->file.video_format = VIDEO_YUV)
+    else if(pdata->file.video_format == VIDEO_YUV)
     {
         background_texture = SDL_CreateTexture(renderer, 
                                                SDL_PIXELFORMAT_IYUV,
@@ -441,6 +438,41 @@ int resize_filter(void *userdata,
 #endif
 
 static int
+ResizeScreen(program_data *pdata, int x, int y)
+{
+    int new_width = x;
+    int new_height = y;
+    
+    SDL_Rect rect = {};
+    
+    real32 width_ratio = (real32)new_width/pdata->file.width;
+    real32 height_ratio = (real32)new_height/pdata->file.height;
+    
+    real32 ratio = (real32)pdata->file.width / (real32)pdata->file.height;
+    real32 new_ratio = (real32)new_width / (real32)new_height;
+    
+    if(new_ratio >= ratio)
+    {
+        rect.h = new_height;
+        rect.w = (real32)pdata->file.width * height_ratio;
+    }
+    else
+    {
+        rect.w = new_width;
+        rect.h = (real32)pdata->file.height * width_ratio;
+    }
+    
+    rect.x = (new_width - rect.w)/2;
+    rect.y = (new_height - rect.h)/2;
+    
+    SDL_RenderSetViewport(renderer,
+                          &rect);
+    SDL_RenderPresent(renderer);
+    
+    return 0;
+}
+
+static int
 PlatformGetInput(program_data *pdata)
 {
     input_struct *input = &pdata->input;
@@ -470,34 +502,7 @@ PlatformGetInput(program_data *pdata)
                     {
                         dbg_error("SDL_WINDOWEVENT_RESIZED fired.\n");
                         
-                        int new_width = event.window.data1;
-                        int new_height = event.window.data2;
-                        
-                        SDL_Rect rect = {};
-                        
-                        real32 width_ratio = (real32)new_width/pdata->file.width;
-                        real32 height_ratio = (real32)new_height/pdata->file.height;
-                        
-                        real32 ratio = (real32)pdata->file.width / (real32)pdata->file.height;
-                        real32 new_ratio = (real32)new_width / (real32)new_height;
-                        
-                        if(new_ratio >= ratio)
-                        {
-                            rect.h = new_height;
-                            rect.w = (real32)pdata->file.width * height_ratio;
-                        }
-                        else
-                        {
-                            rect.w = new_width;
-                            rect.h = (real32)pdata->file.height * width_ratio;
-                        }
-                        
-                        rect.x = (new_width - rect.w)/2;
-                        rect.y = (new_height - rect.h)/2;
-                        
-                        SDL_RenderSetViewport(renderer,
-                                              &rect);
-                        
+                        ResizeScreen(pdata, event.window.data1, event.window.data2);
                         /*
                         int width = pdata->vq_data.video_queue_width;
                         int height = pdata->vq_data.video_queue_height;

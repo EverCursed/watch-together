@@ -22,7 +22,7 @@ PlatformSleep(real64);
 static thread_info
 PlatformCreateThread(int32 (*f)(void *), void *, char *);
 
-static int32
+static void
 PlatformWaitThread(thread_info, int32 *);
 
 static cond_info

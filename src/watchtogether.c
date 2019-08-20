@@ -101,6 +101,8 @@ ProcessInput(program_data *pdata)
         }
         pdata->input.keyboard.n = 0;
     }
+    
+    return 0;
 }
 
 static void
@@ -118,6 +120,7 @@ ProcessMessages(program_data *pdata)
             break;
             case MSG_TOGGLE_FULLSCREEN:
             PlatformToggleFullscreen(pdata);
+            PlatformFlipBuffers(pdata);
             break;
             case MSG_START_PLAYBACK:
             
@@ -325,7 +328,7 @@ MainLoop(program_data *pdata)
     return 0;
 }
 
-static bool32
+static int32
 AllocateBuffers(program_data *pdata)
 {
     // NOTE(Val): Allocate audio buffer
@@ -349,6 +352,8 @@ AllocateBuffers(program_data *pdata)
     
     pdata->video.width = pdata->file.width;
     pdata->video.height = pdata->file.height;
+    
+    return 0;
 }
 
 static bool32
@@ -394,6 +399,8 @@ TerminateQueues(program_data *pdata)
 static bool32
 OpenFile(program_data *pdata)
 {
+    InitQueues(pdata);
+    
     if(!DecodingFileOpen(&pdata->file, &pdata->decoder))
     {
         PlatformInitAudio(pdata);
@@ -428,12 +435,16 @@ CloseFile(program_data *pdata)
     
     PlatformConditionSignal(&pdata->decoder.condition);
     
+    DecodingFileClose(pdata);
+    
     // TODO(Val): This will block forever, need to fix
     PlatformWaitThread(pdata->threads.decoder_thread, NULL);
     
     DeallocateBuffers(pdata);
     
     PlatformCloseAudio(pdata);
+    
+    TerminateQueues(pdata);
     
     return 0;
 }
@@ -447,9 +458,6 @@ MainThread(program_data *pdata)
     
     dbg_info("Client refresh target time set to %lfs.\n", pdata->client.refresh_target);
     
-    // NOTE(Val): Temporarily here
-    InitQueues(pdata);
-    
     if(!OpenFile(pdata))
     {
         MainLoop(pdata);
@@ -462,8 +470,6 @@ MainThread(program_data *pdata)
         dbg_error("File isn't found.\n");
         pdata->running = 0;
     }
-    
-    TerminateQueues(pdata);
     
     return 0;
 }

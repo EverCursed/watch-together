@@ -74,6 +74,7 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
     }
 }
 
+/*
 static int32
 dequeue_next(avpacket_queue *queue, AVPacket **packet)
 {
@@ -101,7 +102,7 @@ dequeue_next(avpacket_queue *queue, AVPacket **packet)
         return -1;
     }
 }
-
+*/
 // TODO(Val): Should we make another reference? Will need to unref manually then.
 static int32
 peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)

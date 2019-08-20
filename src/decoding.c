@@ -7,26 +7,6 @@
 #include "packet_queue.h"
 #include "decoding.h"
 
-static void
-file_close(program_data *pdata)
-{
-    // TODO(Val): Should we also stop running the current file?
-    
-    decoder_info *decoder = &pdata->decoder;
-    open_file_info *file = &pdata->file;
-    
-    avformat_free_context(decoder->format_context);
-    
-    avcodec_free_context(&decoder->audio_codec_context);
-    avcodec_free_context(&decoder->video_codec_context);
-    
-    decoder->audio_codec = NULL;
-    decoder->video_codec = NULL;
-    
-    memset(file, 0, sizeof(open_file_info));
-    memset(decoder, 0, sizeof(decoder_info));
-}
-
 #define FRAME_AUDIO 1
 //#define FRAME_VIDEO_RGB 2
 //#define FRAME_VIDEO_YUV 3
@@ -195,7 +175,6 @@ DecodingFileOpen(open_file_info *file, decoder_info *decoder)
     // Open video file
     dbg_print("avformat version: %d - %d\n", LIBAVFORMAT_VERSION_INT, avformat_version());
     
-    int ret = 0;
     if(avformat_open_input(&decoder->format_context, file->filename, NULL, NULL) < 0)
     {
         dbg_error("AV open input failed.\n");
@@ -303,7 +282,6 @@ DecodingFileOpen(open_file_info *file, decoder_info *decoder)
         
         uint32 sample_fmt = decoder->audio_codec_context->sample_fmt;
         uint32 fmt = 0;
-        uint32 bytes_per_sample = 0;
         if(sample_fmt == AV_SAMPLE_FMT_U8 ||
            sample_fmt == AV_SAMPLE_FMT_U8P)
         {
@@ -352,6 +330,26 @@ DecodingFileOpen(open_file_info *file, decoder_info *decoder)
     return 0;
 }
 
+static void
+DecodingFileClose(program_data *pdata)
+{
+    // TODO(Val): Should we also stop running the current file?
+    
+    decoder_info *decoder = &pdata->decoder;
+    open_file_info *file = &pdata->file;
+    
+    avformat_free_context(decoder->format_context);
+    
+    avcodec_free_context(&decoder->audio_codec_context);
+    avcodec_free_context(&decoder->video_codec_context);
+    
+    decoder->audio_codec = NULL;
+    decoder->video_codec = NULL;
+    
+    memset(file, 0, sizeof(open_file_info));
+    memset(decoder, 0, sizeof(decoder_info));
+}
+
 #define AUDIO_FRAME 1
 #define VIDEO_FRAME 2
 
@@ -365,7 +363,7 @@ copy_pixel_buffers(uint8 *dst,
     int32 width = pitch_src < pitch_dst ? pitch_src : pitch_dst;
     for(int i = 0; i < height; i++)
     {
-        memcpy(dst + i*pitch_dst, src + i*pitch_src, pitch_src < pitch_dst ? pitch_src : pitch_dst);
+        memcpy(dst + i*pitch_dst, src + i*pitch_src, width);
     }
 }
 
@@ -374,7 +372,6 @@ global struct SwsContext* modifContext = NULL;
 static int32
 process_video_frame(program_data *pdata, struct frame_info info)
 {
-    uint32 ret = 0;
     AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
     
@@ -416,13 +413,13 @@ process_video_frame(program_data *pdata, struct frame_info info)
     {
         if(frame->linesize[0] == pdata->video.pitch)
         {
-            dbg_error("Linesizes (yuv420p):\n"
-                      "\tlinesize[0]: %d\n"
-                      "\tlinesize[1]: %d\n"
-                      "\tlinesize[2]: %d\n",
-                      frame->linesize[0],
-                      frame->linesize[1],
-                      frame->linesize[2]);
+            dbg_warn("Linesizes (yuv420p):\n"
+                     "\tlinesize[0]: %d\n"
+                     "\tlinesize[1]: %d\n"
+                     "\tlinesize[2]: %d\n",
+                     frame->linesize[0],
+                     frame->linesize[1],
+                     frame->linesize[2]);
             
             memcpy(pdata->video.video_frame, frame->data[0], pdata->video.pitch * pdata->video.height);
             memcpy(pdata->video.video_frame_sup1, frame->data[1], pdata->video.pitch_sup1 * (pdata->video.height+1)/2);
@@ -474,7 +471,6 @@ process_audio_frame(program_data *pdata, struct frame_info info)
         return -1;
     }
     
-    uint32 ret = 0;
     AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
     
@@ -543,7 +539,7 @@ SortPackets(program_data *pdata)
           !pq_is_full(pdata->pq_audio) &&
           !pq_is_full(pdata->pq_video))
     {
-        int ret = dequeue_packet(pdata->pq_main, &pkt);
+        dequeue_packet(pdata->pq_main, &pkt);
         
         if(pkt->stream_index == pdata->decoder.video_stream)
         {
@@ -590,35 +586,6 @@ LoadPackets(program_data *pdata)
     //pdata->file.file_finished = 1;
 }
 
-static void
-close_queues(program_data *pdata)
-{
-    open_file_info *file = &pdata->file;
-    
-    if(file->has_video)
-    {
-        if(file->video_format == VIDEO_YUV)
-        {
-            dbg_info("Closing YUV queue.\n");
-            //close_video_queue_YUV(&pdata->vq_data);
-        }
-        else
-        {
-            dbg_info("Closing RGB queue.\n");
-            //close_video_queue(&pdata->vq_data);
-        }
-    }
-    
-    if(file->has_audio)
-    {
-        PlatformCloseAudio(pdata);
-    }
-    
-    // TODO(Val): Should I uninitialize audio/video here? 
-    // NOTE(Val): Probably no need to close video, as UI will still need to be displayed
-    // NOTE(Val): Not sure about audio yet
-}
-
 static int32 
 DecodingThreadStart(void *ptr)
 {
@@ -631,7 +598,7 @@ DecodingThreadStart(void *ptr)
     
     while(!pq_is_full(pdata->pq_audio) &&
           !pq_is_full(pdata->pq_video) &&
-          !pdata->file.file_finished)
+          !file->file_finished)
     {
         LoadPackets(pdata);
         SortPackets(pdata);
@@ -746,7 +713,7 @@ DecodingThreadStart(void *ptr)
         
         while(!pq_is_full(pdata->pq_audio) &&
               !pq_is_full(pdata->pq_video) &&
-              !pdata->file.file_finished)
+              !file->file_finished)
         {
             LoadPackets(pdata);
             SortPackets(pdata);

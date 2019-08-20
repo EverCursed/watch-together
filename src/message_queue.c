@@ -14,7 +14,7 @@ InitMessageQueue(message_queue *q)
 static void
 AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, real64 time)
 {
-    if(q->n < q->max)
+    if(!MessagesFull(q))
     {
         message *message = &q->queue[q->end];
         
