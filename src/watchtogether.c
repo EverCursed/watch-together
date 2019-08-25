@@ -243,10 +243,6 @@ MainLoop(program_data *pdata)
     playback_data *playback = &pdata->playback;
     client_info *client = &pdata->client;
     
-    pdata->playback.current_frame_time = &pdata->client.current_frame_time;
-    pdata->playback.next_frame_time = &pdata->client.next_refresh_time;
-    pdata->playback.refresh_target = &pdata->client.refresh_target;
-    
     client->next_refresh_time = (PlatformGetTime() +  client->refresh_target)/1.0;
     
     // now start main loop
@@ -452,6 +448,10 @@ MainThread(program_data *pdata)
     // NOTE(Val): Initialize things here that will last the entire runtime of the application
     
     pdata->client.refresh_target = 1.0 / (real64)pdata->hardware.monitor_refresh_rate;
+    
+    pdata->playback.current_frame_time = &pdata->client.current_frame_time;
+    pdata->playback.next_frame_time = &pdata->client.next_refresh_time;
+    pdata->playback.refresh_target = &pdata->client.refresh_target;
     
     dbg_info("Client refresh target time set to %lfs.\n", pdata->client.refresh_target);
     
