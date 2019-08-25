@@ -1,14 +1,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <SDL2/SDL.h>
 
-#include "defines.h"
-#include "wt_version.h"
-#include "utils.h"
-#include "kbkeys.h"
+#include "watchtogether.h"
 
-#include "SDL_platform.h"
-#include "watchtogether.c"
+//#include "defines.h"
+//#include "wt_version.h"
+//#include "utils.h"
+//#include "kbkeys.h"
+
+//#include "SDL_platform.h"
+//#include "watchtogether.c"
 
 /* TODO(Val): A list of things that still must be done 
  --- Provide TCP/UDP support
@@ -89,7 +92,7 @@ Deb_ResizePixelBuffer(SDL_Renderer *renderer)
 }
 */ 
 
-static int32
+int32
 PlatformQueueAudio(output_audio *audio)
 {
     int ret = SDL_QueueAudio(AudioID,
@@ -130,7 +133,7 @@ AudioCallback(void*  userdata,
     }
 }
 */
-static void 
+void 
 PlatformInitAudio(program_data *pdata)
 {
     //dbg_info("PlatformInitAudio called.\n");
@@ -203,19 +206,19 @@ PlatformInitAudio(program_data *pdata)
     //printf("%s\n", SDL_GetError());
 }
 
-static void
+void
 PlatformCloseAudio(program_data *pdata)
 {
     SDL_CloseAudioDevice(AudioID);
 }
 
-static void
+void
 PlatformPauseAudio(bool32 b)
 {
     SDL_PauseAudioDevice(AudioID, b);
 }
 
-static void
+void
 PlatformSleep(real64 s)
 {
     int st = s < 0 ? 0 : s * 1000.0;
@@ -223,7 +226,7 @@ PlatformSleep(real64 s)
 }
 
 /// Platform create thread
-static thread_info
+thread_info
 PlatformCreateThread(int32 (*f)(void *), void *data, char* name)
 {
     thread_info info = {};
@@ -236,13 +239,13 @@ PlatformCreateThread(int32 (*f)(void *), void *data, char* name)
     return info;
 }
 
-static void
+void
 PlatformWaitThread(thread_info thread, int32 *ret)
 {
     SDL_WaitThread(thread.thread, ret);
 }
 
-static cond_info
+cond_info
 PlatformCreateConditionVar()
 {
     cond_info c = {};
@@ -252,7 +255,7 @@ PlatformCreateConditionVar()
     return c;
 }
 
-static int32
+int32
 PlatformConditionWait(cond_info *c)
 {
     /*
@@ -274,7 +277,7 @@ PlatformConditionWait(cond_info *c)
     return 0;
 }
 
-static int32
+int32
 PlatformConditionSignal(cond_info *c)
 {
     /*
@@ -287,7 +290,7 @@ PlatformConditionSignal(cond_info *c)
     return 0;
 }
 
-static bool32
+bool32
 PlatformConditionDestroy(cond_info *c)
 {
     SDL_DestroyMutex(c->mutex);
@@ -296,7 +299,7 @@ PlatformConditionDestroy(cond_info *c)
     return 0;
 }
 
-static real64
+real64
 PlatformGetTime()
 {
     real64 ticks = (real64)SDL_GetTicks();
@@ -304,7 +307,7 @@ PlatformGetTime()
     return ticks/1000.0;
 }
 
-static int32
+int32
 PlatformUpdateFrame(program_data *pdata)
 {
     int ret;
@@ -331,7 +334,7 @@ PlatformUpdateFrame(program_data *pdata)
     return 0;
 }
 
-static int32
+int32
 PlatformFlipBuffers(program_data *pdata)
 {
     SDL_RenderPresent(renderer);
@@ -339,7 +342,7 @@ PlatformFlipBuffers(program_data *pdata)
     return 0;
 }
 
-static void
+void
 PlatformInitVideo(program_data *pdata)
 {
     if(pdata->video.type == VIDEO_RGB)
@@ -363,7 +366,7 @@ PlatformInitVideo(program_data *pdata)
     SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
 }
 
-static void
+void
 PlatformToggleFullscreen(program_data *pdata)
 {
     dbg_success("TOGGLING FULLSCREEN\n");
@@ -472,7 +475,7 @@ ResizeScreen(program_data *pdata, int x, int y)
     return 0;
 }
 
-static int
+int
 PlatformGetInput(program_data *pdata)
 {
     input_struct *input = &pdata->input;

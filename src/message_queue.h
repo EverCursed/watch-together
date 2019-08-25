@@ -23,7 +23,8 @@ typedef struct _arg {
     };
 } arg;
 
-arg NO_ARG = { .s = 0 };
+#pragma GCC diagnostic ignored "-Wunused-variable"
+static arg NO_ARG = { .s = 0 };
 
 typedef struct _message {
     int32 msg;
@@ -53,11 +54,11 @@ typedef struct _message_queue {
 #define AddMessage4(q,m,a,b,c,d,t) AddMessage(q, m, a, b, c, d, NO_ARG, t)
 #define AddMessage5(q,m,a,b,c,d,e,t) AddMessage(q, m, a, b, c, d, e, t)
 
-static void InitMessageQueue(message_queue *q);
-static void AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, real64 time);
-static int32 GetMessage(message_queue *q, message *m);
-static void ClearMessages(message_queue *q);
-static bool32 MessagesEmpty(message_queue *q);
-static bool32 MessagesFull(message_queue *q);
+void InitMessageQueue(message_queue *q);
+void AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, real64 time);
+int32 GetMessage(message_queue *q, message *m);
+void ClearMessages(message_queue *q);
+bool32 MessagesEmpty(message_queue *q);
+bool32 MessagesFull(message_queue *q);
 
 #endif

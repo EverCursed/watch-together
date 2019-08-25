@@ -2,6 +2,7 @@
 #define DEB_WT
 
 #include <SDL2/SDL.h>
+#include "defines.h"
 
 typedef struct _platform_data {
     

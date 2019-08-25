@@ -1,11 +1,15 @@
 #include <libswscale/version.h>
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
+#include <libavutil/pixdesc.h>
 
-#include "defines.h"
+//#include "defines.h"
 #include "watchtogether.h"
-#include "platform.h"
-#include "packet_queue.h"
-#include "decoding.h"
+//#include "platform.h"
+//#include "packet_queue.h"
+//#include "decoding.h"
+
 
 #define FRAME_AUDIO 1
 //#define FRAME_VIDEO_RGB 2
@@ -21,7 +25,7 @@ struct frame_info {
     int32 ret;
 };
 
-static int32
+int32
 get_packet(program_data *pdata, AVPacket *packet)
 {
     int ret = av_read_frame(pdata->decoder.format_context, packet);
@@ -48,7 +52,7 @@ get_packet(program_data *pdata, AVPacket *packet)
     return 0;
 }
 
-static struct frame_info
+struct frame_info
 get_frame(program_data *pdata, avpacket_queue *queue)
 {
     decoder_info *decoder = &pdata->decoder;
@@ -169,7 +173,7 @@ get_frame(program_data *pdata, avpacket_queue *queue)
     return info;
 }
 
-static int32
+int32
 DecodingFileOpen(open_file_info *file, decoder_info *decoder)
 {
     // Open video file
@@ -330,13 +334,10 @@ DecodingFileOpen(open_file_info *file, decoder_info *decoder)
     return 0;
 }
 
-static void
-DecodingFileClose(program_data *pdata)
+void
+DecodingFileClose(open_file_info *file, decoder_info *decoder)
 {
     // TODO(Val): Should we also stop running the current file?
-    
-    decoder_info *decoder = &pdata->decoder;
-    open_file_info *file = &pdata->file;
     
     avformat_free_context(decoder->format_context);
     
@@ -369,7 +370,7 @@ copy_pixel_buffers(uint8 *dst,
 
 global struct SwsContext* modifContext = NULL;
 
-static int32
+int32
 process_video_frame(program_data *pdata, struct frame_info info)
 {
     AVFrame *frame = info.frame;
@@ -462,7 +463,7 @@ do {\
     }\
 } while(0)
 
-static int32
+int32
 process_audio_frame(program_data *pdata, struct frame_info info)
 {
     if(pdata->audio.is_ready)
@@ -530,7 +531,7 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     return 0;
 }
 
-static void
+void
 SortPackets(program_data *pdata)
 {
     AVPacket *pkt;
@@ -560,7 +561,7 @@ SortPackets(program_data *pdata)
     }
 }
 
-static void
+void
 LoadPackets(program_data *pdata)
 {
     while(!pq_is_full(pdata->pq_main) &&
@@ -586,7 +587,7 @@ LoadPackets(program_data *pdata)
     //pdata->file.file_finished = 1;
 }
 
-static int32 
+int32 
 DecodingThreadStart(void *ptr)
 {
     program_data *pdata = ptr;

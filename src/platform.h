@@ -1,55 +1,57 @@
 #ifndef WT_PLATFORM
 #define WT_PLATFORM
 
-static real64
+//#include "watchtogether.h"
+
+real64
 PlatformGetTime();
 
-static int32
+int32
 PlatformFlipBuffers(program_data *);
 
-static int
+int
 PlatformGetInput(program_data *);
 
-static void
+void
 PlatformPauseAudio(bool32);
 
-static int32
+int32
 PlatformUpdateFrame(program_data *);
 
-static void
+void
 PlatformSleep(real64);
 
-static thread_info
+thread_info
 PlatformCreateThread(int32 (*f)(void *), void *, char *);
 
-static void
+void
 PlatformWaitThread(thread_info, int32 *);
 
-static cond_info
+cond_info
 PlatformCreateConditionVar();
 
-static int32
+int32
 PlatformConditionWait(cond_info *);
 
-static int32
+int32
 PlatformConditionSignal(cond_info *);
 
-static bool32
+bool32
 PlatformConditionDestroy(cond_info *);
 
-static void
+void
 PlatformInitAudio(program_data *);
 
-static void
+void
 PlatformCloseAudio(program_data *);
 
-static void
+void
 PlatformInitVideo(program_data *);
 
-static void
+void
 PlatformToggleFullscreen(program_data *);
 
-static int32
+int32
 PlatformQueueAudio(output_audio *);
 
 #endif

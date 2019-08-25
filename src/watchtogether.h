@@ -8,8 +8,17 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 
+#include "wt_version.h"
+#include "SDL_platform.h"
 #include "playback.h"
 #include "message_queue.h"
+#include "packet_queue.h"
+#include "decoding.h"
+#include "kbkeys.h"
+#include "audio.h"
+#include "video.h"
+#include "utils.h"
+#include "decoding.h"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -24,103 +33,6 @@
 #define KCYN  "\x1B[36m"
 #define KWHT  "\x1B[37m"
 
-#ifdef DEBUG
-
-#if defined(_WIN32)
-#define CHANGE_COLOR(x) SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), x)
-
-#define dbg_print(...) do { fprintf(stderr, __VA_ARGS__); } while(0)
-#define dbg_error(...) \
-do { \
-    CHANGE_COLOR(FOREGROUND_RED); \
-    fprintf(stderr, "%s %d : ", __FILE__, __LINE__);\
-    fprintf(stderr, __VA_ARGS__); \
-    CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN); \
-} while(0)
-
-#define dbg_info(...) \
-do { \
-    CHANGE_COLOR(FOREGROUND_BLUE | FOREGROUND_GREEN); \
-    fprintf(stderr, __VA_ARGS__); \
-    CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN); \
-} while(0)
-
-#define dbg_success(...) \
-do { \
-    CHANGE_COLOR(FOREGROUND_GREEN); \
-    fprintf(stderr, __VA_ARGS__); \
-    CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN); \
-} while(0)
-
-#ifdef SUPPRESS_WARN
-#define dbg_warn(...) \
-do { \
-    CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_GREEN); \
-    fprintf(stderr, __VA_ARGS__); \
-    CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN); \
-} while(0)
-#else
-#define dbg_warn(...) \
-do { } while(0)
-#endif
-
-#define dbg(x) x
-
-#elif defined(__linux__)
-
-#define dbg_print(...) \
-do {\
-    fprintf(stderr, __VA_ARGS__);\
-} while(0)
-
-#define dbg_error(...)\
-do {\
-    fprintf(stderr, KRED);\
-    fprintf(stderr, "%s %d : ", __FILE__, __LINE__);\
-    fprintf(stderr, __VA_ARGS__);\
-    fprintf(stderr, KNRM);\
-} while(0)
-
-#define dbg_info(...) \
-do {\
-    fprintf(stderr, KCYN);\
-    fprintf(stderr, __VA_ARGS__);\
-    fprintf(stderr, KNRM);\
-} while(0)
-
-#define dbg_success(...) \
-do {\
-    fprintf(stderr, KGRN);\
-    fprintf(stderr, __VA_ARGS__);\
-    fprintf(stderr, KNRM);\
-} while(0)
-
-#ifndef SUPPRESS_WARN
-#define dbg_warn(...) \
-do {\
-    fprintf(stderr, KYEL);\
-    fprintf(stderr, __VA_ARGS__);\
-    fprintf(stderr, KNRM);\
-} while(0)
-#else
-#define dbg_warn(...) \
-do { } while(0)
-#endif
-
-#define dbg(x) x
-#endif
-
-#else
-
-#define dbg_print(...)
-#define dbg_error(...)
-#define dbg_info(...)
-#define dbg_success(...)
-#define dbg_warn(...)
-#define dbg(x)
-
-#endif
-
 struct _platform_data;
 struct _thread_info;
 struct _cond_info;
@@ -133,25 +45,21 @@ typedef struct _threads_info_all {
     struct _thread_info audio_thread;
 } threads_info_all;
 
-typedef struct _decoder_info {
-    AVRational video_time_base;
-    AVRational audio_time_base;
+typedef struct _socket_info {
+    union {
+        struct {
+            uint8 a;
+            uint8 b;
+            uint8 c;
+            uint8 d;
+        };
+        uint32 ip;
+    }; 
     
-    AVFormatContext *format_context;
-    
-    AVCodec *audio_codec;
-    AVCodec *video_codec;
-    
-    AVCodecContext *audio_codec_context;
-    AVCodecContext *video_codec_context;
-    
-    int video_stream;
-    int audio_stream;
-    
-    const char *filename;
-    
-    cond_info condition;
-} decoder_info;
+    uint16 port;
+} socket_info;
+
+typedef struct _decoder_info decoder_info;
 
 typedef struct _key_event {
     uint32 key;
@@ -219,63 +127,14 @@ typedef struct _client_info {
     real64 next_refresh_time;
 } client_info;
 
-typedef struct _output_audio {
-    void *buffer;
-    AVRational time_base;
-    uint32 sample_rate;
-    uint32 bytes_per_sample;
-    uint32 channels;
-    uint32 sample_format;
-    uint32 size;
-    volatile bool32 is_ready;
-    real64 pts;
-    real64 duration;
-    real64 required_duration;
-} output_audio;
+typedef struct _output_audio output_audio;
 
 #define VIDEO_RGB 1
 #define VIDEO_YUV 2
 
-typedef struct _ouput_video {
-    void *video_frame;
-    void *video_frame_sup1;
-    void *video_frame_sup2;
-    AVRational framerate;
-    uint32 pitch;
-    uint32 pitch_sup1;
-    uint32 pitch_sup2;
-    uint32 width;
-    uint32 height;
-    int32 type;
-    volatile bool32 is_ready;
-    real64 pts;
-} output_video;
+typedef struct _ouput_video output_video;
 
-typedef struct _open_file_info {
-    char *filename;
-    
-    uint32 width;
-    uint32 height;
-    uint32 video_format;
-    real32 fps;
-    real32 target_time;
-    
-    uint32 sample_rate;
-    uint32 bytes_per_sample;
-    uint32 channels;
-    uint32 sample_format;
-    
-    bool32 has_audio;
-    bool32 has_video;
-    bool32 has_subtitles;
-    
-    bool32 file_opened;        // signals that the file was successfully opened
-    bool32 file_ready;         // // TODO(Val): signals that the data is ready to be displayed
-    bool32 open_failed;        // signals that opening the file failed
-    
-    volatile bool32 file_finished;
-    // TODO(Val): audio format
-} open_file_info;
+typedef struct _open_file_info open_file_info;
 
 typedef struct _avpacket_queue {
     //AVPacket *buffer;
@@ -380,6 +239,12 @@ typedef struct _program_data {
     volatile bool32 playback_finished;
 } program_data;
 
-static int32 MainLoop(program_data  *);
+int32 
+MainThread(program_data *);
+
+int32
+MainLoop(program_data  *);
+
+#include "platform.h"
 
 #endif

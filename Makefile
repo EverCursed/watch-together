@@ -1,31 +1,31 @@
-APPNAME=watchtogether
-CC=gcc
+APPNAME:=watchtogether
+CC:=gcc
+OUTPUT_DIR:=bin
+OUTPUT_FILE:=$(OUTPUT_DIR)/$(APPNAME)
 
-OUTPUT_DIR=bin
+src := $(wildcard src/*.c)
+obj := $(src:.c=.o)
+#inc := $(wildcard src/*.h)
 
-ifeq ($(OS),Windows_NT)
-	LIB_FLAGS=
-else
-	INCLUDE_DIR=/usr/local/include
-	LIB_DIR=.lib
-	LIB_FLAGS=-lSDL2 `pkg-config --cflags --libs libavcodec libavutil libavformat libswscale libsrtp2` #-l:libavformat.so.58 -lm -lz -l:libavcodec.so -pthread -l:libswscale.so -l:libavutil.so -l:libswresample.so -lXv -lX11 -lXext 
-endif
+LIB_DIR := -L/usr/local/lib
+INCLUDE_DIR := -I/usr/local/include
 
-CFLAGS= -Wall -I$(INCLUDE_DIR) -O3 -no-pie
+DBGFLAGS := -DDEBUG -fno-omit-frame-pointer
+LIB_FLAGS := $(LIB_DIR) -lSDL2 -lavcodec -lavutil -lavformat -lswscale -lXv -lX11 -lXext
+#`pkg-config --cflags --libs libavcodec libavutil libavformat libswscale` #-l:libavformat.so.58 -lm -lz -l:libavcodec.so -pthread -l:libswscale.so -l:libavutil.so -l:libswresample.so 
+CFLAGS := -Wall $(INCLUDE_DIR) -O3 -no-pie
 
-DBGFLAGS=-DDEBUG -fno-omit-frame-pointer
+all: clean watchtogether
 
-src = $(wildcard src/*.c)
-obj = $(src:.c=.o)
-inc = $(wildcard src/*.h)
+watchtogether: $(obj)
+	$(CC) $(CFLAGS) $^ -o $(OUTPUT_FILE) $(LIB_FLAGS)
 
-watchtogether:
-	$(CC) -o $(OUTPUT_DIR)/$(APPNAME) src/SDL_platform.c $(CFLAGS) $(LIB_FLAGS)
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-.PHONY: debug
-debug:
-	$(CC) -o $(OUTPUT_DIR)/$(APPNAME) src/SDL_platform.c $(CFLAGS) $(LIB_FLAGS) $(DBGFLAGS)
+.PHONY:
+debug: CFLAGS+= $(DBGFLAGS)
+debug: watchtogether
 
-.PHONY: clean
 clean:
-	rm -f watchtogether $(obj)
+	$(RM) $(obj)

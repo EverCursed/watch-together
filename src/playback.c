@@ -1,10 +1,10 @@
-#include "defines.h"
-#include "playback.h"
+//#include "playback.h"
+#include "watchtogether.h"
 
 #define AUDIO_QUEUE_MARGIN 0.002
 #define VIDEO_QUEUE_MARGIN 0.002
 
-static int32
+int32
 increment_video_times(playback_data *playback, real64 video_time_base)
 {
     playback->current_video_frame_time = playback->next_video_frame_time;
@@ -13,14 +13,14 @@ increment_video_times(playback_data *playback, real64 video_time_base)
     return 0;
 }
 
-static int32
+int32
 increment_audio_times(playback_data *playback, real64 duration)
 {
     playback->audio_total_queued += duration;
     return 0;
 }
 
-static bool32
+bool32
 should_display(playback_data *playback, real64 video_ts)
 {
     real64 playback_time = get_playback_time(playback);
@@ -60,25 +60,25 @@ playback->aggregated_pause_time -
 playback->playback_start;
 }
 */
-static real64
+real64
 get_playback_time(playback_data *p)
 {
     return (*p->current_frame_time - p->aggregated_pause_time - p->playback_start);
 }
 
-static real64
+real64
 get_next_playback_time(playback_data *p)
 {
     return get_playback_time(p) + *p->refresh_target;
 }
 
-static bool32
+bool32
 should_skip(playback_data *playback, real64 video_ts)
 {
     return (get_playback_time(playback) > video_ts);
 }
 
-static bool32
+bool32
 should_queue(playback_data *playback)
 {
     real64 playback_time = get_playback_time(playback);
@@ -100,13 +100,13 @@ should_queue(playback_data *playback)
     return result;
 }
 
-static real64
+real64
 get_playback_current_time(playback_data *playback)
 {
     return (*playback->current_frame_time - playback->playback_start - playback->aggregated_pause_time);
 }
 
-static void
+void
 start_playback(playback_data *p, real64 time)
 {
     p->playback_start = time + *p->refresh_target;

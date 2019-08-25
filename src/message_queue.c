@@ -1,8 +1,9 @@
-#include "message_queue.h"
+//#include "message_queue.h"
+#include "watchtogether.h"
 
 // TODO(Val): Add way to close queue? Although I don't know when we would want to stop getting input
 
-static void
+void
 InitMessageQueue(message_queue *q)
 {
     q->start = 0;
@@ -11,7 +12,7 @@ InitMessageQueue(message_queue *q)
     q->max = MSG_QUEUE_SIZE;
 }
 
-static void
+void
 AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, real64 time)
 {
     if(!MessagesFull(q))
@@ -33,7 +34,7 @@ AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, re
     }
 }
 
-static int32
+int32
 GetMessage(message_queue *q, message *m)
 {
     if(q->n > 0)
@@ -53,7 +54,7 @@ GetMessage(message_queue *q, message *m)
     }
 }
 
-static void
+void
 ClearMessages(message_queue *q)
 {
     q->n = 0;
@@ -61,13 +62,13 @@ ClearMessages(message_queue *q)
     q->end = 0;
 }
 
-static bool32
+bool32
 MessagesEmpty(message_queue *q)
 {
     return (q->n == 0);
 }
 
-static bool32
+bool32
 MessagesFull(message_queue *q)
 {
     return (q->n == q->max);

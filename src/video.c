@@ -1,6 +1,7 @@
-#include "video.h"
+//#include "video.h"
+#include "watchtogether.h"
 
-static int32
+int32
 PrepareVideoOutput(output_video *video)
 {
     video->pitch = 0;

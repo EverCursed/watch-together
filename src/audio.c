@@ -1,7 +1,7 @@
-#include "audio.h"
+//#include "audio.h"
+#include "watchtogether.h"
 
-
-static void
+void
 PrepareAudioOutput(output_audio *audio)
 {
     audio->duration = 0.0f;

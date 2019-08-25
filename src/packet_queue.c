@@ -7,12 +7,12 @@ This holds a queue of AVPacket structs. This is a buffer for
 */
 
 #include <libavcodec/avcodec.h>
-#include "packet_queue.h"
+//#include "packet_queue.h"
 #include "watchtogether.h"
 
 // TODO(Val): Think about how the packets should be free'd.
 
-static avpacket_queue*
+avpacket_queue*
 init_avpacket_queue(int32 n)
 {
     avpacket_queue *queue = malloc(sizeof(avpacket_queue));
@@ -28,7 +28,7 @@ init_avpacket_queue(int32 n)
     return queue;
 }
 
-static int32
+int32
 enqueue_packet(avpacket_queue *queue, AVPacket *packet)
 {
     if(queue->n == queue->maxn)
@@ -46,7 +46,7 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
     return 0;
 }
 
-static int32
+int32
 dequeue_packet(avpacket_queue *queue, AVPacket **packet)
 {
     if(queue->n == 0)
@@ -104,7 +104,8 @@ dequeue_next(avpacket_queue *queue, AVPacket **packet)
 }
 */
 // TODO(Val): Should we make another reference? Will need to unref manually then.
-static int32
+
+int32
 peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)
 {
     // check if nth packet is queued up
@@ -121,7 +122,7 @@ peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)
     return 0;
 }
 
-static int32
+int32
 clear_avpacket_queue(avpacket_queue *queue)
 {
     /*
@@ -139,7 +140,7 @@ clear_avpacket_queue(avpacket_queue *queue)
 }
 
 // TODO(Val): Make this take a reference to a pointer and set it to NULL afterwards
-static int32
+int32
 close_avpacket_queue(avpacket_queue *queue)
 {
     clear_avpacket_queue(queue);
@@ -153,7 +154,8 @@ close_avpacket_queue(avpacket_queue *queue)
     return 0;
 }
 
-static void
+/*
+void
 print_packets(avpacket_queue *queue, program_data *pdata)
 {
     int32 i = queue->next;
@@ -167,14 +169,15 @@ print_packets(avpacket_queue *queue, program_data *pdata)
         i = (i + 1) % queue->maxn;
     }
 }
+*/
 
-static inline bool32
+bool32
 pq_is_full(avpacket_queue *queue)
 {
     return (queue->n == queue->maxn);
 }
 
-static inline bool32
+bool32
 pq_is_empty(avpacket_queue *queue)
 {
     return (queue->n == 0);

@@ -1,13 +1,10 @@
 #include "watchtogether.h"
-#include "platform.h"
-#include "kbkeys.h"
-
-#include "packet_queue.c"
-#include "decoding.c"
-#include "video.c"
-#include "audio.c"
-#include "playback.c"
-#include "message_queue.c"
+//#include "platform.h"
+//#include "kbkeys.h"
+//#include "utils.h"
+//#include "audio.h"
+//#include "playback.h"
+//#include "packet_queue.h"
 
 //#include <time.h>
 // TODO(Val): NAT-T implementation, see how it works
@@ -240,7 +237,7 @@ ProcessPlayback(program_data *pdata)
     return 0;
 }
 
-static int32
+int32
 MainLoop(program_data *pdata)
 {
     playback_data *playback = &pdata->playback;
@@ -435,7 +432,7 @@ CloseFile(program_data *pdata)
     
     PlatformConditionSignal(&pdata->decoder.condition);
     
-    DecodingFileClose(pdata);
+    DecodingFileClose(&pdata->file, &pdata->decoder);
     
     // TODO(Val): This will block forever, need to fix
     PlatformWaitThread(pdata->threads.decoder_thread, NULL);
@@ -449,7 +446,7 @@ CloseFile(program_data *pdata)
     return 0;
 }
 
-static int32
+int32
 MainThread(program_data *pdata)
 {
     // NOTE(Val): Initialize things here that will last the entire runtime of the application

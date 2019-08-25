@@ -1,6 +1,9 @@
 #ifndef PLAYBACK
 #define PLAYBACK
 
+#include "defines.h"
+#include "debug.h"
+
 typedef struct _playback_data {
     bool32 started_playing;
     
@@ -28,28 +31,31 @@ typedef struct _playback_data {
     real64 *current_frame_time;
 } playback_data;
 
-static int32
+int32
 increment_video_times(playback_data *playback, real64 video_time_base);
 
-static int32
+int32
 increment_audio_times(playback_data *playback, real64 duration);
 
-static bool32
+bool32
 should_display(playback_data *playback, real64 video_ts);
 
-static bool32
+bool32
 should_queue(playback_data *playback);
 
-static real64
+bool32
+should_skip(playback_data *playback, real64 video_ts);
+
+real64
 get_playback_current_time(playback_data *playback);
 
-static real64
+real64
 get_playback_time(playback_data *playback);
 
-static real64
+real64
 get_next_playback_time(playback_data *playback);
 
-static void
+void
 start_playback(playback_data *p, real64 time);
 
 #endif 
