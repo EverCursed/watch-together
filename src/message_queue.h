@@ -56,7 +56,7 @@ typedef struct _message_queue {
 
 void InitMessageQueue(message_queue *q);
 void AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, real64 time);
-int32 GetMessage(message_queue *q, message *m);
+int32 GetApplicationMessage(message_queue *q, message *m);
 void ClearMessages(message_queue *q);
 bool32 MessagesEmpty(message_queue *q);
 bool32 MessagesFull(message_queue *q);

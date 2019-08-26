@@ -18,16 +18,22 @@ load_paths = {
 };
 
 command_list = {
+ { .name = "debug",
+   .out = "*compilation*", .footer_panel = true, .save_dirty_files = true,
+   .cmd = { { "make debug", .os = "win"   },
+            { "make debug", .os = "linux" },
+            { "make debug", .os = "mac"   }, }, }, 
  { .name = "build",
    .out = "*compilation*", .footer_panel = true, .save_dirty_files = true,
-   .cmd = { { "make" , .os = "win"   },
-            { "make debug", .os = "linux" },
+   .cmd = { { "make", .os = "win"   },
+            { "make", .os = "linux" },
             { "make", .os = "mac"   }, }, },
  { .name = "run",
    .out = "*run*", .footer_panel = true, .save_dirty_files = false,
-   .cmd = { { "./bin/watchtogether.exe", .os = "win"   },
+   .cmd = { { "bin/watchtogether.exe", .os = "win"   },
             { "./bin/watchtogether" , .os = "linux" },
             { "./bin/watchtogether" , .os = "mac"   }, }, },
 };
-fkey_command[1] = "build";
+fkey_command[1] = "debug";
 fkey_command[2] = "run";
+fkey_command[3] = "build";

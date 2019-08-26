@@ -108,7 +108,7 @@ ProcessMessages(program_data *pdata)
     while(!MessagesEmpty(&pdata->messages) && pdata->running)
     {
         message m;
-        GetMessage(&pdata->messages, &m);
+        GetApplicationMessage(&pdata->messages, &m);
         
         switch(m.msg)
         {
@@ -390,7 +390,7 @@ TerminateQueues(program_data *pdata)
 }
 
 static bool32
-OpenFile(program_data *pdata)
+FileOpen(program_data *pdata)
 {
     InitQueues(pdata);
     
@@ -414,13 +414,13 @@ OpenFile(program_data *pdata)
     else goto open_failed;
     
     open_failed:
-    dbg_error("OpenFile() failed.\n");
+    dbg_error("FileOpen() failed.\n");
     pdata->file.open_failed = 1;
     return -1;
 }
 
 static bool32
-CloseFile(program_data *pdata)
+FileClose(program_data *pdata)
 {
     pdata->file.file_ready = 0;
     pdata->playing = 0;
@@ -455,12 +455,12 @@ MainThread(program_data *pdata)
     
     dbg_info("Client refresh target time set to %lfs.\n", pdata->client.refresh_target);
     
-    if(!OpenFile(pdata))
+    if(!FileOpen(pdata))
     {
         MainLoop(pdata);
         
         // NOTE(Val): Temporarily here
-        CloseFile(pdata);
+        FileClose(pdata);
     }
     else
     {

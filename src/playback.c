@@ -87,7 +87,7 @@ should_queue(playback_data *playback)
     bool32 result = ((playback_time <= playback->audio_total_queued) &&
                      (playback->audio_total_queued < n));
     
-    dbg_print("should_queue(): %lf <= %lf < %lf\t",
+    dbg_print("should_queue(): %lf <= %lf < %lf\n",
               playback_time,
               playback->audio_total_queued,
               n);

@@ -4,6 +4,7 @@
 #ifdef DEBUG
 
 #if defined(_WIN32)
+#include <Windows.h>
 #define CHANGE_COLOR(x) SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), x)
 
 #define dbg_print(...) do { fprintf(stderr, __VA_ARGS__); } while(0)
@@ -74,14 +75,14 @@ do {\
 
 #ifndef SUPPRESS_WARN
 #define dbg_warn(...) \
-do {\
+do { } while(0)
+#else
+#define dbg_warn(...) \
+do { \
     fprintf(stderr, KYEL);\
     fprintf(stderr, __VA_ARGS__);\
     fprintf(stderr, KNRM);\
 } while(0)
-#else
-#define dbg_warn(...) \
-do { } while(0)
 #endif
 
 #define dbg(x) x

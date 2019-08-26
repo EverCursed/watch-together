@@ -35,7 +35,7 @@ AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, re
 }
 
 int32
-GetMessage(message_queue *q, message *m)
+GetApplicationMessage(message_queue *q, message *m)
 {
     if(q->n > 0)
     {
