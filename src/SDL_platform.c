@@ -577,6 +577,12 @@ PlatformGetInput(program_data *pdata)
     return 0;
 }
 
+int64
+PlatformGetThreadID()
+{
+    return SDL_ThreadID();
+}
+
 #ifdef _WIN32
 #undef main         // workaround on windows where main is redefined by SDL
 #endif
