@@ -38,7 +38,8 @@ typedef struct _threads_info_all {
     struct _thread_info main_thread;
     struct _thread_info decoder_thread;
     struct _thread_info blt_thread;
-    struct _thread_info audio_thread;
+    //struct _thread_info audio_thread;
+    struct _thread_info input_thread;
 } threads_info_all;
 
 typedef struct _socket_info {

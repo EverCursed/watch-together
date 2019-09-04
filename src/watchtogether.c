@@ -238,8 +238,24 @@ ProcessPlayback(program_data *pdata)
 }
 
 int32
-MainLoop(program_data *pdata)
+InputLoopThread(void *arg)
 {
+    program_data *pdata = arg;
+    
+    while(pdata->running)
+    {
+        ProcessInput(pdata);
+        PlatformSleep(pdata->client.refresh_target);
+    }
+    
+    return 0;
+}
+
+int32
+MainLoopThread(void *arg)
+{
+    
+    program_data *pdata = arg;
     playback_data *playback = &pdata->playback;
     client_info *client = &pdata->client;
     
@@ -248,6 +264,9 @@ MainLoop(program_data *pdata)
     // now start main loop
     while(pdata->running)
     {
+        ProcessMessages(pdata);
+        SDL_PumpEvents();
+        
         if(pdata->file.open_failed)
         {
             //pdata->file.open_failed = 0;
@@ -273,12 +292,9 @@ MainLoop(program_data *pdata)
                 //TogglePlayback(pdata);
                 dbg_warn("Playback started!\n");
             }
+            
+            EndTimer;
         }
-        
-        // TODO(Val): Draw UI
-        
-        ProcessInput(pdata);
-        ProcessMessages(pdata);
         
         if(!pdata->file.open_failed)
         {
@@ -455,11 +471,12 @@ MainThread(program_data *pdata)
     
     dbg_info("Client refresh target time set to %lfs.\n", pdata->client.refresh_target);
     
+    pdata->threads.input_thread = PlatformCreateThread(InputLoopThread, pdata, "input_thread");
+    
     if(!FileOpen(pdata))
     {
-        MainLoop(pdata);
-        
-        // NOTE(Val): Temporarily here
+        MainLoopThread(pdata);
+        //MainThread(pdata);
         FileClose(pdata);
     }
     else
@@ -468,5 +485,6 @@ MainThread(program_data *pdata)
         pdata->running = 0;
     }
     
+    pdata->running = 0;
     return 0;
 }
