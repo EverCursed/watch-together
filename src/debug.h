@@ -30,7 +30,7 @@ do { \
     CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN); \
 } while(0)
 
-#ifdef SUPPRESS_WARN
+#ifndef SUPPRESS_WARN
 #define dbg_warn(...) \
 do { \
     CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_GREEN); \
