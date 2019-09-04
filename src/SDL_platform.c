@@ -299,6 +299,26 @@ PlatformConditionDestroy(cond_info *c)
     return 0;
 }
 
+platform_mutex
+PlatformCreateMutex()
+{
+    platform_mutex m = {};
+    m.mutex = SDL_CreateMutex();
+    return m;
+}
+
+void
+PlatformLockMutex(platform_mutex *m)
+{
+    SDL_LockMutex(m->mutex);
+}
+
+void
+PlatformUnlockMutex(platform_mutex *m)
+{
+    SDL_UnlockMutex(m->mutex);
+}
+
 real64
 PlatformGetTime()
 {

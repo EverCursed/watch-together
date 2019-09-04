@@ -1,7 +1,7 @@
 #ifndef WT_PLATFORM
 #define WT_PLATFORM
 
-//#include "watchtogether.h"
+#include "watchtogether.h"
 
 real64
 PlatformGetTime();
@@ -21,6 +21,9 @@ PlatformUpdateFrame(program_data *);
 void
 PlatformSleep(real64);
 
+
+// Threads 
+
 thread_info
 PlatformCreateThread(int32 (*f)(void *), void *, char *);
 
@@ -38,6 +41,11 @@ PlatformConditionSignal(cond_info *);
 
 bool32
 PlatformConditionDestroy(cond_info *);
+
+platform_mutex
+PlatformCreateMutex();
+
+// 
 
 void
 PlatformInitAudio(program_data *);
