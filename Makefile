@@ -26,10 +26,10 @@ else
 endif
 
 DBGFLAGS := -DDEBUG -fno-omit-frame-pointer
-CFLAGS := -Wall $(INCLUDE_DIR) -O3
+CFLAGS := -Wall $(INCLUDE_DIR) -g -O3
 
 watchtogether: $(obj)
-	$(CC) $(CFLAGS) $^ -o $(OUTPUT_FILE) $(LIB_FLAGS)
+	$(CC) -MD -MF $(CFLAGS) $^ -o $(OUTPUT_FILE) $(LIB_FLAGS)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

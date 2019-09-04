@@ -30,7 +30,7 @@ command_list = {
             { "make", .os = "mac"   }, }, },
  { .name = "run",
    .out = "*run*", .footer_panel = true, .save_dirty_files = false,
-   .cmd = { { "bin/watchtogether.exe", .os = "win"   },
+   .cmd = { { "bin\watchtogether.exe", .os = "win"   },
             { "./bin/watchtogether" , .os = "linux" },
             { "./bin/watchtogether" , .os = "mac"   }, }, },
 };
