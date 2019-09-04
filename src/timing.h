@@ -1,8 +1,6 @@
 #ifndef TIMING_H
 #define TIMING_H
 
-#ifdef DEBUG
-
 #ifdef _WIN32
 #include "windows.h"
 #endif
@@ -129,6 +127,8 @@ do { \
     FILE *f = fopen(filename, "w"); \
     fwrite(__dbgtimdat.dump, sizeof(char), __dbgtimdat.dump_length, f); \
     fclose(f); \
+    free(__dbgtimdat.inst); \
+    free(__dbgtimdat.dump); \
 } while(0)
 
 
@@ -137,10 +137,9 @@ do { \
 
 // DEBUG is not defined, remove all timing information
 #define InitializeTimingSystem   do {} while(0)
-#define StartTime(name)          do {} while(0)
-#define EndTime                  do {} while(0)
-#define DumpTiminFrame           do {} while(0)
+#define StartTimer(name)         do {} while(0)
+#define EndTimer                 do {} while(0)
+#define DumpTimingFrame          do {} while(0)
 #define FinishTiming             do {} while(0)
 
-#endif
 #endif

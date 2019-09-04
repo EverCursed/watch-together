@@ -62,4 +62,7 @@ PlatformToggleFullscreen(program_data *);
 int32
 PlatformQueueAudio(output_audio *);
 
+int64
+PlatformGetThreadID();
+
 #endif

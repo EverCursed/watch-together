@@ -6,6 +6,7 @@
 
 //#include "defines.h"
 #include "watchtogether.h"
+#include "timing.h"
 //#include "platform.h"
 //#include "packet_queue.h"
 //#include "decoding.h"
@@ -55,6 +56,8 @@ get_packet(program_data *pdata, AVPacket *packet)
 struct frame_info
 get_frame(program_data *pdata, avpacket_queue *queue)
 {
+    StartTimer("get_frame()");
+    
     decoder_info *decoder = &pdata->decoder;
     AVCodecContext *dec_ctx;
     
@@ -158,18 +161,21 @@ get_frame(program_data *pdata, avpacket_queue *queue)
     //av_packet_unref(pkt);
     info.ret = 0;
     //dbg_success("Returning from decoding.\n");
+    EndTimer;
     return info;
     
     get_frame_failed:
     if(pkt)
         av_packet_unref(pkt);
     info.ret = -1;
+    EndTimer;
     return info;
     
     no_packet_fail:
     dbg_error("There were no packets in queue.\n");
     av_frame_free(&frame);
     info.ret = -1;
+    EndTimer;
     return info;
 }
 
@@ -373,6 +379,8 @@ global struct SwsContext* modifContext = NULL;
 int32
 process_video_frame(program_data *pdata, struct frame_info info)
 {
+    StartTimer("process_video_frame");
+    
     AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
     
@@ -402,6 +410,7 @@ process_video_frame(program_data *pdata, struct frame_info info)
             pdata->video.pitch_sup2, //pitch_V
         };
         
+        StartTimer("sws_scale()");
         sws_scale(modifContext,
                   (uint8 const* const*)frame->data,
                   frame->linesize,
@@ -409,9 +418,14 @@ process_video_frame(program_data *pdata, struct frame_info info)
                   decoder->video_codec_context->height,
                   (uint8* const* const)ptrs,
                   stride);
+        EndTimer;
+        
+        EndTimer;
     }
     else
     {
+        StartTimer("Copying YUV Frame");
+        
         if(frame->linesize[0] == pdata->video.pitch)
         {
             dbg_warn("Linesizes (yuv420p):\n"
@@ -422,12 +436,16 @@ process_video_frame(program_data *pdata, struct frame_info info)
                      frame->linesize[1],
                      frame->linesize[2]);
             
+            StartTimer("memcpy x3");
             memcpy(pdata->video.video_frame, frame->data[0], pdata->video.pitch * pdata->video.height);
             memcpy(pdata->video.video_frame_sup1, frame->data[1], pdata->video.pitch_sup1 * (pdata->video.height+1)/2);
             memcpy(pdata->video.video_frame_sup2, frame->data[2], pdata->video.pitch_sup2 * (pdata->video.height+1)/2);
+            EndTimer;
         }
         else
         {
+            StartTimer("copy_pixel_buffers()");
+            
             copy_pixel_buffers(pdata->video.video_frame,
                                pdata->video.pitch,
                                frame->data[0],
@@ -445,11 +463,17 @@ process_video_frame(program_data *pdata, struct frame_info info)
                                frame->data[2],
                                frame->linesize[2],
                                (frame->height+1)/2);
+            
+            EndTimer;
         }
+        
+        EndTimer;
     }
     
     pdata->video.type = VIDEO_YUV;
     pdata->video.pts = frame->pts * av_q2d(pdata->decoder.video_time_base); 
+    
+    EndTimer;
     
     return 0;
 }
@@ -466,6 +490,8 @@ do {\
 int32
 process_audio_frame(program_data *pdata, struct frame_info info)
 {
+    StartTimer("process_audio_frame");
+    
     if(pdata->audio.is_ready)
     {
         dbg_warn("Started processing an audio frame, while the previous one hasn't been used.\n");
@@ -497,18 +523,25 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     if(!data)
     {
         dbg_error("Audio buffer wasn't allocated. Returning.\n");
+        
+        EndTimer;
         return -1;
     }
     
     if(!is_planar)
     {
+        StartTimer("memcpy");
         memcpy(data + pdata->audio.size, frame->data[0], real_size);
+        EndTimer;
     }
     else
     {
         // NOTE(Val): manually interleaving audio for however
         // many channels
+        StartTimer("Interleaving Audio");
+        
         uint8* dst = data + pdata->audio.size;
+        dbg_print("Audio size: %d/%d\n", pdata->audio.size, pdata->audio.max_buffer_size);
         
         for(int c = 0; c < Channels; c++)
         {
@@ -519,6 +552,8 @@ process_audio_frame(program_data *pdata, struct frame_info info)
                            bytes_per_sample);
             }
         }
+        
+        EndTimer;
     }
     
     pdata->audio.buffer = data;
@@ -528,6 +563,7 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     
     //pdata->audio.is_ready = 1;
     
+    EndTimer;
     return 0;
 }
 
@@ -597,6 +633,11 @@ DecodingThreadStart(void *ptr)
     
     decoder->condition = PlatformCreateConditionVar();
     
+    InitializeTimingSystem;
+    
+    StartTimer("Decoding Start");
+    
+    StartTimer("Fill Packets");
     while(!pq_is_full(pdata->pq_audio) &&
           !pq_is_full(pdata->pq_video) &&
           !file->file_finished)
@@ -604,13 +645,17 @@ DecodingThreadStart(void *ptr)
         LoadPackets(pdata);
         SortPackets(pdata);
     }
+    EndTimer;
     
     bool32 start_notified = 0;
     
     //ProfilerStart("decoder.prof.log");
+    StartTimer("Decoding Loop");
     while(pdata->running && !pdata->playback_finished)
     {
-        //dbg_success("Processing loop start.\n");
+        StartTimer("Decoding Loop Pass");//dbg_success("Processing loop start.\n");
+        
+        StartTimer("Decoding Loop Processing");
         if(!pdata->audio.is_ready)
         {
             // TODO(Val): Check this loop
@@ -618,6 +663,8 @@ DecodingThreadStart(void *ptr)
             
             if(!pq_is_empty(pdata->pq_audio))
             {
+                StartTimer("Processing Audio");
+                
                 do {
                     dbg_success("Audio packets not empty, starting to process.\n");
                     
@@ -660,15 +707,20 @@ DecodingThreadStart(void *ptr)
                 //(pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
                 
                 pdata->audio.is_ready = 1;
+                
+                EndTimer;
             }
             else
             {
                 dbg_error("There were no audio packets.\n");
             }
+            
         }
         
         if(!pdata->video.is_ready && !pq_is_empty(pdata->pq_video))
         {
+            StartTimer("Processing Video");
+            
             struct frame_info f = get_frame(pdata, pdata->pq_video);
             
             if(f.ret != -1)
@@ -681,7 +733,9 @@ DecodingThreadStart(void *ptr)
                     dbg_error("process_video_frame() failed.\n");
                 }
                 
+                StartTimer("av_frame_free()");
                 av_frame_free(&f.frame);
+                EndTimer;
             }
             else
             {
@@ -689,6 +743,8 @@ DecodingThreadStart(void *ptr)
             }
             
             pdata->video.is_ready = 1;
+            
+            EndTimer;
         }
         else if(!pdata->video.is_ready)
         {
@@ -712,18 +768,32 @@ DecodingThreadStart(void *ptr)
         }
         //dbg_info("Decoder: Starting condition wait.\n");
         
+        
+        StartTimer("Queue Packets");
         while(!pq_is_full(pdata->pq_audio) &&
               !pq_is_full(pdata->pq_video) &&
               !file->file_finished)
         {
+            
             LoadPackets(pdata);
             SortPackets(pdata);
         }
+        EndTimer;
         
+        EndTimer;
+        
+        StartTimer("Condition Wait Start");
         PlatformConditionWait(&decoder->condition);
+        EndTimer;
+        
+        EndTimer;
         //dbg_success("Decoder: Thread woken up.\n");
         //}
     }
+    EndTimer;
+    
+    EndTimer;
+    FinishTiming;
     
     PlatformConditionDestroy(&decoder->condition);
     

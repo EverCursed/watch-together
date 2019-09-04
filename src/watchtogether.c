@@ -1,4 +1,5 @@
 #include "watchtogether.h"
+#include "timing.h"
 //#include "platform.h"
 //#include "kbkeys.h"
 //#include "utils.h"
@@ -42,9 +43,11 @@ ProcessInput(program_data *pdata)
     PlatformGetInput(pdata);
     
     // Process input
+    StartTimer("Input processing");
     int keys = pdata->input.keyboard.n;
     for(int i = 0; i < keys && pdata->running; i++)
     {
+        StartTimer("Event");
         key_event e = pdata->input.keyboard.events[i];
         
         switch(e.key)
@@ -97,7 +100,9 @@ ProcessInput(program_data *pdata)
             } break;
         }
         pdata->input.keyboard.n = 0;
+        EndTimer;
     }
+    EndTimer;
     
     return 0;
 }
@@ -105,11 +110,14 @@ ProcessInput(program_data *pdata)
 static void
 ProcessMessages(program_data *pdata)
 {
+    StartTimer("ProcessMessages inner");
+    
     while(!MessagesEmpty(&pdata->messages) && pdata->running)
     {
+        StartTimer("Message");
+        
         message m;
         GetApplicationMessage(&pdata->messages, &m);
-        
         switch(m.msg)
         {
             case MSG_NO_MORE_MESSAGES:
@@ -143,7 +151,11 @@ ProcessMessages(program_data *pdata)
             default:
             dbg_warn("Unknown message in message queue: %d\n", m.msg);
         }
+        
+        EndTimer;
     }
+    
+    EndTimer;
 }
 
 static void
@@ -192,7 +204,9 @@ ProcessPlayback(program_data *pdata)
     {
         dbg_success("pdata->video.is_ready\n");
         
+        StartTimer("ProcessVideo()");
         ProcessVideo(pdata);
+        EndTimer;
         
         need_video = 1;
     }
@@ -201,7 +215,9 @@ ProcessPlayback(program_data *pdata)
     {
         dbg_warn("Skipping frame.\n");
         
+        StartTimer("SkipVideoFrame()");
         SkipVideoFrame(pdata);
+        EndTimer;
         
         need_video = 1;
     }
@@ -217,7 +233,9 @@ ProcessPlayback(program_data *pdata)
     if(pdata->audio.is_ready &&
        (should_queue(playback) || !playback->started_playing))
     {
+        StartTimer("ProcessAudio()");
         ProcessAudio(pdata);
+        EndTimer;
         
         need_audio = 1;
     }
@@ -240,13 +258,19 @@ ProcessPlayback(program_data *pdata)
 int32
 InputLoopThread(void *arg)
 {
+    InitializeTimingSystem;
+    
     program_data *pdata = arg;
     
     while(pdata->running)
     {
+        StartTimer("ProcessInput()");
         ProcessInput(pdata);
+        EndTimer;
         PlatformSleep(pdata->client.refresh_target);
     }
+    
+    FinishTiming;
     
     return 0;
 }
@@ -254,6 +278,7 @@ InputLoopThread(void *arg)
 int32
 MainLoopThread(void *arg)
 {
+    InitializeTimingSystem;
     
     program_data *pdata = arg;
     playback_data *playback = &pdata->playback;
@@ -262,9 +287,15 @@ MainLoopThread(void *arg)
     client->next_refresh_time = (PlatformGetTime() +  client->refresh_target)/1.0;
     
     // now start main loop
+    
+    StartTimer("MainLoop()");
     while(pdata->running)
     {
+        StartTimer("Loop");
+        
+        StartTimer("ProcessMessages()");
         ProcessMessages(pdata);
+        EndTimer;
         SDL_PumpEvents();
         
         if(pdata->file.open_failed)
@@ -277,6 +308,8 @@ MainLoopThread(void *arg)
         }
         else 
         {
+            StartTimer("Starting Playback");
+            
             if(pdata->start_playback)
             {
                 start_playback(playback, *playback->current_frame_time);
@@ -300,8 +333,9 @@ MainLoopThread(void *arg)
         {
             if(pdata->playing && !pdata->paused)
             {
+                StartTimer("ProcessPlayback()");
                 ProcessPlayback(pdata);
-                
+                EndTimer;
                 //playback->playback_time += pdata->client.refresh_target;
             }
             else
@@ -319,21 +353,29 @@ MainLoopThread(void *arg)
                  sleep_time,
                  client->next_refresh_time,
                  time);
-        PlatformSleep(sleep_time);
         
-        // TODO(Val): Let's try to present at a constant interval
+        StartTimer("Sleep()");
+        PlatformSleep(sleep_time);
+        EndTimer;
         
         if(!playback->started_playing)
         {
             PlatformPauseAudio(0);
             playback->started_playing = 1;
         }
+        
+        StartTimer("PlatformFlipBuffers()");
         PlatformFlipBuffers(pdata);
+        EndTimer;
         
         client->current_frame_time = client->next_refresh_time;
         client->next_refresh_time += client->refresh_target;
+        
+        EndTimer;
     }
+    EndTimer;
     
+    FinishTiming;
     return 0;
 }
 

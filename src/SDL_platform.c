@@ -5,6 +5,14 @@
 
 #include "watchtogether.h"
 
+#include "timing.h"
+
+#if 0
+#ifdef _WIN32
+__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+#endif
+#endif
+
 //#include "defines.h"
 //#include "wt_version.h"
 //#include "utils.h"
@@ -463,6 +471,8 @@ int resize_filter(void *userdata,
 static int
 ResizeScreen(program_data *pdata, int x, int y)
 {
+    StartTimer("ResizeScreen()");
+    
     int new_width = x;
     int new_height = y;
     
@@ -492,22 +502,29 @@ ResizeScreen(program_data *pdata, int x, int y)
                           &rect);
     SDL_RenderPresent(renderer);
     
+    EndTimer;
+    
     return 0;
 }
 
-int
+int32
 PlatformGetInput(program_data *pdata)
 {
+    StartTimer("PlatformGetInput()");
+    
     input_struct *input = &pdata->input;
     
     SDL_Event event = {0};
     
     //while(pdata->running && SDL_PollEvent(&event))
     //SDL_PumpEvents();
+    StartTimer("Event loop");
+    StartTimer("SDL_PollEvent()");
     while(pdata->running &&
           input->keyboard.n < MAX_KEYS-1 &&
-          SDL_PollEvent(&event))
+          (SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) > 0))
     {
+        EndTimer;
         //dbg_info("Event received.\n");
         switch(event.type)
         {
@@ -592,8 +609,14 @@ PlatformGetInput(program_data *pdata)
                 }
             } break;
         }
+        
+        EndTimer;
+        StartTimer("Event Loop");
+        StartTimer("SDL_PollEvent()");
     }
-    
+    EndTimer;
+    EndTimer;
+    EndTimer;
     return 0;
 }
 
@@ -630,6 +653,8 @@ int main(int argc, const char** argv)
 #ifdef _WIN32
     dbg_info("SDL_FilterEvents\n");
     SDL_SetEventFilter(resize_filter, NULL);
+    SetPriorityClass(GetCurrentProcess(),
+                     HIGH_PRIORITY_CLASS);
 #endif
     
     SDL_CreateWindowAndRenderer(1024,
@@ -667,9 +692,11 @@ int main(int argc, const char** argv)
     pdata->hardware.monitor_width = display_info.w;
     pdata->hardware.monitor_height = display_info.h;
     
+    //InitializeTimingSystem;
     
     MainThread(pdata);
     
+    //FinishTiming;
     //ProcessInput(pdata);
     
     // TODO(Val): Close everything properly here
