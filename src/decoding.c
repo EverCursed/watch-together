@@ -701,8 +701,9 @@ DecodingThreadStart(void *ptr)
                     if(!pdata->running)
                         break;
                     // TODO(Val): This will only function while we don't miss frames
-                } while(playback->audio_total_queued + pdata->audio.duration < 
-                        get_next_playback_time(playback));
+                } while(pdata->playback.audio_total_queued + pdata->audio.duration < get_next_playback_time(&pdata->playback));
+                //playback->audio_total_queued + pdata->audio.duration < 
+                //get_next_playback_time(playback) + *playback->refresh_target);
                 //} while(!pdata->file.file_finished &&
                 //(pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
                 
@@ -768,6 +769,13 @@ DecodingThreadStart(void *ptr)
         }
         //dbg_info("Decoder: Starting condition wait.\n");
         
+        dbg_error("Running packet loading.\n");
+        if(pq_is_full(pdata->pq_audio))
+            dbg_error("Audio queue full.\n");
+        if(pq_is_full(pdata->pq_video))
+            dbg_error("Video queue full.\n");
+        if(file->file_finished)
+            dbg_error("File marked finished.\n");
         
         StartTimer("Queue Packets");
         while(!pq_is_full(pdata->pq_audio) &&

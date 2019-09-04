@@ -239,9 +239,12 @@ ProcessPlayback(program_data *pdata)
         
         need_audio = 1;
     }
-    else
+    else if(pdata->audio.is_ready &&
+            (should_skip(playback, playback->audio_total_queued)))
     {
         //dbg_error("Audio is not ready or not time to play.\n");
+        pdata->audio.is_ready = 0;
+        need_audio = 1;
     }
     
     if(need_audio || need_video)
@@ -312,7 +315,7 @@ MainLoopThread(void *arg)
             
             if(pdata->start_playback)
             {
-                start_playback(playback, *playback->current_frame_time);
+                start_playback(playback, *playback->current_frame_time + 0.3);
                 
                 pdata->start_playback = 0;
                 pdata->playing = 1;
@@ -388,7 +391,8 @@ AllocateBuffers(program_data *pdata)
     int32 channels = pdata->file.channels;
     int32 seconds = 1;
     
-    pdata->audio.buffer = malloc(bytes_per_sample*sample_rate*channels*seconds);
+    pdata->audio.max_buffer_size = bytes_per_sample*sample_rate*channels*seconds;
+    pdata->audio.buffer = malloc(pdata->audio.max_buffer_size);
     
     // NOTE(Val): Allocate video buffers
     // NOTE(Val): Currently this forces a conversion to YUV. 

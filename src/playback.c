@@ -75,7 +75,7 @@ get_next_playback_time(playback_data *p)
 bool32
 should_skip(playback_data *playback, real64 video_ts)
 {
-    return (get_playback_time(playback) > video_ts);
+    return (get_next_playback_time(playback) > video_ts);
 }
 
 bool32
@@ -87,7 +87,9 @@ should_queue(playback_data *playback)
     bool32 result = ((playback_time <= playback->audio_total_queued) &&
                      (playback->audio_total_queued < n));
     
-    dbg_print("should_queue(): %lf <= %lf < %lf\n",
+    //bool32 result = (playback_time - *playback->refresh_target) < 
+    
+    dbg_print("should_queue(): %lf <= %lf < %lf\t",
               playback_time,
               playback->audio_total_queued,
               n);

@@ -5,12 +5,14 @@
 
 typedef struct _output_audio {
     void *buffer;
+    platform_mutex mutex;
     AVRational time_base;
     uint32 sample_rate;
     uint32 bytes_per_sample;
     uint32 channels;
     uint32 sample_format;
     uint32 size;
+    uint32 max_buffer_size;
     volatile bool32 is_ready;
     real64 pts;
     real64 duration;
