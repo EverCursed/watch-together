@@ -187,17 +187,6 @@ typedef struct _video_queue_data {
     uint32 vq_timestamps[NUM_FRAMES];
 } video_queue_data;
 
-typedef struct _audio_queue_data {
-    void* audio_queue_buffer;
-    uint32 frequency;
-    uint32 channels;
-    uint32 bytes_per_sample;
-    uint32 audio_queue_size;
-    uint32 audio_queue_used_space;
-    uint32 audio_queue_start;
-    uint32 audio_queue_end;
-} audio_queue_data;
-
 typedef struct _playback_data playback_data;
 typedef struct _message_queue message_queue;
 
@@ -208,8 +197,6 @@ typedef struct _program_data {
     output_video video;
     open_file_info file;
     threads_info_all threads;
-    audio_queue_data aq_data;
-    video_queue_data vq_data;
     decoder_info decoder;
     playback_data playback;
     hardware_info hardware;

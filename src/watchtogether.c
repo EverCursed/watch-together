@@ -161,13 +161,9 @@ ProcessMessages(program_data *pdata)
 static void
 ProcessAudio(program_data *pdata)
 {
-    PlatformQueueAudio(&pdata->audio);
-    
+    //PlatformQueueAudio(&pdata->audio);
     increment_audio_times(&pdata->playback, pdata->audio.duration);
-    
     PrepareAudioOutput(&pdata->audio);
-    
-    pdata->audio.is_ready = 0;
 }
 
 static void
@@ -237,6 +233,7 @@ ProcessPlayback(program_data *pdata)
         ProcessAudio(pdata);
         EndTimer;
         
+        pdata->audio.is_ready = 0;
         need_audio = 1;
     }
     else if(pdata->audio.is_ready &&
@@ -311,10 +308,10 @@ MainLoopThread(void *arg)
         }
         else 
         {
-            StartTimer("Starting Playback");
             
             if(pdata->start_playback)
             {
+                StartTimer("Starting Playback");
                 start_playback(playback, *playback->current_frame_time + 0.3);
                 
                 pdata->start_playback = 0;
@@ -327,9 +324,8 @@ MainLoopThread(void *arg)
                 
                 //TogglePlayback(pdata);
                 dbg_warn("Playback started!\n");
+                EndTimer;
             }
-            
-            EndTimer;
         }
         
         if(!pdata->file.open_failed)

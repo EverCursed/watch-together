@@ -558,7 +558,9 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     
     pdata->audio.buffer = data;
     pdata->audio.size += real_size;
+    dbg_print("audio duration: %lf\n", pdata->audio.duration);
     pdata->audio.duration += (real64)SampleCount / (real64)Frequency;
+    dbg_print("new audio duration: %lf\n", pdata->audio.duration);
     //dbg_info("Audio frame duration: %lf\n", pdata->audio.duration);
     
     //pdata->audio.is_ready = 1;
@@ -665,7 +667,7 @@ DecodingThreadStart(void *ptr)
             {
                 StartTimer("Processing Audio");
                 
-                do {
+                while(pdata->playback.audio_total_queued + pdata->audio.duration < get_next_playback_time(&pdata->playback)) {
                     dbg_success("Audio packets not empty, starting to process.\n");
                     
                     struct frame_info f = get_frame(pdata, pdata->pq_audio);
@@ -700,8 +702,8 @@ DecodingThreadStart(void *ptr)
                     
                     if(!pdata->running)
                         break;
-                    // TODO(Val): This will only function while we don't miss frames
-                } while(pdata->playback.audio_total_queued + pdata->audio.duration < get_next_playback_time(&pdata->playback));
+                }
+                // TODO(Val): This will only function while we don't miss frames
                 //playback->audio_total_queued + pdata->audio.duration < 
                 //get_next_playback_time(playback) + *playback->refresh_target);
                 //} while(!pdata->file.file_finished &&
@@ -782,7 +784,6 @@ DecodingThreadStart(void *ptr)
               !pq_is_full(pdata->pq_video) &&
               !file->file_finished)
         {
-            
             LoadPackets(pdata);
             SortPackets(pdata);
         }
