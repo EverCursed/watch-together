@@ -2,6 +2,7 @@
 #define WT_DEFINES_H
 
 #include <stdint.h>
+#include "errors.h"
 
 //#define internal        static
 #define local_persist   static
