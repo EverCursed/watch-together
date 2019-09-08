@@ -1,5 +1,6 @@
 #include "watchtogether.h"
 #include "timing.h"
+#include "message_queue.h"
 //#include "platform.h"
 //#include "kbkeys.h"
 //#include "utils.h"
@@ -13,9 +14,11 @@
 
 // TODO(Val): Test a variety of these, and see how long it's possible to go
 // NOTE(Val): This will directly affect our maximum refresh rate. 
-#define MS_SAFETY_MARGIN 2.0f
+#define MS_SAFETY_MARGIN 2.0
 
 #define PACKET_QUEUE_SIZE 60
+
+#define VOLUME_STEP 0.025f
 
 static void
 TogglePlayback(program_data *pdata)
@@ -54,10 +57,10 @@ ProcessInput(program_data *pdata)
         {
             case KB_F4:
             {
-                if(e.alt)
-                {
-                    pdata->running = 0;
-                }
+                if(e.alt && e.pressed)
+                    AddMessage0(&pdata->messages,
+                                MSG_CLOSE,
+                                pdata->client.current_frame_time);
             } break;
             case KB_ESCAPE:
             {
@@ -70,18 +73,22 @@ ProcessInput(program_data *pdata)
             {
                 if(e.pressed)
                 {
-                    pdata->volume += 0.025f;
-                    
-                    if(pdata->volume > 1.0f) pdata->volume = 1.0f;
+                    arg a = { .f = VOLUME_STEP };
+                    AddMessage1(&pdata->messages,
+                                MSG_VOLUME_CHANGE,
+                                a,
+                                pdata->client.current_frame_time);
                 }
             } break;
             case KB_DOWN:
             {
                 if(e.pressed)
                 {
-                    pdata->volume -= 0.025f;
-                    
-                    if(pdata->volume < 0.0f) pdata->volume = 0.0f;
+                    arg a = { .f = -VOLUME_STEP };
+                    AddMessage1(&pdata->messages,
+                                MSG_VOLUME_CHANGE,
+                                a,
+                                pdata->client.current_frame_time);
                 }
             } break;
             case KB_ENTER:
@@ -124,30 +131,59 @@ ProcessMessages(program_data *pdata)
             dbg_error("No message returned. Check message queue bookkeeping.\n");
             break;
             case MSG_TOGGLE_FULLSCREEN:
-            PlatformToggleFullscreen(pdata);
-            PlatformFlipBuffers(pdata);
-            break;
+            {
+                PlatformToggleFullscreen(pdata);
+                PlatformFlipBuffers(pdata);
+            } break;
             case MSG_START_PLAYBACK:
-            
-            break;
+            {
+                
+            } break;
             case MSG_STOP_PLAYBACK:
-            
-            break;
+            {
+                
+            } break;
             case MSG_PAUSE:
-            TogglePlayback(pdata);
-            break;
+            {
+                TogglePlayback(pdata);
+            } break;
             case MSG_SEEK:
-            
-            break;
+            {
+                
+            } break;
             case MSG_CONNECT:
-            
-            break;
+            {
+                
+            } break;
             case MSG_WINDOW_RESIZED:
-            
-            break;
+            {
+                
+            } break;
             case MSG_CLOSE:
-            pdata->running = 0;
-            break;
+            {
+                pdata->running = 0;
+            } break;
+            case MSG_VOLUME_CHANGE:
+            {
+                if(m.arg1.f < 0.0)
+                {
+                    if(pdata->volume > 0.0) 
+                    {
+                        pdata->volume += m.arg1.f;
+                        if(pdata->volume < 0)
+                            pdata->volume = 0.0;
+                    }
+                }
+                else if(m.arg1.f > 0.0)
+                {
+                    if(pdata->volume < 1.0) 
+                    {
+                        pdata->volume += m.arg1.f;
+                        if(pdata->volume > 1)
+                            pdata->volume = 1.0;
+                    }
+                }
+            } break;
             default:
             dbg_warn("Unknown message in message queue: %d\n", m.msg);
         }
@@ -425,14 +461,20 @@ DeallocateBuffers(program_data *pdata)
     return 0;
 }
 
+static int32
+InitializeApplication(program_data *pdata)
+{
+    InitMessageQueue(&pdata->messages);
+    
+    return 0;
+}
+
 static bool32
 InitQueues(program_data *pdata)
 {
     pdata->pq_main = init_avpacket_queue(PACKET_QUEUE_SIZE);
     pdata->pq_video = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
     pdata->pq_audio = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
-    
-    InitMessageQueue(&pdata->messages);
     
     return 0;
 }
@@ -503,6 +545,7 @@ FileClose(program_data *pdata)
 int32
 MainThread(program_data *pdata)
 {
+    InitializeApplication(pdata);
     // NOTE(Val): Initialize things here that will last the entire runtime of the application
     
     pdata->client.refresh_target = 1.0 / (real64)pdata->hardware.monitor_refresh_rate;

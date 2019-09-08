@@ -14,6 +14,7 @@
 #define MSG_WINDOW_RESIZED     6
 #define MSG_CLOSE              7
 #define MSG_TOGGLE_FULLSCREEN  8
+#define MSG_VOLUME_CHANGE      9
 
 typedef struct _arg {
     union {
