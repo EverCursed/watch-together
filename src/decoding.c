@@ -769,7 +769,7 @@ DecodingThreadStart(void *ptr)
         }
         //dbg_info("Decoder: Starting condition wait.\n");
         
-        dbg_error("Running packet loading.\n");
+        dbg_info("Running packet loading.\n");
         if(pq_is_full(pdata->pq_audio))
             dbg_error("Audio queue full.\n");
         if(pq_is_full(pdata->pq_video))

@@ -344,7 +344,6 @@ MainLoopThread(void *arg)
         }
         else 
         {
-            
             if(pdata->start_playback)
             {
                 StartTimer("Starting Playback");

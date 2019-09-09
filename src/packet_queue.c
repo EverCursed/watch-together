@@ -147,7 +147,6 @@ close_avpacket_queue(avpacket_queue *queue)
     
     if(queue->array)
         free(queue->array);
-    //free(queue->buffer);
     
     free(queue);
     
