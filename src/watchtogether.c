@@ -492,6 +492,8 @@ TerminateQueues(program_data *pdata)
 static bool32
 FileOpen(program_data *pdata)
 {
+    pdata->decoder.condition = PlatformCreateConditionVar();
+    
     InitQueues(pdata);
     
     if(!DecodingFileOpen(&pdata->file, &pdata->decoder))
@@ -529,6 +531,7 @@ FileClose(program_data *pdata)
     PlatformConditionSignal(&pdata->decoder.condition);
     
     DecodingFileClose(&pdata->file, &pdata->decoder);
+    PlatformConditionDestroy(&pdata->decoder.condition);
     
     // TODO(Val): This will block forever, need to fix
     PlatformWaitThread(pdata->threads.decoder_thread, NULL);

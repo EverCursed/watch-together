@@ -633,8 +633,6 @@ DecodingThreadStart(void *ptr)
     decoder_info *decoder = &pdata->decoder;
     playback_data *playback = &pdata->playback;
     
-    decoder->condition = PlatformCreateConditionVar();
-    
     InitializeTimingSystem;
     
     StartTimer("Decoding Start");
@@ -803,8 +801,6 @@ DecodingThreadStart(void *ptr)
     
     EndTimer;
     FinishTiming;
-    
-    PlatformConditionDestroy(&decoder->condition);
     
     return 0;
 }
