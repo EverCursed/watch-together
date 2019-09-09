@@ -110,10 +110,10 @@ PlatformQueueAudio(output_audio *audio)
     if(ret < 0)
     {
         dbg_error("%s\n", SDL_GetError());
-        return -1;
+        return UNKNOWN_ERROR;
     }
     
-    return 0;
+    return SUCCESS;
 }
 
 /*
@@ -210,6 +210,10 @@ PlatformInitAudio(program_data *pdata)
         pdata->audio_format = ReceivedAudioSpec.format;
         
         //SDL_PauseAudioDevice(AudioID, 0);
+    }
+    else
+    {
+        dbg_error("SDL_OpenAudioDevice() failed.\n");
     }
     //printf("%s\n", SDL_GetError());
 }
@@ -338,9 +342,7 @@ PlatformGetTime()
 int32
 PlatformUpdateFrame(program_data *pdata)
 {
-    int ret;
-    
-    blit_frame(pdata);
+    int ret = 0;
     
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
     SDL_RenderClear(renderer);
@@ -350,16 +352,18 @@ PlatformUpdateFrame(program_data *pdata)
     
     SDL_LockTexture(background_texture, NULL, &pixels, &pitch);
     ret = SDL_RenderCopy(renderer, background_texture, NULL, NULL);
+    
+    SDL_UnlockTexture(background_texture);
     if(ret)
     {
         dbg_error("%s\n", SDL_GetError());
+        return UNKNOWN_ERROR;
     }
-    SDL_UnlockTexture(background_texture);
     
     // Render the UI on top of video frame
     //SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
     
-    return 0;
+    return SUCCESS;
 }
 
 int32
@@ -367,7 +371,7 @@ PlatformFlipBuffers(program_data *pdata)
 {
     SDL_RenderPresent(renderer);
     
-    return 0;
+    return SUCCESS;
 }
 
 void

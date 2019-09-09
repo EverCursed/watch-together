@@ -205,7 +205,7 @@ ProcessAudio(program_data *pdata)
 static void
 ProcessVideo(program_data *pdata)
 {
-    PlatformUpdateFrame(pdata);
+    PlatformUpdateVideoFrame(pdata);
     //PrepareVideoOutput(&pdata->video);
     
     increment_video_times(&pdata->playback, av_q2d(pdata->decoder.video_time_base));
@@ -399,6 +399,7 @@ MainLoopThread(void *arg)
         }
         
         StartTimer("PlatformFlipBuffers()");
+        PlatformUpdateFrame(pdata);
         PlatformFlipBuffers(pdata);
         EndTimer;
         
