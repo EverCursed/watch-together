@@ -5,7 +5,9 @@
 
 #include "watchtogether.h"
 
+#ifdef DEBUG
 #include "timing.h"
+#endif
 
 #if 0
 #ifdef _WIN32
