@@ -709,8 +709,9 @@ DecodingThreadStart(void *ptr)
                 
                 pdata->audio.is_ready = 1;
                 
-                EndTimer;
             }
+            
+            EndTimer;
         }
         else
         {
@@ -799,6 +800,7 @@ DecodingThreadStart(void *ptr)
     EndTimer;
     
     EndTimer;
+    
     FinishTiming;
     
     return 0;
