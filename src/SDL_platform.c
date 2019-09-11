@@ -349,13 +349,13 @@ PlatformUpdateFrame(program_data *pdata)
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
     SDL_RenderClear(renderer);
     
-    void* pixels;
-    int pitch; 
+    //void* pixels;
+    //int pitch; 
     
-    SDL_LockTexture(background_texture, NULL, &pixels, &pitch);
+    //SDL_LockTexture(background_texture, NULL, &pixels, &pitch);
     ret = SDL_RenderCopy(renderer, background_texture, NULL, NULL);
+    //SDL_UnlockTexture(background_texture);
     
-    SDL_UnlockTexture(background_texture);
     if(ret)
     {
         dbg_error("%s\n", SDL_GetError());
