@@ -24,6 +24,7 @@ typedef struct _playback_data {
     real64 pause_stopped;             // TODO(Val): probably not needed?
     
     real64 audio_total_queued;        // how much audio has been queued so far
+    real64 audio_total_decoded;
     real64 audio_total_played;        // how much audio has already been played
     //real64 frame_duration;
     real64 *refresh_target;

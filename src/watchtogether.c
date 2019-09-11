@@ -197,7 +197,7 @@ ProcessMessages(program_data *pdata)
 static void
 ProcessAudio(program_data *pdata)
 {
-    //PlatformQueueAudio(&pdata->audio);
+    PlatformQueueAudio(&pdata->audio);
     increment_audio_times(&pdata->playback, pdata->audio.duration);
     PrepareAudioOutput(&pdata->audio);
 }
