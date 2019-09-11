@@ -116,11 +116,12 @@ start_playback(playback_data *p, real64 time)
     
     //p->current_video_frame_time = get_playback_time(p);
     //p->next_video_frame_time = p->playback_start;// playback->next_frame_time + 1000.0*av_q2d(pdata->decoder.video_time_base);
-    p->started_playing = 0;
     
     p->aggregated_pause_time = 0.0;
     p->pause_started = 0.0;
     p->pause_stopped = 0.0;
     p->audio_total_queued = 0.0;
     p->audio_total_played = 0.0;
+    
+    p->started_playing = 1;
 }

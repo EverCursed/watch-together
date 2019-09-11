@@ -39,44 +39,6 @@ global program_data *pdata;
 
 #define TESTING_FILE "data/video_test/video.mp4"
 
-static void
-blit_frame(program_data *pdata)
-{
-    output_video *video = &pdata->video;
-    
-    if(pdata->video.type == VIDEO_YUV)
-    {
-        int ret = SDL_UpdateYUVTexture(background_texture, NULL,
-                                       video->video_frame, video->pitch,
-                                       video->video_frame_sup1, video->pitch_sup1,
-                                       video->video_frame_sup2, video->pitch_sup2);
-        
-        if(ret < 0)
-        {
-            dbg_error("SDL_UpdateYUVTexture failed.\n");
-            goto error;
-        }
-    }
-    else if(pdata->video.type == VIDEO_RGB)
-    {
-        int ret = SDL_UpdateTexture(background_texture, NULL, video->video_frame, video->pitch);
-        //free(video->video_frame);
-        
-        if(ret < 0)
-            goto error;
-    }
-    else
-    {
-        dbg_error("Video output frame not initialized?");
-    }
-    
-    return;
-    
-    error:
-    dbg_error("%s\n", SDL_GetError());
-    return;
-}
-
 /*
 static void 
 Deb_ResizePixelBuffer(SDL_Renderer *renderer)
@@ -270,7 +232,7 @@ PlatformCreateConditionVar()
 int32
 PlatformConditionWait(cond_info *c)
 {
-    /*
+    
     SDL_LockMutex(c->mutex);
     while(!c->test)
     {
@@ -279,26 +241,26 @@ PlatformConditionWait(cond_info *c)
     }
     c->test = 0;
     SDL_UnlockMutex(c->mutex);
-    */
     
-    while(!c->test && pdata->running)
-    {
-        PlatformSleep(0.001);
-    }
-    c->test = 0;
+    
+    //while(!c->test && pdata->running)
+    //{
+    //PlatformSleep(0.001);
+    //}
+    //c->test = 0;
     return 0;
 }
 
 int32
 PlatformConditionSignal(cond_info *c)
 {
-    /*
+    
     SDL_LockMutex(c->mutex);
     c->test = 1;
     SDL_CondSignal(c->cond);
     SDL_UnlockMutex(c->mutex);
-    */
-    c->test = 1;
+    
+    //c->test = 1;
     return 0;
 }
 
@@ -337,6 +299,46 @@ PlatformGetTime()
     real64 ticks = (real64)SDL_GetTicks();
     dbg_info("PlatformGetTime(): %lf\n", ticks/1000.0);
     return ticks/1000.0;
+}
+
+int32
+PlatformUpdateVideoFrame(program_data *pdata)
+{
+    output_video *video = &pdata->video;
+    
+    if(pdata->video.type == VIDEO_YUV)
+    {
+        int ret = SDL_UpdateYUVTexture(background_texture, NULL,
+                                       video->video_frame, video->pitch,
+                                       video->video_frame_sup1, video->pitch_sup1,
+                                       video->video_frame_sup2, video->pitch_sup2);
+        
+        if(ret < 0)
+        {
+            dbg_error("SDL_UpdateYUVTexture failed.\n");
+            dbg_error("%s\n", SDL_GetError());
+            return UNKNOWN_ERROR;
+        }
+    }
+    else if(pdata->video.type == VIDEO_RGB)
+    {
+        int ret = SDL_UpdateTexture(background_texture, NULL, video->video_frame, video->pitch);
+        //free(video->video_frame);
+        
+        if(ret < 0)
+        {
+            dbg_error("SDL_UpdateTexture failed.\n");
+            dbg_error("%s\n", SDL_GetError());
+            return UNKNOWN_ERROR;
+        }
+    }
+    else
+    {
+        dbg_error("Video output frame not initialized?");
+        return UNKNOWN_VIDEO_FORMAT;
+    }
+    
+    return SUCCESS;
 }
 
 int32

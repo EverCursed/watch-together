@@ -16,6 +16,9 @@ void
 PlatformPauseAudio(bool32);
 
 int32
+PlatformUpdateVideoFrame(program_data *);
+
+int32
 PlatformUpdateFrame(program_data *);
 
 void
