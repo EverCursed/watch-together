@@ -1,5 +1,4 @@
-//#include "audio.h"
-#include "watchtogether.h"
+#include "audio.h"
 
 void
 PrepareAudioOutput(output_audio *audio)

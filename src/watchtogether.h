@@ -15,7 +15,6 @@
 #include "packet_queue.h"
 #include "decoding.h"
 #include "kbkeys.h"
-#include "audio.h"
 #include "video.h"
 #include "utils.h"
 #include "decoding.h"
@@ -32,7 +31,6 @@
 struct _platform_data;
 struct _thread_info;
 struct _cond_info;
-
 
 typedef struct _threads_info_all {
     struct _thread_info main_thread;
@@ -124,7 +122,21 @@ typedef struct _client_info {
     real64 next_refresh_time;
 } client_info;
 
-typedef struct _output_audio output_audio;
+typedef struct _output_audio {
+    void *buffer;
+    platform_mutex mutex;
+    AVRational time_base;
+    uint32 sample_rate;
+    uint32 bytes_per_sample;
+    uint32 channels;
+    uint32 sample_format;
+    uint32 size;
+    uint32 max_buffer_size;
+    volatile bool32 is_ready;
+    real64 pts;
+    real64 duration;
+    real64 required_duration;
+} output_audio;
 
 #define VIDEO_RGB 1
 #define VIDEO_YUV 2
