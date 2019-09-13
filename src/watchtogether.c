@@ -1,9 +1,7 @@
 #include "watchtogether.h"
 #include "message_queue.h"
-
-#ifdef DEBUG
+#include "audio.h"
 #include "timing.h"
-#endif
 //#include "platform.h"
 //#include "kbkeys.h"
 //#include "utils.h"

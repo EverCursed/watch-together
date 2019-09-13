@@ -6,10 +6,7 @@
 
 //#include "defines.h"
 #include "watchtogether.h"
-
-#ifdef DEBUG
 #include "timing.h"
-#endif
 //#include "platform.h"
 //#include "packet_queue.h"
 //#include "decoding.h"

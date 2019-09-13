@@ -1,6 +1,7 @@
 #ifndef TIMING_H
 #define TIMING_H
 
+#ifdef DEBUG
 #ifdef _WIN32
 #include "windows.h"
 #endif
@@ -143,3 +144,4 @@ do { \
 #define FinishTiming             do {} while(0)
 
 #endif
+#endif 
