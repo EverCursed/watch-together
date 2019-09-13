@@ -29,13 +29,7 @@ static arg NO_ARG = { .s = 0 };
 
 typedef struct _message {
     int32 msg;
-    
-    arg arg1;
-    arg arg2;
-    arg arg3;
-    arg arg4;
-    arg arg5;
-    
+    arg args[5];
     real64 time;
 } message;
 

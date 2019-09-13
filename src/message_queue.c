@@ -21,11 +21,11 @@ AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, re
         
         message->msg = m;
         
-        message->arg1 = a1;
-        message->arg2 = a2;
-        message->arg3 = a3;
-        message->arg4 = a4;
-        message->arg5 = a5;
+        message->args[0] = a1;
+        message->args[1] = a2; 
+        message->args[2] = a3; 
+        message->args[3] = a4; 
+        message->args[4] = a5;
         
         message->time = time;
         
