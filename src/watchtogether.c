@@ -166,27 +166,29 @@ ProcessMessages(program_data *pdata)
             } break;
             case MSG_VOLUME_CHANGE:
             {
-                if(m.arg1.f < 0.0)
+                if(m.args[0].f < 0.0)
                 {
                     if(pdata->volume > 0.0) 
                     {
-                        pdata->volume += m.arg1.f;
+                        pdata->volume += m.args[0].f;
                         if(pdata->volume < 0)
                             pdata->volume = 0.0;
                     }
                 }
-                else if(m.arg1.f > 0.0)
+                else if(m.args[0].f > 0.0)
                 {
                     if(pdata->volume < 1.0) 
                     {
-                        pdata->volume += m.arg1.f;
+                        pdata->volume += m.args[0].f;
                         if(pdata->volume > 1)
                             pdata->volume = 1.0;
                     }
                 }
             } break;
             default:
-            dbg_warn("Unknown message in message queue: %d\n", m.msg);
+            {
+                dbg_warn("Unknown message in message queue: %d\n", m.msg);
+            }
         }
         
         EndTimer;
