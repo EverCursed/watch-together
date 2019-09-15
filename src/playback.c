@@ -17,6 +17,7 @@ int32
 increment_audio_times(playback_data *playback, real64 duration)
 {
     playback->audio_total_queued += duration;
+    
     return 0;
 }
 

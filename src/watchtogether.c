@@ -198,9 +198,15 @@ ProcessMessages(program_data *pdata)
 static void
 ProcessAudio(program_data *pdata)
 {
+    StartTimer("ProcessAudio()");
+    
     PlatformQueueAudio(&pdata->audio);
     increment_audio_times(&pdata->playback, pdata->audio.duration);
     PrepareAudioOutput(&pdata->audio);
+    
+    pdata->audio.is_ready = 0;
+    
+    EndTimer;
 }
 
 static void
@@ -266,19 +272,25 @@ ProcessPlayback(program_data *pdata)
     if(pdata->audio.is_ready &&
        (should_queue(playback) || !playback->started_playing))
     {
-        StartTimer("ProcessAudio()");
+        dbg_error("Processing audio.\n");
         ProcessAudio(pdata);
-        EndTimer;
         
-        pdata->audio.is_ready = 0;
         need_audio = 1;
     }
     else if(pdata->audio.is_ready &&
             (should_skip(playback, playback->audio_total_queued)))
     {
-        //dbg_error("Audio is not ready or not time to play.\n");
+        dbg_error("Audio is not ready or not time to play.\n");
         pdata->audio.is_ready = 0;
         need_audio = 1;
+    }
+    else if(pdata->audio.is_ready)
+    {
+        dbg_error("Just waiting as it's not yet time to queue.\n");
+    }
+    else
+    {
+        dbg_error("Audio is not ready.\n");
     }
     
     if(need_audio || need_video)

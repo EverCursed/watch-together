@@ -260,8 +260,8 @@ DecodingFileOpen(open_file_info *file, decoder_info *decoder)
         file->height = decoder->video_codec_context->height;
         
         AVRational time = decoder->format_context->streams[decoder->video_stream]->avg_frame_rate;
-        file->fps = (real32)time.num/(real32)time.den;
-        file->target_time = (real32)time.den/(real32)time.num * 1.0f;
+        file->fps = av_q2d(time);
+        file->target_time = av_q2d(av_inv_q(time));
         
         file->has_video = 1;
         
@@ -553,15 +553,11 @@ process_audio_frame(program_data *pdata, struct frame_info info)
         EndTimer;
     }
     
-    pdata->audio.buffer = data;
     pdata->audio.size += real_size;
     dbg_print("audio duration: %lf\n", pdata->audio.duration);
     pdata->audio.duration += (real64)SampleCount / (real64)Frequency;
     dbg_print("new audio duration: %lf\n", pdata->audio.duration);
-    pdata->playback.audio_total_decoded += pdata->audio.duration;
     //dbg_info("Audio frame duration: %lf\n", pdata->audio.duration);
-    
-    //pdata->audio.is_ready = 1;
     
     EndTimer;
     return 0;
@@ -658,6 +654,14 @@ DecodingThreadStart(void *ptr)
         {
             StartTimer("Processing Audio");
             
+            dbg_print("Processing Audio:\n"
+                      "\tready: %d\n"
+                      "\tplayback->audio_total_queued: %lf\n"
+                      "\tplayback->audio_total_decoded: %lf\n",
+                      pdata->audio.is_ready,
+                      playback->audio_total_queued,
+                      playback->audio_total_decoded);
+            
             if(!pdata->audio.is_ready && 
                playback->audio_total_queued == playback->audio_total_decoded)
             {
@@ -704,8 +708,18 @@ DecodingThreadStart(void *ptr)
                 //} while(!pdata->file.file_finished &&
                 //(pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
                 
+                dbg_error("Setting audio readiness.\n");
+                pdata->playback.audio_total_decoded += pdata->audio.duration;
                 pdata->audio.is_ready = 1;
                 
+            }
+            else if(pdata->audio.is_ready)
+            {
+                dbg_error("Decoding: Audio was already ready.\n");
+            }
+            else
+            {
+                dbg_error("Decoding: Queued audio and decoded audio not equal.\n");
             }
             
             EndTimer;

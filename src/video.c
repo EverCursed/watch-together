@@ -7,7 +7,7 @@ PrepareVideoOutput(output_video *video)
     video->pitch = 0;
     video->pitch_sup1 = 0;
     video->pitch_sup2 = 0;
-    video->pts = 0.0f;
+    video->pts = 0.0;
     
     if(video->video_frame)
     {
