@@ -108,9 +108,9 @@ ProcessInput(program_data *pdata)
             } break;
         }
         pdata->input.keyboard.n = 0;
-        EndTimer;
+        EndTimer();
     }
-    EndTimer;
+    EndTimer();
     
     return 0;
 }
@@ -191,10 +191,10 @@ ProcessMessages(program_data *pdata)
             }
         }
         
-        EndTimer;
+        EndTimer();
     }
     
-    EndTimer;
+    EndTimer();
 }
 
 static void
@@ -212,7 +212,7 @@ ProcessAudio(program_data *pdata)
     
     PlatformUnlockMutex(&pdata->audio.mutex);
     
-    EndTimer;
+    EndTimer();
 }
 
 static void
@@ -244,59 +244,65 @@ ProcessPlayback(program_data *pdata)
     bool32 need_video = 0;
     bool32 need_audio = 0;
     
-    if(pdata->video.is_ready &&
-       (should_display(playback, pdata->video.pts) || !playback->started_playing))
+    if(pdata->file.has_video)
     {
-        dbg_success("pdata->video.is_ready\n");
-        
-        StartTimer("ProcessVideo()");
-        ProcessVideo(pdata);
-        EndTimer;
-        
-        need_video = 1;
-    }
-    else if(pdata->video.is_ready && 
-            should_skip(playback, pdata->video.pts))
-    {
-        dbg_warn("Skipping frame.\n");
-        
-        StartTimer("SkipVideoFrame()");
-        SkipVideoFrame(pdata);
-        EndTimer;
-        
-        need_video = 1;
-    }
-    else if(!pdata->video.is_ready)
-    {
-        dbg_warn("Video was not ready.\n");
-    }
-    else
-    {
-        dbg_warn("Not time to display yet.\n");
+        if(pdata->video.is_ready &&
+           (should_display(playback, pdata->video.pts) || !playback->started_playing))
+        {
+            dbg_success("pdata->video.is_ready\n");
+            
+            StartTimer("ProcessVideo()");
+            ProcessVideo(pdata);
+            EndTimer();
+            
+            need_video = 1;
+        }
+        else if(pdata->video.is_ready && 
+                should_skip(playback, pdata->video.pts))
+        {
+            dbg_warn("Skipping frame.\n");
+            
+            StartTimer("SkipVideoFrame()");
+            SkipVideoFrame(pdata);
+            EndTimer();
+            
+            need_video = 1;
+        }
+        else if(!pdata->video.is_ready)
+        {
+            dbg_warn("Video was not ready.\n");
+        }
+        else
+        {
+            dbg_warn("Not time to display yet.\n");
+        }
     }
     
-    if(pdata->audio.is_ready &&
-       (should_queue(playback) || !playback->started_playing))
+    if(pdata->file.has_audio)
     {
-        dbg_error("Processing audio.\n");
-        ProcessAudio(pdata);
-        
-        need_audio = 1;
-    }
-    else if(pdata->audio.is_ready &&
-            (should_skip(playback, playback->audio_total_queued)))
-    {
-        dbg_error("Audio is not ready or not time to play.\n");
-        pdata->audio.is_ready = 0;
-        need_audio = 1;
-    }
-    else if(pdata->audio.is_ready)
-    {
-        dbg_error("Just waiting as it's not yet time to queue.\n");
-    }
-    else
-    {
-        dbg_error("Audio is not ready.\n");
+        if(pdata->audio.is_ready &&
+           (should_queue(playback) || !playback->started_playing))
+        {
+            dbg_error("Processing audio.\n");
+            ProcessAudio(pdata);
+            
+            need_audio = 1;
+        }
+        else if(pdata->audio.is_ready &&
+                (should_skip(playback, playback->audio_total_queued)))
+        {
+            dbg_error("Audio is not ready or not time to play.\n");
+            pdata->audio.is_ready = 0;
+            need_audio = 1;
+        }
+        else if(pdata->audio.is_ready)
+        {
+            dbg_error("Just waiting as it's not yet time to queue.\n");
+        }
+        else
+        {
+            dbg_error("Audio is not ready.\n");
+        }
     }
     
     if(need_audio || need_video)
@@ -304,7 +310,6 @@ ProcessPlayback(program_data *pdata)
         dbg_warn("Video or audio needed.\n");
         PlatformConditionSignal(&pdata->decoder.condition);
     }
-    
     //update_playback_time(playback);
     
     return 0;
@@ -313,7 +318,7 @@ ProcessPlayback(program_data *pdata)
 int32
 InputLoopThread(void *arg)
 {
-    InitializeTimingSystem;
+    InitializeTimingSystem();
     
     program_data *pdata = arg;
     
@@ -321,11 +326,11 @@ InputLoopThread(void *arg)
     {
         StartTimer("ProcessInput()");
         ProcessInput(pdata);
-        EndTimer;
+        EndTimer();
         PlatformSleep(pdata->client.refresh_target);
     }
     
-    FinishTiming;
+    FinishTiming();
     
     return 0;
 }
@@ -333,7 +338,7 @@ InputLoopThread(void *arg)
 int32
 MainLoopThread(void *arg)
 {
-    InitializeTimingSystem;
+    InitializeTimingSystem();
     
     program_data *pdata = arg;
     playback_data *playback = &pdata->playback;
@@ -350,7 +355,7 @@ MainLoopThread(void *arg)
         
         StartTimer("ProcessMessages()");
         ProcessMessages(pdata);
-        EndTimer;
+        EndTimer();
         SDL_PumpEvents();
         
         if(pdata->file.open_failed)
@@ -371,14 +376,14 @@ MainLoopThread(void *arg)
                 pdata->start_playback = 0;
                 pdata->playing = 1;
                 
-                ProcessVideo(pdata);
-                ProcessAudio(pdata);
+                //ProcessVideo(pdata);
+                //ProcessAudio(pdata);
                 
                 PlatformConditionSignal(&pdata->decoder.condition);
                 
                 //TogglePlayback(pdata);
                 dbg_warn("Playback started!\n");
-                EndTimer;
+                EndTimer();
             }
         }
         
@@ -388,7 +393,7 @@ MainLoopThread(void *arg)
             {
                 StartTimer("ProcessPlayback()");
                 ProcessPlayback(pdata);
-                EndTimer;
+                EndTimer();
                 //playback->playback_time += pdata->client.refresh_target;
             }
             else
@@ -409,27 +414,26 @@ MainLoopThread(void *arg)
         
         StartTimer("Sleep()");
         PlatformSleep(sleep_time);
-        EndTimer;
+        EndTimer();
         
+        StartTimer("PlatformFlipBuffers()");
         if(!playback->started_playing)
         {
             PlatformPauseAudio(0);
             playback->started_playing = 1;
         }
-        
-        StartTimer("PlatformFlipBuffers()");
         PlatformUpdateFrame(pdata);
         PlatformFlipBuffers(pdata);
-        EndTimer;
+        EndTimer();
         
         client->current_frame_time = client->next_refresh_time;
         client->next_refresh_time += client->refresh_target;
         
-        EndTimer;
+        EndTimer();
     }
-    EndTimer;
+    EndTimer();
     
-    FinishTiming;
+    FinishTiming();
     return 0;
 }
 
@@ -517,8 +521,10 @@ FileOpen(program_data *pdata)
     
     if(!DecodingFileOpen(&pdata->file, &pdata->decoder))
     {
-        PlatformInitAudio(pdata);
-        PlatformInitVideo(pdata);
+        if(pdata->file.has_audio)
+            PlatformInitAudio(pdata);
+        if(pdata->file.has_video)
+            PlatformInitVideo(pdata);
         //PlatformPauseAudio(1);
         
         AllocateBuffers(pdata);

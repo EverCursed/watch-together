@@ -507,7 +507,7 @@ ResizeScreen(program_data *pdata, int x, int y)
                           &rect);
     SDL_RenderPresent(renderer);
     
-    EndTimer;
+    EndTimer();
     
     return 0;
 }
@@ -530,7 +530,7 @@ PlatformGetInput(program_data *pdata)
           SDL_WaitEventTimeout(&event, 10))
         //(SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) > 0))
     {
-        EndTimer;
+        EndTimer();
         //dbg_info("Event received.\n");
         switch(event.type)
         {
@@ -616,13 +616,13 @@ PlatformGetInput(program_data *pdata)
             } break;
         }
         
-        EndTimer;
+        EndTimer();
         StartTimer("Event Loop");
         StartTimer("SDL_PollEvent()");
     }
-    EndTimer;
-    EndTimer;
-    EndTimer;
+    EndTimer();
+    EndTimer();
+    EndTimer();
     return 0;
 }
 
