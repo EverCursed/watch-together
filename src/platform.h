@@ -48,6 +48,11 @@ PlatformConditionDestroy(cond_info *);
 platform_mutex
 PlatformCreateMutex();
 
+void
+PlatformLockMutex(platform_mutex *);
+
+void
+PlatformUnlockMutex(platform_mutex *);
 // 
 
 void

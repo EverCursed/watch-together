@@ -665,9 +665,11 @@ DecodingThreadStart(void *ptr)
             if(!pdata->audio.is_ready && 
                playback->audio_total_queued == playback->audio_total_decoded)
             {
+                PlatformLockMutex(&pdata->audio.mutex);
+                
                 do
                 {
-                    dbg_success("Audio packets not empty, starting to process.\n");
+                    dbg_success("Audio packets not empty, starting to process. %lf\n", pdata->file.target_time);
                     
                     struct frame_info f = get_frame(pdata, pdata->pq_audio);
                     
@@ -712,6 +714,7 @@ DecodingThreadStart(void *ptr)
                 pdata->playback.audio_total_decoded += pdata->audio.duration;
                 pdata->audio.is_ready = 1;
                 
+                PlatformUnlockMutex(&pdata->audio.mutex);
             }
             else if(pdata->audio.is_ready)
             {

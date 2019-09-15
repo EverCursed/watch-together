@@ -200,11 +200,15 @@ ProcessAudio(program_data *pdata)
 {
     StartTimer("ProcessAudio()");
     
+    PlatformLockMutex(&pdata->audio.mutex);
+    
     PlatformQueueAudio(&pdata->audio);
     increment_audio_times(&pdata->playback, pdata->audio.duration);
     PrepareAudioOutput(&pdata->audio);
     
     pdata->audio.is_ready = 0;
+    
+    PlatformUnlockMutex(&pdata->audio.mutex);
     
     EndTimer;
 }
