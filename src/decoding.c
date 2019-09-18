@@ -156,9 +156,10 @@ get_frame(program_data *pdata, avpacket_queue *queue)
         {
             dbg_error("Decoding error.\n");
         }
+        
+        av_packet_unref(pkt);
     } while(ret == AVERROR(EAGAIN) && pdata->running);
     
-    //av_packet_unref(pkt);
     info.ret = 0;
     //dbg_success("Returning from decoding.\n");
     EndTimer();

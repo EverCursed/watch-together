@@ -639,9 +639,13 @@ PlatformGetThreadID()
 int main(int argc, const char** argv)
 {
     // initialize all the necessary SDL stuff
+    SDL_SetMainReady();
+    
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0){
         return 1;
     }
+    
+    //SDL_SetHint("SDL_HINT_WINDOWS_ENABLE_MESSAGELOOP", "0");
     
     SDL_version ver, ver2;
     SDL_VERSION(&ver);
@@ -668,7 +672,6 @@ int main(int argc, const char** argv)
                                 SDL_WINDOW_RESIZABLE,
                                 &window,
                                 &renderer);
-    
     
     if(window == NULL || renderer == NULL)
     {

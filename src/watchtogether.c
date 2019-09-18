@@ -356,7 +356,9 @@ MainLoopThread(void *arg)
         StartTimer("ProcessMessages()");
         ProcessMessages(pdata);
         EndTimer();
+        StartTimer("SDL_PumpEvents()");
         SDL_PumpEvents();
+        EndTimer();
         
         if(pdata->file.open_failed)
         {
