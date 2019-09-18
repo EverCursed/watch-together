@@ -56,7 +56,7 @@ get_playback_time(playback_data *playback);
 real64
 get_next_playback_time(playback_data *playback);
 
-void
+int32
 start_playback(playback_data *p, real64 time);
 
 #endif 

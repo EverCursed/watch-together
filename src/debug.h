@@ -3,6 +3,8 @@
 
 #ifdef DEBUG
 
+#include <stdio.h>
+
 #if defined(_WIN32)
 #include <Windows.h>
 #define CHANGE_COLOR(x) SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), x)

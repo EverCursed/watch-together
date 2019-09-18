@@ -44,13 +44,14 @@ GetApplicationMessage(message_queue *q, message *m)
         q->start = (q->start + 1) % q->max;
         q->n--;
         
-        return 0;
+        RETURN(SUCCESS);
     }
     else
     {
         m->msg = MSG_NO_MORE_MESSAGES;
         dbg_error("There were no more messages.\n");
-        return -1;
+        
+        RETURN(NOT_ENOUGH_DATA);
     }
 }
 

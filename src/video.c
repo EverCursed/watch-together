@@ -2,7 +2,7 @@
 #include "watchtogether.h"
 
 int32
-PrepareVideoOutput(output_video *video)
+ClearVideoOutput(output_video *video)
 {
     video->pitch = 0;
     video->pitch_sup1 = 0;
@@ -23,11 +23,12 @@ PrepareVideoOutput(output_video *video)
             video->video_frame_sup2 = NULL;
         }
         
-        return 0;
+        RETURN(SUCCESS);
     }
     else
     {
-        dbg_error("PrepareVideoOutput() failed for some reason.\n");
-        return -1;
+        dbg_error("ClearVideoOutput() failed for some reason.\n");
+        RETURN(UNKNOWN_ERROR);
     }
+    
 }

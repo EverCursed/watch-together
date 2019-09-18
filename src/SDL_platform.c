@@ -71,10 +71,10 @@ PlatformQueueAudio(output_audio *audio)
     if(ret < 0)
     {
         dbg_error("%s\n", SDL_GetError());
-        return UNKNOWN_ERROR;
+        RETURN(UNKNOWN_ERROR);
     }
     
-    return SUCCESS;
+    RETURN(SUCCESS);
 }
 
 /*
@@ -102,7 +102,7 @@ AudioCallback(void*  userdata,
     }
 }
 */
-void 
+int32
 PlatformInitAudio(program_data *pdata)
 {
     //dbg_info("PlatformInitAudio called.\n");
@@ -136,7 +136,7 @@ PlatformInitAudio(program_data *pdata)
     else
     {
         dbg_error("An unhandled audio format was passed.\n");
-        return;
+        RETURN(UNKNOWN_FORMAT);
     }
     
     DesiredAudioSpec.channels = file->channels;
@@ -175,8 +175,12 @@ PlatformInitAudio(program_data *pdata)
     else
     {
         dbg_error("SDL_OpenAudioDevice() failed.\n");
+        
+        RETURN(UNKNOWN_ERROR);
     }
     //printf("%s\n", SDL_GetError());
+    
+    RETURN(SUCCESS);
 }
 
 void
@@ -232,7 +236,9 @@ int32
 PlatformConditionWait(cond_info *c)
 {
     
-    SDL_LockMutex(c->mutex);
+    if(SDL_LockMutex(c->mutex))
+        RETURN(UNKNOWN_ERROR);
+    
     while(!c->test && pdata->running)
     {
         SDL_CondWait(c->cond, c->mutex);
@@ -247,29 +253,30 @@ PlatformConditionWait(cond_info *c)
     //PlatformSleep(0.001);
     //}
     //c->test = 0;
-    return 0;
+    RETURN(SUCCESS);
 }
 
 int32
 PlatformConditionSignal(cond_info *c)
 {
+    if(SDL_LockMutex(c->mutex))
+        RETURN(UNKNOWN_ERROR);
     
-    SDL_LockMutex(c->mutex);
     c->test = 1;
     SDL_CondSignal(c->cond);
     SDL_UnlockMutex(c->mutex);
     
     //c->test = 1;
-    return 0;
+    RETURN(SUCCESS);
 }
 
-bool32
+int32
 PlatformConditionDestroy(cond_info *c)
 {
     SDL_DestroyMutex(c->mutex);
     SDL_DestroyCond(c->cond);
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
 platform_mutex
@@ -316,7 +323,7 @@ PlatformUpdateVideoFrame(program_data *pdata)
         {
             dbg_error("SDL_UpdateYUVTexture failed.\n");
             dbg_error("%s\n", SDL_GetError());
-            return UNKNOWN_ERROR;
+            RETURN(UNKNOWN_ERROR);
         }
     }
     else if(pdata->video.type == VIDEO_RGB)
@@ -328,16 +335,16 @@ PlatformUpdateVideoFrame(program_data *pdata)
         {
             dbg_error("SDL_UpdateTexture failed.\n");
             dbg_error("%s\n", SDL_GetError());
-            return UNKNOWN_ERROR;
+            RETURN(UNKNOWN_ERROR);
         }
     }
     else
     {
         dbg_error("Video output frame not initialized?");
-        return UNKNOWN_VIDEO_FORMAT;
+        RETURN(UNKNOWN_FORMAT);
     }
     
-    return SUCCESS;
+    RETURN(SUCCESS);
 }
 
 int32
@@ -358,13 +365,13 @@ PlatformUpdateFrame(program_data *pdata)
     if(ret)
     {
         dbg_error("%s\n", SDL_GetError());
-        return UNKNOWN_ERROR;
+        RETURN(UNKNOWN_ERROR);
     }
     
     // Render the UI on top of video frame
     //SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
     
-    return SUCCESS;
+    RETURN(SUCCESS);
 }
 
 int32
@@ -372,7 +379,7 @@ PlatformFlipBuffers(program_data *pdata)
 {
     SDL_RenderPresent(renderer);
     
-    return SUCCESS;
+    RETURN(SUCCESS);
 }
 
 void
@@ -473,7 +480,7 @@ int resize_filter(void *userdata,
 }
 #endif
 
-static int
+static int32
 ResizeScreen(program_data *pdata, int x, int y)
 {
     StartTimer("ResizeScreen()");
@@ -509,7 +516,7 @@ ResizeScreen(program_data *pdata, int x, int y)
     
     EndTimer();
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
 int32
@@ -538,7 +545,7 @@ PlatformGetInput(program_data *pdata)
             {
                 dbg_error("SDL_QUIT\n");
                 pdata->running = 0;
-                return 0;
+                RETURN(SUCCESS);
             } break;
             case SDL_WINDOWEVENT:
             {
@@ -623,7 +630,8 @@ PlatformGetInput(program_data *pdata)
     EndTimer();
     EndTimer();
     EndTimer();
-    return 0;
+    
+    RETURN(SUCCESS);
 }
 
 int64

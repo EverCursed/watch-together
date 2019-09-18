@@ -34,7 +34,7 @@ get_packet(program_data *pdata, AVPacket *packet)
     if(ret == AVERROR_STREAM_NOT_FOUND)
     {
         dbg_error("Stream not found.\n");
-        return -1;
+        RETURN(WRONG_ARGS);
     }
     else if(ret == AVERROR_EOF)
     {
@@ -42,15 +42,15 @@ get_packet(program_data *pdata, AVPacket *packet)
         pdata->file.file_finished = 1;
         
         dbg_error("End of file.\n");
-        return -1;
+        RETURN(FILE_EOF);
     }
     else if(ret != 0)
     {
         dbg_error("Some other error happened.\n");
-        return -1;
+        RETURN(UNKNOWN_ERROR);
     }
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
 struct frame_info
@@ -189,14 +189,14 @@ DecodingFileOpen(open_file_info *file, decoder_info *decoder)
     if(avformat_open_input(&decoder->format_context, file->filename, NULL, NULL) < 0)
     {
         dbg_error("AV open input failed.\n");
-        return -1; // Couldn't open file
+        RETURN(FILE_NOT_FOUND); // Couldn't open file
     }
     
     // Retrieve stream information
     if(avformat_find_stream_info(decoder->format_context, NULL) < 0)
     {
         dbg_error("Couldn't find stream info\n");
-        return -1; // Couldn't find stream information
+        RETURN(UNKNOWN_ERROR); // Couldn't find stream information
     }
     // Dump information about file onto standard error
     av_dump_format(decoder->format_context, 0, file->filename, 0);
@@ -239,14 +239,14 @@ DecodingFileOpen(open_file_info *file, decoder_info *decoder)
         if(!decoder->video_codec_context)
         {
             dbg_error("Video: avcodec_alloc_context3() failed!\n");
-            return -1;
+            RETURN(UNKNOWN_ERROR);
         }
         avcodec_parameters_to_context(decoder->video_codec_context, decoder->format_context->streams[decoder->video_stream]->codecpar);
         
         if(avcodec_open2(decoder->video_codec_context, decoder->video_codec, NULL) < 0)
         {
             dbg_error("Video: avcodec_open2() failed!\n");
-            return -1;
+            RETURN(UNKNOWN_ERROR);
         }
         
         if(decoder->format_context->streams[decoder->video_stream]->codecpar->format == AV_PIX_FMT_YUV420P)
@@ -279,14 +279,14 @@ DecodingFileOpen(open_file_info *file, decoder_info *decoder)
         if(!decoder->audio_codec_context)
         {
             dbg_error("Audio: avcodec_alloc_context3() failed!\n");
-            return -1;
+            RETURN(UNKNOWN_ERROR);
         }
         avcodec_parameters_to_context(decoder->audio_codec_context, decoder->format_context->streams[decoder->audio_stream]->codecpar);
         
         if(avcodec_open2(decoder->audio_codec_context, decoder->audio_codec, NULL) < 0)
         {
             dbg_error("Audio: avcodec_open2() failed!\n");
-            return -1;
+            RETURN(UNKNOWN_ERROR);
         }
         
         uint32 sample_fmt = decoder->audio_codec_context->sample_fmt;
@@ -323,7 +323,7 @@ DecodingFileOpen(open_file_info *file, decoder_info *decoder)
         else
         {
             dbg_error("Unhandled audio format\n");
-            return -1;
+            RETURN(UNKNOWN_FORMAT);
         }
         
         file->sample_rate = decoder->audio_codec_context->sample_rate;
@@ -336,7 +336,7 @@ DecodingFileOpen(open_file_info *file, decoder_info *decoder)
         decoder->audio_time_base = av_inv_q(decoder->format_context->streams[decoder->audio_stream]->avg_frame_rate);
     }
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
 void
@@ -474,7 +474,7 @@ process_video_frame(program_data *pdata, struct frame_info info)
     
     EndTimer();
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
 
@@ -494,7 +494,7 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     if(pdata->audio.is_ready)
     {
         dbg_warn("Started processing an audio frame, while the previous one hasn't been used.\n");
-        return -1;
+        RETURN(UNKNOWN_ERROR);
     }
     
     AVFrame *frame = info.frame;
@@ -524,7 +524,7 @@ process_audio_frame(program_data *pdata, struct frame_info info)
         dbg_error("Audio buffer wasn't allocated. Returning.\n");
         
         EndTimer();
-        return -1;
+        RETURN(NOT_INITIALIZED);
     }
     
     if(!is_planar)
@@ -564,7 +564,7 @@ process_audio_frame(program_data *pdata, struct frame_info info)
     //dbg_info("Audio frame duration: %lf\n", pdata->audio.duration);
     
     EndTimer();
-    return 0;
+    RETURN(SUCCESS);
 }
 
 void

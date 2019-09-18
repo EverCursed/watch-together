@@ -55,7 +55,7 @@ void
 PlatformUnlockMutex(platform_mutex *);
 // 
 
-void
+int32
 PlatformInitAudio(program_data *);
 
 void

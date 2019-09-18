@@ -219,7 +219,7 @@ static void
 ProcessVideo(program_data *pdata)
 {
     PlatformUpdateVideoFrame(pdata);
-    //PrepareVideoOutput(&pdata->video);
+    //ClearVideoOutput(&pdata->video);
     
     increment_video_times(&pdata->playback, av_q2d(pdata->decoder.video_time_base));
     
@@ -229,7 +229,7 @@ ProcessVideo(program_data *pdata)
 static void
 SkipVideoFrame(program_data *pdata)
 {
-    //PrepareVideoOutput(&pdata->video);
+    //ClearVideoOutput(&pdata->video);
     
     increment_video_times(&pdata->playback, av_q2d(pdata->decoder.video_time_base));
     
@@ -312,7 +312,7 @@ ProcessPlayback(program_data *pdata)
     }
     //update_playback_time(playback);
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
 int32
@@ -332,7 +332,7 @@ InputLoopThread(void *arg)
     
     FinishTiming();
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
 int32
@@ -436,7 +436,7 @@ MainLoopThread(void *arg)
     EndTimer();
     
     FinishTiming();
-    return 0;
+    RETURN(SUCCESS);
 }
 
 static int32
@@ -465,10 +465,10 @@ AllocateBuffers(program_data *pdata)
     pdata->video.width = pdata->file.width;
     pdata->video.height = pdata->file.height;
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
-static bool32
+static int32
 DeallocateBuffers(program_data *pdata)
 {
     free(pdata->audio.buffer);
@@ -483,38 +483,39 @@ DeallocateBuffers(program_data *pdata)
     pdata->video.video_frame_sup1 = NULL;
     pdata->video.video_frame_sup2 = NULL;
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
 static int32
 InitializeApplication(program_data *pdata)
 {
+    
     InitMessageQueue(&pdata->messages);
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
-static bool32
+static int32
 InitQueues(program_data *pdata)
 {
     pdata->pq_main = init_avpacket_queue(PACKET_QUEUE_SIZE);
     pdata->pq_video = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
     pdata->pq_audio = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
-static bool32
+static int32
 TerminateQueues(program_data *pdata)
 {
     close_avpacket_queue(pdata->pq_audio);
     close_avpacket_queue(pdata->pq_video);
     close_avpacket_queue(pdata->pq_main);
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
-static bool32
+static int32
 FileOpen(program_data *pdata)
 {
     pdata->decoder.condition = PlatformCreateConditionVar();
@@ -538,14 +539,13 @@ FileOpen(program_data *pdata)
         pdata->playing = 0;
         pdata->paused = 0;
         
-        return 0;
+        RETURN(SUCCESS);
     }
-    else goto open_failed;
-    
-    open_failed:
-    dbg_error("FileOpen() failed.\n");
-    pdata->file.open_failed = 1;
-    return -1;
+    else
+    {
+        pdata->file.open_failed = 1;
+        RETURN(UNKNOWN_ERROR);
+    }
 }
 
 static bool32
@@ -569,7 +569,7 @@ FileClose(program_data *pdata)
     
     TerminateQueues(pdata);
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
 int32

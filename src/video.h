@@ -19,6 +19,6 @@ typedef struct _ouput_video {
 } output_video;
 
 int32
-PrepareVideoOutput(output_video *video);
+ClearVideoOutput(output_video *video);
 
 #endif

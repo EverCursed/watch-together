@@ -10,7 +10,7 @@ increment_video_times(playback_data *playback, real64 video_time_base)
     playback->current_video_frame_time = playback->next_video_frame_time;
     playback->next_video_frame_time += video_time_base;
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
 int32
@@ -18,7 +18,7 @@ increment_audio_times(playback_data *playback, real64 duration)
 {
     playback->audio_total_queued += duration;
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
 bool32
@@ -109,7 +109,7 @@ get_playback_current_time(playback_data *playback)
     return (*playback->current_frame_time - playback->playback_start - playback->aggregated_pause_time);
 }
 
-void
+int32
 start_playback(playback_data *p, real64 time)
 {
     p->playback_start = time + *p->refresh_target;
@@ -125,4 +125,6 @@ start_playback(playback_data *p, real64 time)
     p->audio_total_played = 0.0;
     
     p->started_playing = 1;
+    
+    RETURN(SUCCESS);
 }
