@@ -489,7 +489,6 @@ DeallocateBuffers(program_data *pdata)
 static int32
 InitializeApplication(program_data *pdata)
 {
-    
     InitMessageQueue(&pdata->messages);
     
     RETURN(SUCCESS);
@@ -499,8 +498,20 @@ static int32
 InitQueues(program_data *pdata)
 {
     pdata->pq_main = init_avpacket_queue(PACKET_QUEUE_SIZE);
-    pdata->pq_video = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
-    pdata->pq_audio = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
+    
+    if(pdata->file.has_video)
+    {
+        pdata->pq_video = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
+        if(pdata->pq_video == NULL)
+            RETURN(NO_MEMORY);
+    }
+    
+    if(pdata->file.has_audio)
+    {
+        pdata->pq_audio = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
+        if(pdata->pq_audio == NULL)
+            RETURN(NO_MEMORY);
+    }
     
     RETURN(SUCCESS);
 }
@@ -520,12 +531,15 @@ FileOpen(program_data *pdata)
 {
     pdata->decoder.condition = PlatformCreateConditionVar();
     
-    InitQueues(pdata);
-    
     if(!DecodingFileOpen(&pdata->file, &pdata->decoder))
     {
+        InitQueues(pdata);
+        
         if(pdata->file.has_audio)
+        {
+            pdata->audio.mutex = PlatformCreateMutex();
             PlatformInitAudio(pdata);
+        }
         if(pdata->file.has_video)
             PlatformInitVideo(pdata);
         //PlatformPauseAudio(1);
