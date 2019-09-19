@@ -284,6 +284,8 @@ PlatformCreateMutex()
 {
     platform_mutex m = {};
     m.mutex = SDL_CreateMutex();
+    if(m.mutex == NULL)
+        dbg_error("%s\n", SDL_GetError());
     return m;
 }
 

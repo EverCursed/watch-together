@@ -23,7 +23,7 @@ init_avpacket_queue(int32 n)
     queue->next = 0;
     queue->end = 0;
     
-    queue->mutex = SDL_CreateMutex();
+    queue->mutex = PlatformCreateMutex();
     
     return queue;
 }
@@ -38,12 +38,18 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
     }
     //dbg_info("Enqueueing packet.\n");
     //dbg_packet(packet);
-    
-    queue->array[queue->end] = packet;
-    queue->n++;
-    queue->end = (queue->end + 1) % queue->maxn;
-    
-    RETURN(SUCCESS);
+    if(s(PlatformLockMutex(&queue->mutex)))
+    {
+        queue->array[queue->end] = packet;
+        queue->n++;
+        queue->end = (queue->end + 1) % queue->maxn;
+        
+        RETURN(SUCCESS);
+    }
+    else
+    {
+        RETURN(UNKNOWN_ERROR);
+    }
 }
 
 int32
@@ -55,7 +61,7 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
         RETURN(NOT_ENOUGH_DATA);
     }
     
-    if(!SDL_LockMutex(queue->mutex))
+    if(s(PlatformLockMutex(&queue->mutex)))
     {
         *packet = queue->array[queue->next];
         queue->n--;
@@ -64,7 +70,7 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
         //dbg_info("Dequeueing packet.\n");
         //dbg_packet((*packet));
         
-        SDL_UnlockMutex(queue->mutex);
+        PlatformUnlockMutex(&queue->mutex);
         RETURN(SUCCESS);
     }
     else
@@ -109,9 +115,9 @@ int32
 peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)
 {
     // check if nth packet is queued up
-    if(!(queue->n > nth))
+    if(queue->n < nth+1)
     {
-        dbg_info("Peek packet: There is no packet in this location.\n");
+        dbg_print("packet queue: %d\n", queue->n);
         RETURN(WRONG_ARGS);
     }
     

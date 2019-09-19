@@ -77,7 +77,12 @@ get_frame(program_data *pdata, AVFrame **frame, avpacket_queue *queue, AVCodecCo
         
         ret = avcodec_send_packet(dec_ctx, pkt);
         
-        if(ret == AVERROR(EAGAIN))
+        if(ret == 0)
+        {
+            av_packet_unref(pkt);
+            dequeue_packet(queue, &pkt);
+        }
+        else if(ret == AVERROR(EAGAIN))
         {
             dbg_error("AVERROR(EAGAIN)\n");
             // TODO(Val): This means a frame must be read before we can send another packet
@@ -105,10 +110,6 @@ get_frame(program_data *pdata, AVFrame **frame, avpacket_queue *queue, AVCodecCo
         {
             dbg_error("Decoding error.\n");
         }
-        else if(ret == 0)
-        {
-            dequeue_packet(queue, &pkt);
-        }
         
         ret = avcodec_receive_frame(dec_ctx, *frame);
         //dbg_info("avcodec_receive_frame\tret: %d\n", ret);
@@ -134,8 +135,6 @@ get_frame(program_data *pdata, AVFrame **frame, avpacket_queue *queue, AVCodecCo
         {
             dbg_error("Decoding error.\n");
         }
-        
-        av_packet_unref(pkt);
     } while(ret == AVERROR(EAGAIN) && pdata->running);
     
     EndTimer();

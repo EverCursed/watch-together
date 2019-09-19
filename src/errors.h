@@ -33,7 +33,7 @@ do {\
 
 #else
 
-#define RETURN(a) do { return a } while(0)
+#define RETURN(a) do { return a; } while(0)
 
 #endif
 
