@@ -15,8 +15,8 @@ typedef int err_code;
 #define FILE_NOT_FOUND       (-8)
 #define NOT_INITIALIZED      (-9)
 
-//#define SUCCEEDED(a) (a >= SUCCESS)
-//#define ERROR(a) (a < SUCCESS)
+#define s(a) (a >= SUCCESS)
+#define f(a) (a < SUCCESS)
 
 #ifdef DEBUG
 

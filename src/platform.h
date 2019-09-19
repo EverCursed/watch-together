@@ -48,12 +48,11 @@ PlatformConditionDestroy(cond_info *);
 platform_mutex
 PlatformCreateMutex();
 
-void
+int32
 PlatformLockMutex(platform_mutex *);
 
-void
+int32
 PlatformUnlockMutex(platform_mutex *);
-// 
 
 int32
 PlatformInitAudio(program_data *);

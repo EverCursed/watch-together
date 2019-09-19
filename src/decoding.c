@@ -53,51 +53,29 @@ get_packet(program_data *pdata, AVPacket *packet)
     RETURN(SUCCESS);
 }
 
-struct frame_info
-get_frame(program_data *pdata, avpacket_queue *queue)
+int32
+get_frame(program_data *pdata, AVFrame **frame, avpacket_queue *queue, AVCodecContext *dec_ctx)
 {
     StartTimer("get_frame()");
     
+    int ret = 0;
+    
     decoder_info *decoder = &pdata->decoder;
-    AVCodecContext *dec_ctx;
-    
     AVPacket *pkt = NULL;// = av_packet_alloc();
-    AVFrame *frame = av_frame_alloc();
-    struct frame_info info = {.frame = frame, .type = 0, .ret = -1};
     
-    if(!frame) {
-        dbg_error("av_frame_alloc() failed!\n");
-        return info;
-    }
-    
-    int32 ret = 0;
-    
-    // set the type of frame.
-    if(queue == pdata->pq_video)
-    {
-        // TODO(Val): Temporarily converting everything to YUV
-        info.type = FRAME_VIDEO;
-        dec_ctx = decoder->video_codec_context;
-    }
-    else if(queue == pdata->pq_audio)
-    {
-        info.type = FRAME_AUDIO;
-        dec_ctx = decoder->audio_codec_context;
-    }
-    else
-    {
-        dbg_error("Unknown frame returned.\n");
-        info.type = FRAME_UNKNOWN;
-        goto no_packet_fail;
-    }
+    *frame = av_frame_alloc();
+    if(!frame)
+        RETURN(NO_MEMORY);
     
     do {
-        ret = peek_packet(queue, &pkt, 0);
-        if(ret == -1)
-            goto no_packet_fail;
+        if(f(peek_packet(queue, &pkt, 0)))
+        {
+            dbg_error("There were no packets in queue.\n");
+            av_frame_free(frame);
+            RETURN(NOT_ENOUGH_DATA);
+        }
         
         ret = avcodec_send_packet(dec_ctx, pkt);
-        //dbg_info("avcodec_send_packet\tret: %d\n", ret);
         
         if(ret == AVERROR(EAGAIN))
         {
@@ -114,12 +92,13 @@ get_frame(program_data *pdata, avpacket_queue *queue)
         else if(ret == AVERROR(EINVAL))
         {
             dbg_error("AVERROR(EINVAL)\n");
-            goto get_frame_failed;
+            RETURN(WRONG_ARGS);
             // NOTE(Val): codec not opened, it is an encoder, or requires flush
         }
         else if(ret == AVERROR(ENOMEM))
         {
             dbg_error("AVERROR(ENOMEM)\n");
+            RETURN(NO_MEMORY);
             // NOTE(Val): No memory
         }
         else if(ret < 0)
@@ -131,7 +110,7 @@ get_frame(program_data *pdata, avpacket_queue *queue)
             dequeue_packet(queue, &pkt);
         }
         
-        ret = avcodec_receive_frame(dec_ctx, frame);
+        ret = avcodec_receive_frame(dec_ctx, *frame);
         //dbg_info("avcodec_receive_frame\tret: %d\n", ret);
         
         if(ret == AVERROR(EAGAIN))
@@ -139,18 +118,17 @@ get_frame(program_data *pdata, avpacket_queue *queue)
             continue;
             // NOTE(Val): This means a frame must be read before we can send another packet
         }
-        //av_packet_unref(pkt);
         else if(ret == AVERROR_EOF)
         {
             // TODO(Val): Mark file as finished.
             dbg_warn("AVERROR_EOF\n");
-            goto get_frame_failed;
+            RETURN(FILE_EOF);
         }
         else if(ret == AVERROR(EINVAL))
         {
             dbg_warn("AVERROR(EINVAL)\n");
             // NOTE(Val): codec not opened, it is an encoder, or requires flush
-            goto get_frame_failed;
+            RETURN(WRONG_ARGS);
         }
         else if(ret < 0)
         {
@@ -160,24 +138,8 @@ get_frame(program_data *pdata, avpacket_queue *queue)
         av_packet_unref(pkt);
     } while(ret == AVERROR(EAGAIN) && pdata->running);
     
-    info.ret = 0;
-    //dbg_success("Returning from decoding.\n");
     EndTimer();
-    return info;
-    
-    get_frame_failed:
-    if(pkt)
-        av_packet_unref(pkt);
-    info.ret = -1;
-    EndTimer();
-    return info;
-    
-    no_packet_fail:
-    dbg_error("There were no packets in queue.\n");
-    av_frame_free(&frame);
-    info.ret = -1;
-    EndTimer();
-    return info;
+    RETURN(SUCCESS);
 }
 
 int32
@@ -376,11 +338,10 @@ copy_pixel_buffers(uint8 *dst,
 global struct SwsContext* modifContext = NULL;
 
 int32
-process_video_frame(program_data *pdata, struct frame_info info)
+process_video_frame(program_data *pdata, AVFrame *frame)
 {
     StartTimer("process_video_frame");
     
-    AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
     
     int32 fmt = AV_PIX_FMT_YUV420P;
@@ -487,7 +448,7 @@ do {\
 } while(0)
 
 int32
-process_audio_frame(program_data *pdata, struct frame_info info)
+process_audio_frame(program_data *pdata, AVFrame *frame)
 {
     StartTimer("process_audio_frame");
     
@@ -497,7 +458,6 @@ process_audio_frame(program_data *pdata, struct frame_info info)
         RETURN(UNKNOWN_ERROR);
     }
     
-    AVFrame *frame = info.frame;
     decoder_info *decoder = &pdata->decoder;
     
     int32 size = av_samples_get_buffer_size(NULL,
@@ -678,44 +638,22 @@ DecodingThreadStart(void *ptr)
                     {
                         dbg_success("Audio packets not empty, starting to process. %lf\n", pdata->file.target_time);
                         
-                        struct frame_info f = get_frame(pdata, pdata->pq_audio);
-                        
-                        if(f.ret != -1)
+                        AVFrame *frame;
+                        if(!get_frame(pdata, &frame, pdata->pq_audio, pdata->decoder.audio_codec_context))
                         {
                             dbg_success("Processing audio.\n");
                             
-                            process_audio_frame(pdata, f);
-                            av_frame_free(&f.frame);
+                            process_audio_frame(pdata, frame);
+                            av_frame_free(&frame);
                         }
                         else
                         {
                             dbg_error("Audio queue was empty.\n");
                         }
                         
-                        
-                        /*
-                        dbg_info("total queued:\t%lf\n"
-                        "pdata->audio.duration:\t%lf\n"
-                        "sum:\t\t\t%lf\n"
-                        "playback start: %lf\n"
-                        "next frame time:\t%lf\n"
-                        "following frame time:\t%lf\n",
-                        pdata->playback.audio_total_queued,
-                        pdata->audio.duration,
-                        pdata->audio.pts + pdata->audio.duration,
-                        pdata->playback.playback_start,
-                        pdata->playback.next_frame_time - pdata->playback.playback_start,
-                        pdata->playback.next_frame_time + pdata->client.refresh_rate - pdata->playback.playback_start);
-                        */
-                        
                         if(!pdata->running)
                             break;
                     } while (pdata->audio.duration <= pdata->file.target_time);
-                    // TODO(Val): This will only function while we don't miss frames
-                    //playback->audio_total_queued + pdata->audio.duration < 
-                    //get_next_playback_time(playback) + *playback->refresh_target);
-                    //} while(!pdata->file.file_finished &&
-                    //(pdata->playback.audio_total_queued + pdata->audio.duration) < (pdata->playback.next_frame_time + pdata->client.refresh_target - pdata->playback.playback_start));
                     
                     dbg_error("Setting audio readiness.\n");
                     pdata->playback.audio_total_decoded += pdata->audio.duration;
@@ -746,20 +684,19 @@ DecodingThreadStart(void *ptr)
             {
                 StartTimer("Processing Video");
                 
-                struct frame_info f = get_frame(pdata, pdata->pq_video);
-                
-                if(f.ret != -1)
+                AVFrame *frame;
+                if(!get_frame(pdata, &frame, pdata->pq_video, pdata->decoder.video_codec_context))
                 {
                     dbg_success("Processing video.\n");
                     
-                    int32 ret = process_video_frame(pdata, f);
+                    int32 ret = process_video_frame(pdata, frame);
                     if(ret < 0)
                     {
                         dbg_error("process_video_frame() failed.\n");
                     }
                     
                     StartTimer("av_frame_free()");
-                    av_frame_free(&f.frame);
+                    av_frame_free(&frame);
                     EndTimer();
                 }
                 else

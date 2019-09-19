@@ -287,16 +287,25 @@ PlatformCreateMutex()
     return m;
 }
 
-void
+int32
 PlatformLockMutex(platform_mutex *m)
 {
-    SDL_LockMutex(m->mutex);
+    if(!SDL_LockMutex(m->mutex))
+        RETURN(SUCCESS);
+    else
+    {
+        dbg_error("%s\n", SDL_GetError());
+        RETURN(UNKNOWN_ERROR);
+    }
 }
 
-void
+int32
 PlatformUnlockMutex(platform_mutex *m)
 {
-    SDL_UnlockMutex(m->mutex);
+    if(!SDL_UnlockMutex(m->mutex))
+        RETURN(SUCCESS);
+    else
+        RETURN(UNKNOWN_ERROR);
 }
 
 real64
