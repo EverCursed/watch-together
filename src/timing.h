@@ -54,8 +54,8 @@ void FinishTiming();
 #else
 
 // DEBUG is not defined, remove all timing information
-#define InitializeTimingSystem   do {} while(0)
-#define StartTimer(name)         do {} while(0)
+#define InitializeTimingSystem()   do {} while(0)
+#define StartTimer(name)           do {} while(0)
 #define EndTimer()                 do {} while(0)
 #define DumpTimingFrame()          do {} while(0)
 #define FinishTiming()             do {} while(0)

@@ -1,5 +1,9 @@
 #include "timing.h"
 
+#ifdef _WIN32
+#include "windows.h"
+#endif
+
 _Thread_local struct _timing_data __dbgtimdat = {};
 
 static void
@@ -48,6 +52,7 @@ DumpTimingFrame()
 {
     int32 n = 0; 
     struct _timing_queue queue = {};
+    __dbgtimdat.dump = malloc(__dbgtimdat.n * DEBUG_LINE_WIDTH);
     for(int i = 0; i < __dbgtimdat.n; i++)
     {
         if(__dbgtimdat.inst[i].name != NULL)
@@ -80,7 +85,7 @@ InitializeTimingSystem()
     InitPlatformTimingData(); 
     
     __dbgtimdat.inst = malloc(sizeof(timing_instance) * MAX_EVENTS);
-    __dbgtimdat.dump = malloc(MAX_EVENTS * DEBUG_LINE_WIDTH);
+    //__dbgtimdat.dump = malloc(MAX_EVENTS * DEBUG_LINE_WIDTH);
     __dbgtimdat.start_time = 0;
     GetHighPrecisionTime(&__dbgtimdat.start_time);
     __dbgtimdat.n = 0;
