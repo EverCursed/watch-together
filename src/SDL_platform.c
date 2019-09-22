@@ -539,14 +539,11 @@ PlatformGetInput(program_data *pdata)
     
     SDL_Event event = {0};
     
-    //while(pdata->running && SDL_PollEvent(&event))
-    //SDL_PumpEvents();
     StartTimer("Event loop");
     StartTimer("SDL_PollEvent()");
     while(pdata->running &&
           input->keyboard.n < MAX_KEYS-1 &&
           SDL_WaitEventTimeout(&event, 10))
-        //(SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_FIRSTEVENT, SDL_LASTEVENT) > 0))
     {
         EndTimer();
         //dbg_info("Event received.\n");

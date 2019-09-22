@@ -357,7 +357,7 @@ MainLoopThread(void *arg)
         ProcessMessages(pdata);
         EndTimer();
         StartTimer("SDL_PumpEvents()");
-        SDL_PumpEvents();
+        //SDL_PumpEvents();
         EndTimer();
         
         if(pdata->file.open_failed)
@@ -600,12 +600,13 @@ MainThread(program_data *pdata)
     
     dbg_info("Client refresh target time set to %lfs.\n", pdata->client.refresh_target);
     
-    pdata->threads.input_thread = PlatformCreateThread(InputLoopThread, pdata, "input_thread");
+    //pdata->threads.input_thread = PlatformCreateThread(InputLoopThread, pdata, "input_thread");
+    pdata->threads.main_thread = PlatformCreateThread(MainLoopThread, pdata, "input_thread");
     
     if(!FileOpen(pdata))
     {
-        MainLoopThread(pdata);
-        //MainThread(pdata);
+        InputLoopThread(pdata);
+        //MainLoopThread(pdata);
         FileClose(pdata);
     }
     else
