@@ -596,7 +596,15 @@ PlatformGetInput(program_data *pdata)
                 bool32 alt_down = event.key.keysym.mod & KMOD_ALT;
                 bool32 pressed = event.key.state == SDL_PRESSED ? 1 : 0;
                 
-                add_key(input, event.key.keysym.sym, shift_down, ctrl_down, alt_down, pressed);
+                if(event.key.keysym.sym == KB_F4 && alt_down)
+                {
+                    PlatformToggleFullscreen(pdata);
+                    PlatformFlipBuffers(pdata);
+                }
+                else
+                {
+                    add_key(input, event.key.keysym.sym, shift_down, ctrl_down, alt_down, pressed);
+                }
             } break;
             case SDL_MOUSEMOTION:
             {
@@ -679,8 +687,6 @@ int main(int argc, const char** argv)
 #ifdef _WIN32
     dbg_info("SDL_FilterEvents\n");
     SDL_SetEventFilter(resize_filter, NULL);
-    SetPriorityClass(GetCurrentProcess(),
-                     HIGH_PRIORITY_CLASS);
 #endif
     
     SDL_CreateWindowAndRenderer(1024,

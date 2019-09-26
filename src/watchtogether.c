@@ -288,13 +288,13 @@ ProcessPlayback(program_data *pdata)
             
             need_audio = 1;
         }
-        else if(pdata->audio.is_ready &&
-                (should_skip(playback, playback->audio_total_queued)))
-        {
-            dbg_error("Audio is not ready or not time to play.\n");
-            pdata->audio.is_ready = 0;
-            need_audio = 1;
-        }
+        //else if(pdata->audio.is_ready &&
+        //(should_skip(playback, playback->audio_total_queued)))
+        //{
+        //dbg_error("Audio is not ready or not time to play.\n");
+        //pdata->audio.is_ready = 0;
+        //need_audio = 1;
+        //}
         else if(pdata->audio.is_ready)
         {
             dbg_error("Just waiting as it's not yet time to queue.\n");
@@ -327,7 +327,6 @@ InputLoopThread(void *arg)
         StartTimer("ProcessInput()");
         ProcessInput(pdata);
         EndTimer();
-        PlatformSleep(pdata->client.refresh_target);
     }
     
     FinishTiming();
@@ -601,7 +600,7 @@ MainThread(program_data *pdata)
     dbg_info("Client refresh target time set to %lfs.\n", pdata->client.refresh_target);
     
     //pdata->threads.input_thread = PlatformCreateThread(InputLoopThread, pdata, "input_thread");
-    pdata->threads.main_thread = PlatformCreateThread(MainLoopThread, pdata, "input_thread");
+    pdata->threads.main_thread = PlatformCreateThread(MainLoopThread, pdata, "main_thread");
     
     if(!FileOpen(pdata))
     {

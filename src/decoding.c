@@ -633,8 +633,7 @@ DecodingThreadStart(void *ptr)
                 {
                     PlatformLockMutex(&pdata->audio.mutex);
                     
-                    do
-                    {
+                    do {
                         dbg_success("Audio packets not empty, starting to process. %lf\n", pdata->file.target_time);
                         
                         AVFrame *frame;
