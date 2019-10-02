@@ -80,13 +80,14 @@ DumpTimingFrame()
 }
 
 void
-InitializeTimingSystem()
+InitializeTimingSystem(char *name)
 {
     InitPlatformTimingData(); 
     
     __dbgtimdat.inst = malloc(sizeof(timing_instance) * MAX_EVENTS);
     //__dbgtimdat.dump = malloc(MAX_EVENTS * DEBUG_LINE_WIDTH);
     __dbgtimdat.start_time = 0;
+    __dbgtimdat.thread_name = name;
     GetHighPrecisionTime(&__dbgtimdat.start_time);
     __dbgtimdat.n = 0;
     __dbgtimdat.max_marks = MAX_EVENTS;
@@ -97,7 +98,7 @@ FinishTiming()
 {
     DumpTimingFrame();
     char filename[256];
-    sprintf(filename, "timing_thread_%ld.txt", (long int)PlatformGetThreadID());
+    sprintf(filename, "debug/%s-thread.txt", __dbgtimdat.thread_name);
     FILE *f = fopen(filename, "w");
     fwrite(__dbgtimdat.dump, sizeof(char), __dbgtimdat.dump_length, f);
     fclose(f);

@@ -343,43 +343,44 @@ process_video_frame(program_data *pdata, AVFrame *frame)
     
     decoder_info *decoder = &pdata->decoder;
     
-    int32 fmt = AV_PIX_FMT_YUV420P;
+    int32 fmt = AV_PIX_FMT_RGB32;
     
-    if(frame->format != AV_PIX_FMT_YUV420P)
-    {
-        modifContext = sws_getCachedContext(modifContext,
-                                            decoder->video_codec_context->width,
-                                            decoder->video_codec_context->height,
-                                            frame->format,
-                                            pdata->video.width,  // dst width
-                                            pdata->video.height, // dst height
-                                            fmt,
-                                            SWS_BICUBIC, //SWS_BILINEAR | SWS_ACCURATE_RND,
-                                            NULL, NULL, NULL);
-        
-        uint8_t *ptrs[3] = {
-            pdata->video.video_frame,//frame_Y,
-            pdata->video.video_frame_sup1,//frame_U,
-            pdata->video.video_frame_sup2,//frame_V
-        };
-        
-        int stride[3] = {
-            pdata->video.pitch, //pitch_Y,
-            pdata->video.pitch_sup1, //pitch_U,
-            pdata->video.pitch_sup2, //pitch_V
-        };
-        
-        StartTimer("sws_scale()");
-        sws_scale(modifContext,
-                  (uint8 const* const*)frame->data,
-                  frame->linesize,
-                  0,
-                  decoder->video_codec_context->height,
-                  (uint8* const* const)ptrs,
-                  stride);
-        EndTimer();
-        
-        EndTimer();
+    //if(frame->format != AV_PIX_FMT_RGB24)
+    //{
+    modifContext = sws_getCachedContext(modifContext,
+                                        decoder->video_codec_context->width,
+                                        decoder->video_codec_context->height,
+                                        frame->format,
+                                        pdata->video.width,  // dst width
+                                        pdata->video.height, // dst height
+                                        fmt,
+                                        SWS_BILINEAR, //SWS_BILINEAR | SWS_ACCURATE_RND,
+                                        NULL, NULL, NULL);
+    
+    uint8_t *ptrs[1] = {
+        pdata->video.video_frame,//frame_Y,
+        //pdata->video.video_frame_sup1,//frame_U,
+        //pdata->video.video_frame_sup2,//frame_V
+    };
+    
+    int stride[1] = {
+        pdata->video.pitch, //pitch_Y,
+        //pdata->video.pitch_sup1, //pitch_U,
+        //pdata->video.pitch_sup2, //pitch_V
+    };
+    
+    StartTimer("sws_scale()");
+    sws_scale(modifContext,
+              (uint8 const* const*)frame->data,
+              frame->linesize,
+              0,
+              decoder->video_codec_context->height,
+              (uint8* const* const)ptrs,
+              stride);
+    EndTimer();
+    
+    EndTimer();
+    /*
     }
     else
     {
@@ -394,7 +395,7 @@ process_video_frame(program_data *pdata, AVFrame *frame)
                      frame->linesize[0],
                      frame->linesize[1],
                      frame->linesize[2]);
-            
+                     
             StartTimer("memcpy x3");
             memcpy(pdata->video.video_frame, frame->data[0], pdata->video.pitch * pdata->video.height);
             memcpy(pdata->video.video_frame_sup1, frame->data[1], pdata->video.pitch_sup1 * (pdata->video.height+1)/2);
@@ -410,26 +411,26 @@ process_video_frame(program_data *pdata, AVFrame *frame)
                                frame->data[0],
                                frame->linesize[0],
                                frame->height);
-            
+                               
             copy_pixel_buffers(pdata->video.video_frame_sup1,
                                pdata->video.pitch_sup1,
                                frame->data[1],
                                frame->linesize[1],
                                (frame->height+1)/2);
-            
+                               
             copy_pixel_buffers(pdata->video.video_frame_sup2,
                                pdata->video.pitch_sup2,
                                frame->data[2],
                                frame->linesize[2],
                                (frame->height+1)/2);
-            
+                               
             EndTimer();
         }
-        
         EndTimer();
     }
+    */
     
-    pdata->video.type = VIDEO_YUV;
+    pdata->video.type = VIDEO_RGB;
     pdata->video.pts = frame->pts * av_q2d(pdata->decoder.video_time_base); 
     
     EndTimer();
@@ -590,7 +591,7 @@ DecodingThreadStart(void *ptr)
     decoder_info *decoder = &pdata->decoder;
     playback_data *playback = &pdata->playback;
     
-    InitializeTimingSystem();
+    InitializeTimingSystem("decoding");
     
     StartTimer("Decoding Start");
     

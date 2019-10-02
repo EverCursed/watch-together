@@ -36,6 +36,7 @@ struct _timing_queue {
 struct _timing_data {
     timing_instance *inst;
     char *dump;
+    char *thread_name;
     real64 start_time;
     int32 dump_length;
     int32 n;
@@ -47,7 +48,7 @@ extern _Thread_local struct _timing_data __dbgtimdat;
 
 void StartTimer(char* name_c);
 void EndTimer();
-void InitializeTimingSystem();
+void InitializeTimingSystem(char* name);
 void FinishTiming();
 
 

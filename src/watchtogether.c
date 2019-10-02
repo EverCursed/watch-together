@@ -318,7 +318,7 @@ ProcessPlayback(program_data *pdata)
 int32
 InputLoopThread(void *arg)
 {
-    InitializeTimingSystem();
+    InitializeTimingSystem("input");
     
     program_data *pdata = arg;
     
@@ -337,7 +337,7 @@ InputLoopThread(void *arg)
 int32
 MainLoopThread(void *arg)
 {
-    InitializeTimingSystem();
+    InitializeTimingSystem("main");
     
     program_data *pdata = arg;
     playback_data *playback = &pdata->playback;
@@ -354,9 +354,6 @@ MainLoopThread(void *arg)
         
         StartTimer("ProcessMessages()");
         ProcessMessages(pdata);
-        EndTimer();
-        StartTimer("SDL_PumpEvents()");
-        //SDL_PumpEvents();
         EndTimer();
         
         if(pdata->file.open_failed)
@@ -405,7 +402,7 @@ MainLoopThread(void *arg)
         //dbg_print("Loop time: %ld\n", playback->time_end - playback->time_start);
         
         real64 time = PlatformGetTime();
-        real64 sleep_time = (client->next_refresh_time - time - 0.001);
+        real64 sleep_time = (client->next_refresh_time - time - 0.002);
         dbg_info("PlatformSleep(%lf)\n"
                  "\tnext_refresh_time: %lf\n"
                  "\tcurrent time: %lf\n",
@@ -451,15 +448,13 @@ AllocateBuffers(program_data *pdata)
     pdata->audio.buffer = malloc(pdata->audio.max_buffer_size);
     
     // NOTE(Val): Allocate video buffers
-    // NOTE(Val): Currently this forces a conversion to YUV. 
-    //            Therefore, it is not sensitive to various pixel sizes
-    pdata->video.pitch = round_up_align(pdata->file.width);
-    pdata->video.pitch_sup1 = round_up_align((pdata->file.width+1)/2);
-    pdata->video.pitch_sup2 = round_up_align((pdata->file.width+1)/2);
+    pdata->video.pitch = round_up_align(pdata->file.width * 4);
+    //pdata->video.pitch_sup1 = round_up_align((pdata->file.width+1)/2);
+    //pdata->video.pitch_sup2 = round_up_align((pdata->file.width+1)/2);
     
     pdata->video.video_frame = malloc(pdata->video.pitch * pdata->file.height);
-    pdata->video.video_frame_sup1 = malloc(pdata->video.pitch_sup1 * (pdata->file.height+1)/2);
-    pdata->video.video_frame_sup2 = malloc(pdata->video.pitch_sup2 * (pdata->file.height+1)/2);
+    //pdata->video.video_frame_sup1 = malloc(pdata->video.pitch_sup1 * (pdata->file.height+1)/2);
+    //pdata->video.video_frame_sup2 = malloc(pdata->video.pitch_sup2 * (pdata->file.height+1)/2);
     
     pdata->video.width = pdata->file.width;
     pdata->video.height = pdata->file.height;
@@ -472,15 +467,16 @@ DeallocateBuffers(program_data *pdata)
 {
     free(pdata->audio.buffer);
     
-    free(pdata->video.video_frame);
-    free(pdata->video.video_frame_sup1);
-    free(pdata->video.video_frame_sup2);
-    
     pdata->audio.buffer = NULL;
     
+    free(pdata->video.video_frame);
+    //free(pdata->video.video_frame_sup1);
+    //free(pdata->video.video_frame_sup2);
+    
+    
     pdata->video.video_frame = NULL;
-    pdata->video.video_frame_sup1 = NULL;
-    pdata->video.video_frame_sup2 = NULL;
+    //pdata->video.video_frame_sup1 = NULL;
+    //pdata->video.video_frame_sup2 = NULL;
     
     RETURN(SUCCESS);
 }
@@ -540,7 +536,9 @@ FileOpen(program_data *pdata)
             PlatformInitAudio(pdata);
         }
         if(pdata->file.has_video)
+        {
             PlatformInitVideo(pdata);
+        }
         //PlatformPauseAudio(1);
         
         AllocateBuffers(pdata);
