@@ -378,8 +378,6 @@ process_video_frame(program_data *pdata, AVFrame *frame)
               (uint8* const* const)ptrs,
               stride);
     EndTimer();
-    
-    EndTimer();
     /*
     }
     else
@@ -455,6 +453,7 @@ process_audio_frame(program_data *pdata, AVFrame *frame)
     if(pdata->audio.is_ready)
     {
         dbg_warn("Started processing an audio frame, while the previous one hasn't been used.\n");
+        EndTimer();
         RETURN(UNKNOWN_ERROR);
     }
     
