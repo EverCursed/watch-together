@@ -478,12 +478,14 @@ process_audio_frame(program_data *pdata, AVFrame *frame)
     
     uint32 real_size = size; // frame->linesize[0] * decoder->audio_codec_context->channels;
     
+    PlatformLockMutex(&pdata->audio.mutex);
     void *data = pdata->audio.buffer;
     if(!data)
     {
         dbg_error("Audio buffer wasn't allocated. Returning.\n");
         
         EndTimer();
+        PlatformUnlockMutex(&pdata->audio.mutex);
         RETURN(NOT_INITIALIZED);
     }
     
@@ -516,6 +518,7 @@ process_audio_frame(program_data *pdata, AVFrame *frame)
         
         EndTimer();
     }
+    PlatformUnlockMutex(&pdata->audio.mutex);
     
     pdata->audio.size += real_size;
     dbg_print("audio duration: %lf\n", pdata->audio.duration);
