@@ -2,16 +2,15 @@
 #define TIMING_H
 
 #ifdef DEBUG
+
 #ifdef _WIN32
 #include "windows.h"
 #endif
 
-#include "defines.h"
-#include "platform.h"
-
+#include "../defines.h"
 
 #define DEBUG_LINE_WIDTH     256
-#define MAX_EVENTS         8192
+#define MAX_EVENTS         65536
 #define MAX_DEPTH             64
 
 
@@ -46,19 +45,18 @@ struct _timing_data {
 
 extern _Thread_local struct _timing_data __dbgtimdat;
 
+void InitializeTimingSystem(char* name);
 void StartTimer(char* name_c);
 void EndTimer();
-void InitializeTimingSystem(char* name);
 void FinishTiming();
 
 
 #else
 
 // DEBUG is not defined, remove all timing information
-#define InitializeTimingSystem()   do {} while(0)
+#define InitializeTimingSystem(name)   do {} while(0)
 #define StartTimer(name)           do {} while(0)
 #define EndTimer()                 do {} while(0)
-#define DumpTimingFrame()          do {} while(0)
 #define FinishTiming()             do {} while(0)
 
 #endif

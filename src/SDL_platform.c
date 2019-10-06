@@ -4,7 +4,7 @@
 #include <SDL2/SDL.h>
 
 #include "watchtogether.h"
-#include "timing.h"
+#include "utils/timing.h"
 
 #if 0
 #ifdef _WIN32

@@ -6,7 +6,7 @@
 
 //#include "defines.h"
 #include "watchtogether.h"
-#include "timing.h"
+#include "utils/timing.h"
 //#include "platform.h"
 //#include "packet_queue.h"
 //#include "decoding.h"

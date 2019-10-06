@@ -1,7 +1,9 @@
+#include "common/custom_malloc.h"
+
 #include "watchtogether.h"
 #include "message_queue.h"
 #include "audio.h"
-#include "timing.h"
+#include "utils/timing.h"
 //#include "platform.h"
 //#include "kbkeys.h"
 //#include "utils.h"
@@ -352,6 +354,8 @@ MainLoopThread(void *arg)
     {
         StartTimer("Loop");
         
+        assert_memory_bounds();
+        
         StartTimer("ProcessMessages()");
         ProcessMessages(pdata);
         EndTimer();
@@ -445,14 +449,14 @@ AllocateBuffers(program_data *pdata)
     int32 seconds = 1;
     
     pdata->audio.max_buffer_size = bytes_per_sample*sample_rate*channels*seconds;
-    pdata->audio.buffer = malloc(pdata->audio.max_buffer_size);
+    pdata->audio.buffer = custom_malloc(pdata->audio.max_buffer_size);
     
     // NOTE(Val): Allocate video buffers
     pdata->video.pitch = round_up_align(pdata->file.width * 4);
     //pdata->video.pitch_sup1 = round_up_align((pdata->file.width+1)/2);
     //pdata->video.pitch_sup2 = round_up_align((pdata->file.width+1)/2);
     
-    pdata->video.video_frame = malloc(pdata->video.pitch * pdata->file.height);
+    pdata->video.video_frame = custom_malloc(pdata->video.pitch * pdata->file.height);
     //pdata->video.video_frame_sup1 = malloc(pdata->video.pitch_sup1 * (pdata->file.height+1)/2);
     //pdata->video.video_frame_sup2 = malloc(pdata->video.pitch_sup2 * (pdata->file.height+1)/2);
     

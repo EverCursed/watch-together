@@ -8,6 +8,8 @@ This holds a queue of AVPacket structs. This is a buffer for
 
 #include <libavcodec/avcodec.h>
 //#include "packet_queue.h"
+#include "common/custom_malloc.h"
+
 #include "watchtogether.h"
 
 // TODO(Val): Think about how the packets should be free'd.
@@ -15,8 +17,8 @@ This holds a queue of AVPacket structs. This is a buffer for
 avpacket_queue*
 init_avpacket_queue(int32 n)
 {
-    avpacket_queue *queue = malloc(sizeof(avpacket_queue));
-    queue->array = malloc(sizeof(AVPacket *)*n);
+    avpacket_queue *queue = custom_malloc(sizeof(avpacket_queue));
+    queue->array = custom_malloc(sizeof(AVPacket *)*n);
     
     queue->n = 0;
     queue->maxn = n;

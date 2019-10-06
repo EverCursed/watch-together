@@ -1,7 +1,11 @@
 #include "timing.h"
 
+#include <stdio.h>
+
+#include "../common/custom_malloc.h"
+
 #ifdef _WIN32
-#include "windows.h"
+#include <windows.h>
 #endif
 
 _Thread_local struct _timing_data __dbgtimdat = {};
@@ -28,7 +32,10 @@ void
 StartTimer(char* name_c)
 {
     if(__dbgtimdat.n == __dbgtimdat.max_marks)
-        realloc(__dbgtimdat.inst, sizeof(timing_instance)*(__dbgtimdat.max_marks + MAX_EVENTS));
+    {
+        __dbgtimdat.inst = custom_realloc(__dbgtimdat.inst, sizeof(timing_instance)*(__dbgtimdat.max_marks + MAX_EVENTS));
+        __dbgtimdat.max_marks += MAX_EVENTS;
+    }
     
     __dbgtimdat.inst[__dbgtimdat.n].name = name_c;
     GetHighPrecisionTime(&__dbgtimdat.inst[__dbgtimdat.n].time);
@@ -40,8 +47,10 @@ void
 EndTimer()
 {
     if(__dbgtimdat.n == __dbgtimdat.max_marks)
-        realloc(__dbgtimdat.inst, sizeof(timing_instance)*(__dbgtimdat.max_marks + MAX_EVENTS));
-    
+    {
+        __dbgtimdat.inst = custom_realloc(__dbgtimdat.inst, sizeof(timing_instance)*(__dbgtimdat.max_marks + MAX_EVENTS));
+        __dbgtimdat.max_marks += MAX_EVENTS;
+    }
     __dbgtimdat.inst[__dbgtimdat.n].name = NULL;
     GetHighPrecisionTime(&__dbgtimdat.inst[__dbgtimdat.n].time);
     __dbgtimdat.n++;
@@ -52,7 +61,7 @@ DumpTimingFrame()
 {
     int32 n = 0; 
     struct _timing_queue queue = {};
-    __dbgtimdat.dump = malloc(__dbgtimdat.n * DEBUG_LINE_WIDTH);
+    __dbgtimdat.dump = custom_malloc(__dbgtimdat.n * DEBUG_LINE_WIDTH);
     for(int i = 0; i < __dbgtimdat.n; i++)
     {
         if(__dbgtimdat.inst[i].name != NULL)
@@ -84,7 +93,7 @@ InitializeTimingSystem(char *name)
 {
     InitPlatformTimingData(); 
     
-    __dbgtimdat.inst = malloc(sizeof(timing_instance) * MAX_EVENTS);
+    __dbgtimdat.inst = custom_malloc(sizeof(timing_instance) * MAX_EVENTS);
     //__dbgtimdat.dump = malloc(MAX_EVENTS * DEBUG_LINE_WIDTH);
     __dbgtimdat.start_time = 0;
     __dbgtimdat.thread_name = name;
