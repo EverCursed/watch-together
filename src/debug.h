@@ -42,7 +42,7 @@ do { \
 #else
 #define dbg_warn(...) \
 do { } while(0)
-#endif
+#endif // SUPPRESS_WARN
 
 #define dbg(x) x
 
@@ -77,18 +77,18 @@ do {\
 
 #ifndef SUPPRESS_WARN
 #define dbg_warn(...) \
-do { } while(0)
-#else
-#define dbg_warn(...) \
 do { \
     fprintf(stderr, KYEL);\
     fprintf(stderr, __VA_ARGS__);\
     fprintf(stderr, KNRM);\
 } while(0)
-#endif
+#else
+#define dbg_warn(...) \
+do { } while(0)
+#endif // SUPPRESS_WARN
 
 #define dbg(x) x
-#endif
+#endif // OS
 
 #else
 
@@ -99,5 +99,5 @@ do { \
 #define dbg_warn(...)
 #define dbg(x)
 
-#endif
-#endif
+#endif // DEBUG
+#endif // DEBUG_H

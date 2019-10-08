@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "../utils/debug.h"
+#include "../debug.h"
 
 #define MAX_ALLOCS 256
 

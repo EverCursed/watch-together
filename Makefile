@@ -5,9 +5,9 @@ OUTPUT_FILE:=$(OUTPUT_DIR)/$(APPNAME)
 
 LIB_FLAGS := $(LIB_DIR) -lSDL2 -lavcodec -lavutil -lavformat -lswscale
 
-src := $(wildcard ./src/*.c)
+src := $(wildcard ./src/*.c) $(wildcard ./src/*/*.c)
 obj = $(src:.c=.o)
-inc := $(wildcard src/*.h)
+inc := $(wildcard src/*.h) $(wildcard ./src/*/*.h)
 
 ifeq ($(OS),Windows_NT)
 	RM := del
@@ -28,10 +28,10 @@ endif
 DBGFLAGS := -DDEBUG -fno-omit-frame-pointer
 CFLAGS := -Wall $(INCLUDE_DIR) -g -O3
 
-watchtogether: $(obj)
-	$(CC) -MD -MF $(CFLAGS) $^ -o $(OUTPUT_FILE) $(LIB_FLAGS)
+watchtogether: $(obj) $(inc)
+	$(CC) -MD -MF $(CFLAGS) $(obj) -o $(OUTPUT_FILE) $(LIB_FLAGS)
 
-%.o: %.c
+%.o: %.c $(inc)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY:

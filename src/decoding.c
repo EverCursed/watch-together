@@ -20,11 +20,6 @@
 
 
 // TODO(Val): Make this more neat 
-struct frame_info {
-    AVFrame *frame;
-    int32 type;
-    int32 ret;
-};
 
 int32
 get_packet(program_data *pdata, AVPacket *packet)

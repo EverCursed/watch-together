@@ -1,6 +1,8 @@
 #ifndef PACKET_QUEUE
 #define PACKET_QUEUE
 
+#include "defines.h"
+
 #define dbg_packet(p) \
 do { \
     dbg_info("Packet:\n" \
