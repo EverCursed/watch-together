@@ -28,6 +28,25 @@
 #define KCYN  "\x1B[36m"
 #define KWHT  "\x1B[37m"
 
+// ------------ CONTROL MESSAGES -----------------
+
+#define MESSAGE_HELLO               35
+#define REQUEST_PORT                36
+#define MESSAGE_INFO                37
+#define MESSAGE_PAUSE               38
+#define MESSAGE_PLAY                39
+#define MESSAGE_SEEK                40
+#define MESSAGE_DISCONNECT          41
+
+// NOTE(Val): Not sure if will use these ones yet. 
+#define REQUEST_SUBTITLES
+#define REQUEST_CANCEL_SUBTITLES    
+#define REQUEST_AUDIO_CHANGE        
+#define MESSAGE_CHAT                
+#define MESSAGE_SCREENSHOT
+
+// -----------------------------------------------
+
 struct _platform_data;
 struct _thread_info;
 struct _cond_info;

@@ -2,6 +2,7 @@
 #include <string.h>
 #include <time.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_net.h>
 
 #include "watchtogether.h"
 #include "utils/timing.h"
@@ -737,8 +738,14 @@ int main(int argc, char *argv[])
     // initialize all the necessary SDL stuff
     SDL_SetMainReady();
     
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0){
-        return 1;
+    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0)
+    {
+        RETURN(FAILED_TO_INIT);
+    }
+    
+    if(SDLNet_Init() != 0)
+    {
+        RETURN(FAILED_TO_INIT);
     }
     
     //SDL_SetHint("SDL_HINT_WINDOWS_ENABLE_MESSAGELOOP", "0");
