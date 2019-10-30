@@ -36,4 +36,11 @@ typedef struct _destination_IP {
     bool32 is_ipv6;
 } destination_IP;
 
+int32 StartServer();
+int32 AcceptConnection();
+int32 ConnectToIP(destination_IP ip);
+int32 SendControlMessage(int32, int32, ...);
+int32 CloseConnection();
+int32 CloseServer();
+
 #endif 

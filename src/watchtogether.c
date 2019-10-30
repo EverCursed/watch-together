@@ -4,6 +4,7 @@
 #include "message_queue.h"
 #include "audio.h"
 #include "utils/timing.h"
+#include "network.h"
 #include "media_processing.h"
 //#include "platform.h"
 //#include "kbkeys.h"
@@ -319,6 +320,30 @@ ProcessPlayback(program_data *pdata)
 }
 
 int32
+ProcessNetwork(program_data *pdata)
+{
+    if(pdata->is_host && !pdata->connected)
+    {
+        if(AcceptConnection() == CONNECTED)
+        {
+            pdata->connected = 1;
+            
+            //PreSendPackets();
+        }
+    }
+    else if(pdata->is_host && pdata->connected)
+    {
+        
+    }
+    else if(pdata->is_partner)
+    {
+        
+    }
+    
+    RETURN(SUCCESS);
+}
+
+int32
 InputLoopThread(void *arg)
 {
     InitializeTimingSystem("input");
@@ -337,6 +362,25 @@ InputLoopThread(void *arg)
     RETURN(SUCCESS);
 }
 
+static void
+StartPlayback(program_data *pdata)
+{
+    StartTimer("Starting Playback");
+    start_playback(&pdata->playback, *pdata->playback.current_frame_time + 0.3);
+    
+    pdata->start_playback = 0;
+    pdata->playing = 1;
+    
+    //ProcessVideo(pdata);
+    //ProcessAudio(pdata);
+    
+    PlatformConditionSignal(&pdata->decoder.condition);
+    
+    //TogglePlayback(pdata);
+    dbg_warn("Playback started!\n");
+    EndTimer();
+}
+
 int32
 MainLoopThread(void *arg)
 {
@@ -349,6 +393,24 @@ MainLoopThread(void *arg)
     client->next_refresh_time = (PlatformGetTime() +  client->refresh_target)/1.0;
     
     // now start main loop
+    
+    if(pdata->is_host)
+    {
+        StartServer();
+    }
+    
+    if(pdata->is_partner)
+    {
+        if(!ConnectToIP(pdata->server_ip))
+        {
+            pdata->connected = 1;
+        }
+        else
+        {
+            pdata->running = 0;
+            RETURN(CONNECTION_FAILED);
+        }
+    }
     
     StartTimer("MainLoop()");
     while(pdata->running)
@@ -373,20 +435,7 @@ MainLoopThread(void *arg)
         {
             if(pdata->start_playback)
             {
-                StartTimer("Starting Playback");
-                start_playback(playback, *playback->current_frame_time + 0.3);
-                
-                pdata->start_playback = 0;
-                pdata->playing = 1;
-                
-                //ProcessVideo(pdata);
-                //ProcessAudio(pdata);
-                
-                PlatformConditionSignal(&pdata->decoder.condition);
-                
-                //TogglePlayback(pdata);
-                dbg_warn("Playback started!\n");
-                EndTimer();
+                StartPlayback(pdata);
             }
         }
         

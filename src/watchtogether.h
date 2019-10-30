@@ -243,6 +243,9 @@ typedef struct _program_data {
     uint32 tick;
     
     bool32 is_fullscreen;
+    bool32 is_host;
+    bool32 is_partner;
+    bool32 connected;
     
     bool32 running;
     bool32 playing;
@@ -250,6 +253,8 @@ typedef struct _program_data {
     bool32 start_playback;
     bool32 playback_finished;
     
+    destination_IP server_ip;
+    destination_IP partner_ip;
 } program_data;
 
 int32 
