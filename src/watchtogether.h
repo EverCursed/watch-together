@@ -14,6 +14,7 @@
 #include "message_queue.h"
 #include "packet_queue.h"
 #include "decoding.h"
+#include "encoding.h"
 #include "kbkeys.h"
 #include "video.h"
 #include "utils.h"
@@ -75,6 +76,7 @@ typedef struct _socket_info {
 } socket_info;
 
 typedef struct _decoder_info decoder_info;
+typedef struct _encoder_info encoder_info;
 
 typedef struct _key_event {
     uint32 key;
@@ -230,6 +232,7 @@ typedef struct _program_data {
     open_file_info file;
     threads_info_all threads;
     decoder_info decoder;
+    encoder_info encoder;
     playback_data playback;
     hardware_info hardware;
     message_queue messages;
