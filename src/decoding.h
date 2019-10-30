@@ -1,8 +1,14 @@
 #ifndef DECODING
 #define DECODING
 
-#include "defines.h"
+//#include "watchtogether.h"
+#include <libavutil/avutil.h>
+#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
 
+#include "SDL_platform.h"
+#include "defines.h"
+#include "packet_queue.h"
 
 typedef struct _decoder_info {
     AVRational video_time_base;
@@ -25,13 +31,7 @@ typedef struct _decoder_info {
 } decoder_info;
 
 
-int32
-DecodingFileOpen(open_file_info *file, decoder_info *decoder);
-
-void
-DecodingFileClose(open_file_info *file, decoder_info *decoder);
-
-int32 
-DecodingThreadStart(void *ptr);
+int32 DecodingThreadStart(void *ptr);
+AVFrame* DecodePacket(avpacket_queue *queue, AVCodecContext *codec_context);
 
 #endif
