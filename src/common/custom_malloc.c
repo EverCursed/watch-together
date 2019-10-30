@@ -40,8 +40,10 @@ c_realloc(void *ptr, size_t size)
     {
         if(allocations[i] == ptr)
         {
-            allocations[i] = realloc(ptr, size);
+            allocations[i] = realloc(ptr, size+canary_size);
             sizes[i] = size;
+            
+            *((int *)(allocations[i] + size)) = *((int *)(canary));
             
             dbg_success("Reallocated memory (%s:%d)\n", files[i], lines[i]);
             return allocations[i];
