@@ -3,6 +3,7 @@
 #include <time.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_net.h>
+#include <assert.h>
 
 #include "watchtogether.h"
 #include "utils/timing.h"
@@ -737,6 +738,15 @@ static int32 InitializeSurfaces(int width, int height)
 int main(int argc, char *argv[])
 {
     // initialize all the necessary SDL stuff
+    if(argc == 1)
+    {
+        printf("usage: %s -i input_file [-s] [-p ip]\n "
+               "\t-s:    use this machine as a streaming server\n"
+               "\t-p ip: use this machine as a partner and connect to the server on the provided ip\n",
+               argv[0]);
+        return 0;
+    }
+    
     SDL_SetMainReady();
     
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0)
@@ -799,11 +809,50 @@ int main(int argc, char *argv[])
     
     //texture = Deb_ResizePixelBuffer(window, renderer);
     
+    
+    
+    
+    int argi = 1;
+    while(argi < argc)
+    {
+        if(!strcmp(argv[argi], "-i"))
+        {
+            pdata->file.filename = (char *)argv[++argi];
+        }
+        else if(!strcmp(argv[argi], "-s") || !strcmp(argv[argi], "--server"))
+        {
+            if(!pdata->is_partner)
+            {
+                pdata->is_host = 1;
+            }
+            else
+            {
+                // TODO(Val): Warning 
+            }
+        }
+        else if(!strcmp(argv[argi], "-p") || !strcmp(argv[argi], "--partner"))
+        {
+            if(!pdata->is_host)
+            {
+                pdata->is_partner = 1;
+            }
+            else
+            {
+                // TODO(Val): Warning
+            }
+        }
+        
+        argi++;
+    }
+    
+    assert(!(pdata->is_host && pdata->is_partner));
+    
+    /*
     if(argc > 1)
         pdata->file.filename = (char *)*(argv+1);
     else
         pdata->file.filename = TESTING_FILE;
-    
+    */
     SDL_DisplayMode display_info;
     // TODO(Val): For now this just picks 0th monitor. Make this better.
     SDL_GetCurrentDisplayMode(0, &display_info);
