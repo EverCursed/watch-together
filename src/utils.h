@@ -3,6 +3,12 @@
 
 #define ArrayCount(x) (sizeof(x)/sizeof(x[0]))
 
+#define BYTES(x)   (x)
+#define KB(x)      (1024*x)
+#define MB(x)      (1024*KB(x))
+#define GB(x)      (1024*MB(x))
+#define TB(x)      (1024*GB(x))
+#define PB(x)      (1024*TB(x))
 
 #define BYTES_ALIGNMENT 16
 

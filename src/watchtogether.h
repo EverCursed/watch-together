@@ -252,11 +252,12 @@ typedef struct _program_data {
     
     bool32 is_fullscreen;
     
-    volatile bool32 running;
-    volatile bool32 playing;
-    volatile bool32 paused;
-    volatile bool32 start_playback;
-    volatile bool32 playback_finished;
+    bool32 running;
+    bool32 playing;
+    bool32 paused;
+    bool32 start_playback;
+    bool32 playback_finished;
+    
 } program_data;
 
 int32 

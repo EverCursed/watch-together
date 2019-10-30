@@ -6,6 +6,7 @@
 
 #include "watchtogether.h"
 #include "utils/timing.h"
+#include "utils.h"
 
 #if 0
 #ifdef _WIN32

@@ -65,7 +65,7 @@ assert_memory_bounds()
 }
 
 void
-custom_free(void *mem)
+c_free(void *mem)
 {
     for(int i = 0; i < MAX_ALLOCS; i++)
     {
