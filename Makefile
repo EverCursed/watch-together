@@ -3,7 +3,7 @@ CC:=gcc
 OUTPUT_DIR:=bin
 OUTPUT_FILE:=$(OUTPUT_DIR)/$(APPNAME)
 
-LIB_FLAGS := $(LIB_DIR) -lSDL2 -lavcodec -lavutil -lavformat -lswscale
+LIB_FLAGS := $(LIB_DIR) -lSDL2 -lSDL2_net -lavcodec -lavutil -lavformat -lswscale
 
 src := $(wildcard ./src/*.c) $(wildcard ./src/*/*.c)
 obj = $(src:.c=.o)
