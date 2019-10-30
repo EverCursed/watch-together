@@ -18,6 +18,7 @@
 #include "kbkeys.h"
 #include "video.h"
 #include "utils.h"
+#include "media_processing.h"
 #include "network.h"
 #include "file_data.h"
 

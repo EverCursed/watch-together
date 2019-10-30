@@ -4,6 +4,7 @@
 #include "message_queue.h"
 #include "audio.h"
 #include "utils/timing.h"
+#include "media_processing.h"
 //#include "platform.h"
 //#include "kbkeys.h"
 //#include "utils.h"
@@ -530,7 +531,7 @@ FileOpen(program_data *pdata)
 {
     pdata->decoder.condition = PlatformCreateConditionVar();
     
-    if(!DecodingFileOpen(&pdata->file, &pdata->decoder))
+    if(!MediaOpen(&pdata->file, &pdata->decoder, &pdata->encoder))
     {
         InitQueues(pdata);
         
@@ -548,7 +549,7 @@ FileOpen(program_data *pdata)
         AllocateBuffers(pdata);
         
         pdata->threads.decoder_thread =
-            PlatformCreateThread(DecodingThreadStart, pdata, "decoder");
+            PlatformCreateThread(MediaThreadStart, pdata, "decoder");
         
         pdata->file.file_ready = 1;
         pdata->playing = 0;
@@ -572,7 +573,7 @@ FileClose(program_data *pdata)
     
     PlatformConditionSignal(&pdata->decoder.condition);
     
-    DecodingFileClose(&pdata->file, &pdata->decoder);
+    MediaClose(&pdata->file, &pdata->decoder, &pdata->encoder);
     PlatformConditionDestroy(&pdata->decoder.condition);
     
     // TODO(Val): This will block forever, need to fix
