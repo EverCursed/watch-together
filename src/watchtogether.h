@@ -17,7 +17,8 @@
 #include "kbkeys.h"
 #include "video.h"
 #include "utils.h"
-#include "decoding.h"
+#include "network.h"
+#include "file_data.h"
 
 #define KNRM  "\x1B[0m"
 #define KRED  "\x1B[31m"
