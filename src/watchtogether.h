@@ -140,6 +140,7 @@ typedef struct _client_info {
     uint32 bytes_per_pixel;
     bool32 fullscreen;
     
+    real64 start_time;
     real64 refresh_target;
     real64 current_frame_time;
     real64 next_refresh_time;

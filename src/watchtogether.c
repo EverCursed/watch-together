@@ -6,6 +6,7 @@
 #include "utils/timing.h"
 #include "network.h"
 #include "media_processing.h"
+#include "time.h"
 //#include "platform.h"
 //#include "kbkeys.h"
 //#include "utils.h"
@@ -390,7 +391,8 @@ MainLoopThread(void *arg)
     playback_data *playback = &pdata->playback;
     client_info *client = &pdata->client;
     
-    client->next_refresh_time = (PlatformGetTime() +  client->refresh_target)/1.0;
+    client->start_time = PlatformGetTime();
+    client->next_refresh_time = (client->start_time + client->refresh_target);
     
     // now start main loop
     
@@ -465,7 +467,8 @@ MainLoopThread(void *arg)
                  time);
         
         StartTimer("Sleep()");
-        PlatformSleep(sleep_time);
+        //PlatformSleep(sleep_time);
+        WaitUntil(client->next_refresh_time, 0.002);
         EndTimer();
         
         StartTimer("PlatformFlipBuffers()");
@@ -478,7 +481,7 @@ MainLoopThread(void *arg)
         PlatformFlipBuffers(pdata);
         EndTimer();
         
-        client->current_frame_time = client->next_refresh_time;
+        client->current_frame_time = PlatformGetTime();
         client->next_refresh_time += client->refresh_target;
         
         EndTimer();
@@ -644,6 +647,7 @@ MainThread(program_data *pdata)
     // NOTE(Val): Initialize things here that will last the entire runtime of the application
     
     pdata->client.refresh_target = 1.0 / (real64)pdata->hardware.monitor_refresh_rate;
+    //pdata->client.
     
     pdata->playback.current_frame_time = &pdata->client.current_frame_time;
     pdata->playback.next_frame_time = &pdata->client.next_refresh_time;

@@ -3,9 +3,6 @@
 
 #include "watchtogether.h"
 
-real64
-PlatformGetTime();
-
 int32
 PlatformFlipBuffers(program_data *);
 
@@ -20,9 +17,6 @@ PlatformUpdateVideoFrame(program_data *);
 
 int32
 PlatformUpdateFrame(program_data *);
-
-void
-PlatformSleep(real64);
 
 
 // Threads 
