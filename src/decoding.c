@@ -126,7 +126,6 @@ copy_pixel_buffers(uint8 *dst,
     }
 }
 
-
 #define copy_bytes(dst, src, bytes)\
 do {\
     for(int i = 0; i < bytes; i++)\

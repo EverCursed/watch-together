@@ -272,7 +272,6 @@ ProcessPlayback(program_data *pdata)
             SkipVideoFrame(pdata);
             EndTimer();
             
-            need_video = 1;
         }
         else if(!pdata->video.is_ready)
         {
@@ -318,7 +317,7 @@ ProcessPlayback(program_data *pdata)
     if(need_audio || need_video)
     {
         dbg_warn("Video or audio needed.\n");
-        PlatformConditionSignal(&pdata->decoder.condition);
+        //PlatformConditionSignal(&pdata->decoder.condition);
     }
     //update_playback_time(playback);
     
@@ -380,7 +379,7 @@ StartPlayback(program_data *pdata)
     //ProcessVideo(pdata);
     //ProcessAudio(pdata);
     
-    PlatformConditionSignal(&pdata->decoder.condition);
+    //PlatformConditionSignal(&pdata->decoder.condition);
     
     //TogglePlayback(pdata);
     dbg_warn("Playback started!\n");
@@ -396,8 +395,8 @@ MainLoopThread(void *arg)
     playback_data *playback = &pdata->playback;
     client_info *client = &pdata->client;
     
-    client->start_time = PlatformGetTime();
-    client->next_refresh_time = (client->start_time + client->refresh_target);
+    //client->start_time = PlatformGetTime();
+    //client->next_refresh_time = (client->start_time + client->refresh_target);
     
     // now start main loop
     
@@ -463,17 +462,18 @@ MainLoopThread(void *arg)
         //dbg_print("Loop time: %ld\n", playback->time_end - playback->time_start);
         
         real64 time = PlatformGetTime();
-        real64 sleep_time = (client->next_refresh_time - time - 0.002);
-        dbg_info("PlatformSleep(%lf)\n"
-                 "\tnext_refresh_time: %lf\n"
-                 "\tcurrent time: %lf\n",
-                 sleep_time,
-                 client->next_refresh_time,
-                 time);
+        //real64 sleep_time = (client->next_refresh_time - time - 0.002);
+        //dbg_info("PlatformSleep(%lf)\n"
+        //"\tnext_refresh_time: %lf\n"
+        //"\tcurrent time: %lf\n",
+        //sleep_time,
+        //client->next_refresh_time,
+        //time);
         
         StartTimer("Sleep()");
         //PlatformSleep(sleep_time);
         WaitUntil(client->next_refresh_time, 0.002);
+        client->next_refresh_time += client->refresh_target;
         EndTimer();
         
         StartTimer("PlatformFlipBuffers()");
@@ -486,8 +486,7 @@ MainLoopThread(void *arg)
         PlatformFlipBuffers(pdata);
         EndTimer();
         
-        client->current_frame_time = PlatformGetTime();
-        client->next_refresh_time += client->refresh_target;
+        //client->current_frame_time = PlatformGetTime();
         
         EndTimer();
     }
@@ -628,7 +627,7 @@ FileClose(program_data *pdata)
     pdata->playing = 0;
     pdata->paused = 0;
     
-    PlatformConditionSignal(&pdata->decoder.condition);
+    //PlatformConditionSignal(&pdata->decoder.condition);
     
     MediaClose(&pdata->file, &pdata->decoder, &pdata->encoder);
     PlatformConditionDestroy(&pdata->decoder.condition);

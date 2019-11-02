@@ -26,7 +26,7 @@ PlatformSleep(real64 seconds)
     if(seconds < 0.0)
         seconds = 0.0;
     
-    av_usleep(seconds * USEC);
+    av_usleep((int32)(seconds * USEC));
     
     RETURN(SUCCESS);
 }

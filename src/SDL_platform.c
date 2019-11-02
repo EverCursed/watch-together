@@ -224,14 +224,14 @@ PlatformPauseAudio(bool32 b)
 {
     SDL_PauseAudioDevice(AudioID, b);
 }
-
+/*
 void
 PlatformSleep(real64 s)
 {
     int st = s < 0 ? 0 : s * 1000.0;
     SDL_Delay(st);
 }
-
+*/
 /// Platform create thread
 thread_info
 PlatformCreateThread(int32 (*f)(void *), void *data, char* name)
@@ -272,7 +272,7 @@ PlatformConditionWait(cond_info *c)
     while(!c->test && pdata->running)
     {
         SDL_CondWait(c->cond, c->mutex);
-        PlatformSleep(0.001);
+        //PlatformSleep(0.001);
     }
     c->test = 0;
     SDL_UnlockMutex(c->mutex);
@@ -340,6 +340,7 @@ PlatformUnlockMutex(platform_mutex *m)
         RETURN(UNKNOWN_ERROR);
 }
 
+/*
 real64
 PlatformGetTime()
 {
@@ -347,7 +348,7 @@ PlatformGetTime()
     dbg_info("PlatformGetTime(): %lf\n", ticks/1000.0);
     return ticks/1000.0;
 }
-
+*/
 int32
 PlatformUpdateVideoFrame(program_data *pdata)
 {
@@ -801,14 +802,6 @@ int main(int argc, char *argv[])
     
     if(InitializeSurfaces(1280, 720))
         RETURN(UNKNOWN_ERROR);
-    
-    
-    //SDL_PauseAudioDevice(AudioID, 0); /* start audio playing. */
-    
-    //texture = Deb_ResizePixelBuffer(window, renderer);
-    
-    
-    
     
     int argi = 1;
     while(argi < argc)

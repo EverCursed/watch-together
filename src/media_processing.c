@@ -10,6 +10,7 @@
 #include "file_data.h"
 #include "utils/timing.h"
 #include "packet_queue.h"
+#include "time.h"
 
 
 static int32
@@ -379,7 +380,6 @@ LoadPackets(program_data *pdata, open_file_info *file)
     EndTimer();
 }
 
-
 int32
 MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder)
 {
@@ -571,11 +571,16 @@ MediaThreadStart(void *arg)
     
     LoadPackets(pdata, file);
     
+    real64 decoding_start_time = PlatformGetTime();
+    
+    
     bool32 start_notified = 0;
     while(pdata->running && !pdata->playback_finished)
     {
         StartTimer("Start processing loop");
         ProcessPackets(pdata);
+        
+        real64 next_time = pdata->playback.audio_total_queued < pdata->video.pts ? pdata->playback.audio_total_queued : pdata->video.pts;
         
         if(pdata->is_host)
         {
@@ -594,6 +599,18 @@ MediaThreadStart(void *arg)
         
         StartTimer("Waiting");
         //PlatformConditionWait(&decoder->condition);
+        dbg_info("Media processing:\n"
+                 "\tSleeping data:\n"
+                 "\t\tdecoding_start_time: %lf\n"
+                 "\t\tvideo.pts: %lf\n"
+                 "\t\taudio_total_queued: %lf\n"
+                 "\t\tcurrent_time: %lf\n",
+                 decoding_start_time,
+                 pdata->video.pts,
+                 pdata->playback.audio_total_queued,
+                 PlatformGetTime());
+        WaitUntil(decoding_start_time + next_time, 0.002);
+        //PlatformSleep(0.010);
         EndTimer();
         
         EndTimer();
