@@ -251,6 +251,7 @@ ProcessPlayback(program_data *pdata)
     
     if(pdata->file.has_video)
     {
+        StartTimer("Processing video");
         if(pdata->video.is_ready &&
            (should_display(playback, pdata->video.pts) || !playback->started_playing))
         {
@@ -281,10 +282,12 @@ ProcessPlayback(program_data *pdata)
         {
             dbg_warn("Not time to display yet.\n");
         }
+        EndTimer();
     }
     
     if(pdata->file.has_audio)
     {
+        StartTimer("Processing audio");
         if(pdata->audio.is_ready &&
            (should_queue(playback) || !playback->started_playing))
         {
@@ -308,7 +311,9 @@ ProcessPlayback(program_data *pdata)
         {
             dbg_error("Audio is not ready.\n");
         }
+        EndTimer();
     }
+    
     
     if(need_audio || need_video)
     {

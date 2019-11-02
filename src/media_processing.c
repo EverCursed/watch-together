@@ -574,6 +574,7 @@ MediaThreadStart(void *arg)
     bool32 start_notified = 0;
     while(pdata->running && !pdata->playback_finished)
     {
+        StartTimer("Start processing loop");
         ProcessPackets(pdata);
         
         if(pdata->is_host)
@@ -591,9 +592,13 @@ MediaThreadStart(void *arg)
         
         LoadPackets(pdata, file);
         
-        PlatformConditionWait(&decoder->condition);
+        StartTimer("Waiting");
+        //PlatformConditionWait(&decoder->condition);
+        EndTimer();
+        
         EndTimer();
     }
     
+    FinishTiming();
     RETURN(SUCCESS);
 }
