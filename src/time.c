@@ -11,12 +11,12 @@ static int64 init_time = 0;
 real64
 PlatformGetTime()
 {
-    StartTimer("PlatformGetTime()");
+    //StartTimer("PlatformGetTime()");
     if(!init_time)
         init_time = av_gettime_relative();
     
     real64 ret = ((real64)(av_gettime_relative() - init_time) / USEC);
-    EndTimer();
+    //EndTimer();
     return ret;
 }
 

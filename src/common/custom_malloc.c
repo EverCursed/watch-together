@@ -46,6 +46,7 @@ c_realloc(void *ptr, size_t size)
             *((int *)(allocations[i] + size)) = *((int *)(canary));
             
             dbg_success("Reallocated memory (%s:%d)\n", files[i], lines[i]);
+            
             return allocations[i];
         }
     }

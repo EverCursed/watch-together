@@ -92,12 +92,12 @@ do { } while(0)
 
 #else
 
-#define dbg_print(...)
-#define dbg_error(...)
-#define dbg_info(...)
-#define dbg_success(...)
-#define dbg_warn(...)
-#define dbg(x)
+#define dbg_print(...) do {} while(0)
+#define dbg_error(...) do {} while(0)
+#define dbg_info(...) do {} while(0)
+#define dbg_success(...) do {} while(0)
+#define dbg_warn(...) do {} while(0)
+#define dbg(x) do {} while(0)
 
 #endif // DEBUG
 #endif // DEBUG_H

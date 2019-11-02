@@ -1,18 +1,13 @@
 #ifndef TIMING_H
 #define TIMING_H
 
-#ifdef DEBUG
-
-#ifdef _WIN32
-#include "windows.h"
-#endif
-
 #include "../defines.h"
 
 #define DEBUG_LINE_WIDTH     256
 #define MAX_EVENTS         65536
 #define MAX_DEPTH             64
 
+extern _Thread_local struct _timing_data __dbgtimdat;
 
 struct platform_timing_data {
 #ifdef _WIN32
@@ -43,7 +38,12 @@ struct _timing_data {
     struct platform_timing_data dat;
 };
 
-extern _Thread_local struct _timing_data __dbgtimdat;
+
+#ifdef DEBUG
+
+#ifdef _WIN32
+#include "windows.h"
+#endif
 
 void InitializeTimingSystem(char* name);
 void StartTimer(char* name_c);

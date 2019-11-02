@@ -10,6 +10,12 @@
 
 _Thread_local struct _timing_data __dbgtimdat = {};
 
+#undef InitializeTimingSystem
+#undef StartTimer
+#undef EndTimer
+#undef FinishTiming
+
+
 static void
 InitPlatformTimingData()
 {
