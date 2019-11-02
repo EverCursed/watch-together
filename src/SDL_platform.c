@@ -352,25 +352,47 @@ PlatformGetTime()
 int32
 PlatformUpdateVideoFrame(program_data *pdata)
 {
+    StartTimer("PlatformUpdateVideoFrame()");
+    
     output_video *video = &pdata->video;
     
     int ret = 0;
     
-    StartTimer("PlatformUpdateVideoFrame()");
-    
+    StartTimer("LockSurface()");
     ret = LockSurface(video_surface);
+    EndTimer();
+    
     if(ret)
         dbg_error("%s\n", SDL_GetError());
     
-    int32 pitch = video_surface->pitch;
-    void *data = video_surface->pixels;
-    
-    StartTimer("memcpy");
-    for(int i = 0; i < video->height; i++)
-    {
-        memcpy(data + i*pitch, video->video_frame + i*video->pitch, video->pitch);
-    }
+    //int32 pitch = video_surface->pitch;
+    //void *data = video_surface->pixels;
+    StartTimer("SDL_CreateRGBSurfaceWithFormatFrom()");
+    SDL_Surface *temp_surface = SDL_CreateRGBSurfaceWithFormatFrom(video->video_frame,
+                                                                   video->width,
+                                                                   video->height,
+                                                                   32,
+                                                                   video->pitch,
+                                                                   SDL_PIXELFORMAT_BGRA32);
     EndTimer();
+    
+    StartTimer("SDL_BlitScaled()");
+    SDL_BlitScaled(temp_surface,
+                   NULL,
+                   video_surface,
+                   NULL);
+    EndTimer();
+    
+    SDL_FreeSurface(temp_surface);
+    
+    /*
+StartTimer("memcpy");
+for(int i = 0; i < video->height; i++)
+{
+memcpy(data + i*pitch, video->video_frame + i*video->pitch, video->pitch);
+}
+EndTimer();
+*/
     
     UnlockSurface(video_surface);
     
@@ -433,11 +455,11 @@ PlatformUpdateFrame(program_data *pdata)
             RETURN(UNKNOWN_ERROR);
         }
         
-        StartTimer("SDL_BlitScaled(video_surface)");
-        ret = SDL_BlitScaled(video_surface,
-                             NULL,
-                             SDL_GetWindowSurface(window),
-                             NULL);
+        StartTimer("SDL_BlitSurface(video_surface)");
+        ret = SDL_BlitSurface(video_surface,
+                              NULL,
+                              SDL_GetWindowSurface(window),
+                              NULL);
         EndTimer();
     }
     
@@ -464,19 +486,11 @@ PlatformUpdateFrame(program_data *pdata)
 int32
 PlatformFlipBuffers(program_data *pdata)
 {
+    StartTimer("PlatformFlipBuffers()");
     SDL_UpdateWindowSurface(window);
+    EndTimer();
     
     RETURN(SUCCESS);
-}
-
-void
-PlatformInitVideo(program_data *pdata)
-{
-    if(video_surface)
-        SDL_FreeSurface(video_surface);
-    
-    video_surface = SDL_CreateRGBSurfaceWithFormat(0, pdata->file.width, pdata->file.height, 32, SDL_PIXELFORMAT_BGRA32);
-    //SDL_SetSurfaceRLE(video_surface, 1);
 }
 
 void
@@ -575,14 +589,35 @@ ResizeScreen(program_data *pdata, int x, int y)
     if(ui_surface)
         SDL_FreeSurface(ui_surface);
     
+    if(video_surface)
+        SDL_FreeSurface(video_surface);
+    
+    video_surface = SDL_CreateRGBSurface(0, x, y, 32, rmask, gmask, bmask, amask);
+    SDL_SetSurfaceRLE(video_surface, 1);
+    
     ui_surface = SDL_CreateRGBSurface(0, x, y, 32,
                                       rmask, gmask, bmask, amask);
-    //SDL_SetSurfaceRLE(ui_surface, 1);
+    
+    SDL_SetSurfaceBlendMode(video_surface, SDL_BLENDMODE_NONE);
     SDL_SetSurfaceBlendMode(ui_surface, SDL_BLENDMODE_BLEND);
     
     EndTimer();
     
     RETURN(SUCCESS);
+}
+
+void
+PlatformInitVideo(program_data *pdata)
+{
+    SDL_Surface *win = SDL_GetWindowSurface(window);
+    ResizeScreen(pdata, win->w, win->h);
+    /*
+if(video_surface)
+        SDL_FreeSurface(video_surface);
+        
+    video_surface = SDL_CreateRGBSurfaceWithFormat(0, pdata->file.width, pdata->file.height, 32, SDL_PIXELFORMAT_BGRA32);
+    SDL_SetSurfaceRLE(video_surface, 1);
+*/
 }
 
 int32

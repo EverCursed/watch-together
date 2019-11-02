@@ -12,6 +12,9 @@
 #include "packet_queue.h"
 #include "time.h"
 
+static real64 next_audio_time;
+static real64 next_video_time;
+
 
 static int32
 get_packet(program_data *pdata, AVPacket *packet)
@@ -116,9 +119,13 @@ process_audio_frame(program_data *pdata, AVFrame *frame)
     
     pdata->audio.size += real_size;
     dbg_print("audio duration: %lf\n", pdata->audio.duration);
-    pdata->audio.duration += (real64)SampleCount / (real64)Frequency;
+    
+    real64 duration = (real64)SampleCount / (real64)Frequency / (real64)Channels;
+    pdata->audio.duration += duration;
+    next_audio_time += duration;
     dbg_print("new audio duration: %lf\n", pdata->audio.duration);
     //dbg_info("Audio frame duration: %lf\n", pdata->audio.duration);
+    
     
     EndTimer();
     RETURN(SUCCESS);
@@ -170,7 +177,7 @@ process_video_frame(program_data *pdata, AVFrame *frame)
     EndTimer();
     
     pdata->video.type = VIDEO_RGB;
-    pdata->video.pts = frame->pts * av_q2d(pdata->decoder.video_time_base); 
+    pdata->video.pts = next_video_time = frame->pts * av_q2d(pdata->decoder.video_time_base); 
     
     EndTimer();
     
@@ -201,15 +208,17 @@ ProcessPackets(program_data *pdata)
                       playback->audio_total_decoded);
             
             if(!audio->is_ready && 
-               playback->audio_total_queued == playback->audio_total_decoded)
+               playback->audio_total_queued + pdata->client.refresh_target >= playback->audio_total_decoded)
             {
                 PlatformLockMutex(&audio->mutex);
+                
+                AVFrame *frame;
+                frame = DecodePacket(pdata->pq_audio, pdata->decoder.audio_codec_context);
                 
                 do {
                     dbg_success("Audio packets not empty, starting to process. %lf\n", file->target_time);
                     
-                    AVFrame *frame;
-                    if((frame = DecodePacket(pdata->pq_audio, pdata->decoder.audio_codec_context)))
+                    if(frame)
                     {
                         dbg_success("Processing audio.\n");
                         
@@ -567,20 +576,24 @@ MediaThreadStart(void *arg)
     //encoder_info *encoder = &pdata->encoder;
     playback_data *playback = &pdata->playback;
     
+    next_audio_time = 0.0;
+    next_video_time = 0.0;
+    
     InitializeTimingSystem("media");
     
     LoadPackets(pdata, file);
     
     real64 decoding_start_time = PlatformGetTime();
     
-    
     bool32 start_notified = 0;
     while(pdata->running && !pdata->playback_finished)
     {
         StartTimer("Start processing loop");
-        ProcessPackets(pdata);
         
-        real64 next_time = pdata->playback.audio_total_queued < pdata->video.pts ? pdata->playback.audio_total_queued : pdata->video.pts;
+        if(!pdata->audio.is_ready || !pdata->video.is_ready)
+            ProcessPackets(pdata);
+        
+        real64 next_time = smallest(next_video_time, next_audio_time);
         
         if(pdata->is_host)
         {
@@ -602,12 +615,12 @@ MediaThreadStart(void *arg)
         dbg_info("Media processing:\n"
                  "\tSleeping data:\n"
                  "\t\tdecoding_start_time: %lf\n"
-                 "\t\tvideo.pts: %lf\n"
-                 "\t\taudio_total_queued: %lf\n"
+                 "\t\tnext_video_time: %lf\n"
+                 "\t\tnext_audio_time: %lf\n"
                  "\t\tcurrent_time: %lf\n",
                  decoding_start_time,
-                 pdata->video.pts,
-                 pdata->playback.audio_total_queued,
+                 next_video_time,
+                 next_audio_time,
                  PlatformGetTime());
         WaitUntil(decoding_start_time + next_time, 0.002);
         //PlatformSleep(0.010);

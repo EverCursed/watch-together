@@ -27,19 +27,15 @@ should_display(playback_data *playback, real64 video_ts)
     real64 playback_time = get_playback_time(playback);
     real64 n = playback_time + *playback->refresh_target;
     
-    bool32 result = 
-        (playback_time <= video_ts && video_ts <= n);
+    bool32 result = video_ts > playback_time && video_ts < n;
+    //(playback_time <= video_ts && video_ts <= n);
     //|| (video_ts > n && video_ts <= n + VIDEO_QUEUE_MARGIN);
     
-    dbg_print("should_display(): %lf <= %lf  < %lf\t",
+    dbg_print("should_display(): %lf <= %lf  < %lf\t%s\n",
               playback_time,
               video_ts,
-              n);
-    
-    if(result)
-        dbg_success("YES\n");
-    else
-        dbg_warn("NO\n");
+              n,
+              result ? "YES" : "NO");
     
     return result;
 }
@@ -90,15 +86,11 @@ should_queue(playback_data *playback)
     
     //bool32 result = (playback_time - *playback->refresh_target) < 
     
-    dbg_print("should_queue(): %lf <= %lf < %lf\t",
+    dbg_print("should_queue(): %lf <= %lf < %lf\t%s\n",
               playback_time,
               playback->audio_total_queued,
-              n);
-    
-    if(result)
-        dbg_success("YES\n");
-    else
-        dbg_warn("NO\n");
+              n,
+              result ? "YES" : "NO");
     
     return result;
 }

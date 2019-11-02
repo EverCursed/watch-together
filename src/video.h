@@ -1,6 +1,7 @@
 #ifndef VIDEO_H
 #define VIDEO_H
 
+#include <libavutil/rational.h>
 #include "defines.h"
 
 typedef struct _ouput_video {

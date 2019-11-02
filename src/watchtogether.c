@@ -251,10 +251,11 @@ ProcessPlayback(program_data *pdata)
     
     if(pdata->file.has_video)
     {
-        StartTimer("Processing video");
         if(pdata->video.is_ready &&
            (should_display(playback, pdata->video.pts) || !playback->started_playing))
         {
+            StartTimer("Processing video");
+            
             dbg_success("pdata->video.is_ready\n");
             
             StartTimer("ProcessVideo()");
@@ -262,16 +263,21 @@ ProcessPlayback(program_data *pdata)
             EndTimer();
             
             need_video = 1;
+            
+            EndTimer();
         }
         else if(pdata->video.is_ready && 
                 should_skip(playback, pdata->video.pts))
         {
+            StartTimer("Skipping video");
+            
             dbg_warn("Skipping frame.\n");
             
             StartTimer("SkipVideoFrame()");
             SkipVideoFrame(pdata);
             EndTimer();
             
+            EndTimer();
         }
         else if(!pdata->video.is_ready)
         {
@@ -281,7 +287,6 @@ ProcessPlayback(program_data *pdata)
         {
             dbg_warn("Not time to display yet.\n");
         }
-        EndTimer();
     }
     
     if(pdata->file.has_audio)
@@ -418,7 +423,7 @@ MainLoopThread(void *arg)
         }
     }
     
-    StartTimer("MainLoop()");
+    StartTimer("Main loop");
     while(pdata->running)
     {
         StartTimer("Loop");
@@ -473,7 +478,6 @@ MainLoopThread(void *arg)
         StartTimer("Sleep()");
         //PlatformSleep(sleep_time);
         WaitUntil(client->next_refresh_time, 0.002);
-        client->next_refresh_time += client->refresh_target;
         EndTimer();
         
         StartTimer("PlatformFlipBuffers()");
@@ -486,7 +490,8 @@ MainLoopThread(void *arg)
         PlatformFlipBuffers(pdata);
         EndTimer();
         
-        //client->current_frame_time = PlatformGetTime();
+        client->current_frame_time = client->next_refresh_time;
+        client->next_refresh_time += client->refresh_target;
         
         EndTimer();
     }
@@ -647,6 +652,7 @@ FileClose(program_data *pdata)
 int32
 MainThread(program_data *pdata)
 {
+    InitializeTimingSystem("main");
     InitializeApplication(pdata);
     // NOTE(Val): Initialize things here that will last the entire runtime of the application
     
