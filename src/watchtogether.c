@@ -309,7 +309,7 @@ ProcessPlayback(program_data *pdata)
         //}
         else if(pdata->audio.is_ready)
         {
-            dbg_error("Just waiting as it's not yet time to queue.\n");
+            dbg_info("Just waiting as it's not yet time to queue.\n");
         }
         else
         {
@@ -387,7 +387,7 @@ StartPlayback(program_data *pdata)
     //PlatformConditionSignal(&pdata->decoder.condition);
     
     //TogglePlayback(pdata);
-    dbg_warn("Playback started!\n");
+    dbg_info("Playback started!\n");
     EndTimer();
 }
 
@@ -611,6 +611,7 @@ FileOpen(program_data *pdata)
         
         pdata->threads.decoder_thread =
             PlatformCreateThread(MediaThreadStart, pdata, "decoder");
+        
         
         pdata->file.file_ready = 1;
         pdata->playing = 0;

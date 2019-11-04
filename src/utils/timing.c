@@ -82,13 +82,13 @@ DumpTimingFrame()
         }
         else
         {
-            real64 time_passed = __dbgtimdat.inst[i].time - queue.q[queue.n-1].time;
-            for(int d = 0; d < queue.n-1; d++)
+            queue.n--;
+            real64 time_passed = __dbgtimdat.inst[i].time - queue.q[queue.n].time;
+            for(int d = 0; d < queue.n; d++)
             {
                 n += sprintf((__dbgtimdat.dump + n), "\t");
             }
-            n += sprintf((__dbgtimdat.dump + n), "%s    END %lf\n", queue.q[queue.n-1].name, time_passed);
-            queue.n--;
+            n += sprintf((__dbgtimdat.dump + n), "%s    END %lf\n", queue.q[queue.n].name, time_passed);
         }
     }
     __dbgtimdat.dump_length += n;

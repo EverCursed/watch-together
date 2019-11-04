@@ -59,5 +59,5 @@ void FinishTiming();
 #define EndTimer()                 do {} while(0)
 #define FinishTiming()             do {} while(0)
 
-#endif
+#endif // DEBUG
 #endif 

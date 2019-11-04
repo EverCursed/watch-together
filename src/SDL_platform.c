@@ -469,6 +469,7 @@ PlatformUpdateFrame(program_data *pdata)
                           NULL,
                           SDL_GetWindowSurface(window),
                           NULL);
+    
     EndTimer();
     if(ret)
     {

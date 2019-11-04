@@ -34,12 +34,13 @@ PlatformSleep(real64 seconds)
 int32
 WaitUntil(real64 time, real64 permissible_buffer)
 {
+    real64 time_goal = time - permissible_buffer;
     real64 current_time = PlatformGetTime();
-    real64 time_diff = time < current_time ? 0.0 : time - current_time;
+    real64 time_diff = time_goal < current_time ? 0.0 : (time - current_time) - permissible_buffer;
     
     while(time_diff > permissible_buffer)
     {
-        PlatformSleep(0.0);
+        PlatformSleep(time_diff);
         
         current_time = PlatformGetTime();
         time_diff = time < current_time ? 0.0 : time - current_time;

@@ -114,7 +114,7 @@ start_playback(playback_data *p, real64 time)
     p->pause_started = 0.0;
     p->pause_stopped = 0.0;
     p->audio_total_queued = 0.0;
-    p->audio_total_played = 0.0;
+    // p->audio_total_played = 0.0;
     
     p->started_playing = 1;
     

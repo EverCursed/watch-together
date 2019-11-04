@@ -20,9 +20,10 @@ typedef int err_code;
 #define CONNECTION_FAILED    (-12)
 #define SOCKET_CREATION_FAIL (-13)
 #define SENDING_ERROR        (-14)
+#define NEED_DATA            (-15)
 
-#define s(a) (a >= SUCCESS)
-#define f(a) (a < SUCCESS)
+#define success(a) (a >= SUCCESS)
+#define fail(a) (a < SUCCESS)
 
 #ifdef DEBUG
 

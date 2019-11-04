@@ -40,7 +40,7 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
     }
     //dbg_info("Enqueueing packet.\n");
     //dbg_packet(packet);
-    if(s(PlatformLockMutex(&queue->mutex)))
+    if(success(PlatformLockMutex(&queue->mutex)))
     {
         queue->array[queue->end] = packet;
         queue->n++;
@@ -63,7 +63,7 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
         RETURN(NOT_ENOUGH_DATA);
     }
     
-    if(s(PlatformLockMutex(&queue->mutex)))
+    if(success(PlatformLockMutex(&queue->mutex)))
     {
         *packet = queue->array[queue->next];
         queue->n--;
