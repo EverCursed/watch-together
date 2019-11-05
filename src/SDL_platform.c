@@ -33,12 +33,12 @@ __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
 global SDL_AudioDeviceID AudioID = -1;
 global bool32 audio_initialized = 0;
 global SDL_Window *window = NULL;
-//global SDL_Renderer *renderer = NULL;
+global SDL_Renderer *renderer = NULL;
 //global SDL_Texture *background_texture;
 //global SDL_Texture *ui_texture;
-global SDL_Surface *final_surface = NULL;
-global SDL_Surface *video_surface = NULL;
-global SDL_Surface *ui_surface = NULL;
+global SDL_Texture *final_texture = NULL;
+global SDL_Texture *video_texture = NULL;
+global SDL_Texture *ui_texture = NULL;
 
 global program_data *pdata;
 
@@ -350,17 +350,11 @@ PlatformGetTime()
 }
 */
 int32
-PlatformUpdateVideoFrame(program_data *pdata)
+PlatformUpdateVideoFrame(output_video *video)
 {
     StartTimer("PlatformUpdateVideoFrame()");
     
-    output_video *video = &pdata->video;
-    
     int ret = 0;
-    
-    StartTimer("LockSurface()");
-    ret = LockSurface(video_surface);
-    EndTimer();
     
     if(ret)
         dbg_error("%s\n", SDL_GetError());
@@ -368,22 +362,15 @@ PlatformUpdateVideoFrame(program_data *pdata)
     //int32 pitch = video_surface->pitch;
     //void *data = video_surface->pixels;
     StartTimer("SDL_CreateRGBSurfaceWithFormatFrom()");
-    SDL_Surface *temp_surface = SDL_CreateRGBSurfaceWithFormatFrom(video->video_frame,
-                                                                   video->width,
-                                                                   video->height,
-                                                                   32,
-                                                                   video->pitch,
-                                                                   SDL_PIXELFORMAT_BGRA32);
+    ret = SDL_UpdateTexture(video_texture,
+                            NULL,
+                            video->video_frame,
+                            video->pitch);
     EndTimer();
     
-    StartTimer("SDL_BlitScaled()");
-    SDL_BlitScaled(temp_surface,
-                   NULL,
-                   video_surface,
-                   NULL);
-    EndTimer();
+    if(ret)
+        dbg_error("%s\n", SDL_GetError());
     
-    SDL_FreeSurface(temp_surface);
     
     /*
 StartTimer("memcpy");
@@ -393,8 +380,6 @@ memcpy(data + i*pitch, video->video_frame + i*video->pitch, video->pitch);
 }
 EndTimer();
 */
-    
-    UnlockSurface(video_surface);
     
     EndTimer();
     /*
@@ -434,51 +419,29 @@ EndTimer();
 }
 
 int32
-PlatformUpdateFrame(program_data *pdata)
+PlatformRender()
 {
     StartTimer("PlatformUpdateFrame");
     
     int ret = 0;
     
-    StartTimer("SDL_FillRect");
-    ret = SDL_FillRect(SDL_GetWindowSurface(window),
-                       NULL,
-                       0);
+    StartTimer("SDL_RenderClear()");
+    ret = SDL_RenderClear(renderer);
     EndTimer();
     
-    if(video_surface)
-    {
-        if(ret)
-        {
-            dbg_error("%s\n", SDL_GetError());
-            EndTimer();
-            RETURN(UNKNOWN_ERROR);
-        }
-        
-        StartTimer("SDL_BlitSurface(video_surface)");
-        ret = SDL_BlitSurface(video_surface,
-                              NULL,
-                              SDL_GetWindowSurface(window),
-                              NULL);
-        EndTimer();
-    }
-    
-    
-    StartTimer("SDL_BlitSurface(ui_surface)");
-    ret = SDL_BlitSurface(ui_surface,
-                          NULL,
-                          SDL_GetWindowSurface(window),
-                          NULL);
-    
+    StartTimer("SDL_RenderCopy(video_texture)");
+    ret = SDL_RenderCopy(renderer,
+                         video_texture,
+                         NULL,
+                         NULL);
     EndTimer();
-    if(ret)
-    {
-        dbg_error("%s\n", SDL_GetError());
-        EndTimer();
-        RETURN(UNKNOWN_ERROR);
-    }
     
-    // Render the UI on top of video frame
+    StartTimer("SDL_RenderCopy(ui_texture)");
+    ret = SDL_RenderCopy(renderer,
+                         ui_texture,
+                         NULL,
+                         NULL);
+    EndTimer();
     
     EndTimer();
     RETURN(SUCCESS);
@@ -488,7 +451,7 @@ int32
 PlatformFlipBuffers(program_data *pdata)
 {
     StartTimer("PlatformFlipBuffers()");
-    SDL_UpdateWindowSurface(window);
+    SDL_RenderPresent(renderer);
     EndTimer();
     
     RETURN(SUCCESS);
@@ -573,34 +536,35 @@ ResizeScreen(program_data *pdata, int x, int y)
 {
     StartTimer("ResizeScreen()");
     
-    uint32 rmask, gmask, bmask, amask;
+    int new_width = x;
+    int new_height = y;
     
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
-    rmask = 0xff000000;
-    gmask = 0x00ff0000;
-    bmask = 0x0000ff00;
-    amask = 0x000000ff;
-#else
-    rmask = 0x000000ff;
-    gmask = 0x0000ff00;
-    bmask = 0x00ff0000;
-    amask = 0xff000000;
-#endif
+    SDL_Rect rect = {};
     
-    if(ui_surface)
-        SDL_FreeSurface(ui_surface);
+    real32 width_ratio = (real32)new_width/pdata->file.width;
+    real32 height_ratio = (real32)new_height/pdata->file.height;
     
-    if(video_surface)
-        SDL_FreeSurface(video_surface);
+    real32 ratio = (real32)pdata->file.width / (real32)pdata->file.height;
+    real32 new_ratio = (real32)new_width / (real32)new_height;
     
-    video_surface = SDL_CreateRGBSurface(0, x, y, 32, rmask, gmask, bmask, amask);
-    SDL_SetSurfaceRLE(video_surface, 1);
+    if(new_ratio >= ratio)
+    {
+        rect.h = new_height;
+        rect.w = (real32)pdata->file.width * height_ratio;
+    }
+    else
+    {
+        rect.w = new_width;
+        rect.h = (real32)pdata->file.height * width_ratio;
+    }
     
-    ui_surface = SDL_CreateRGBSurface(0, x, y, 32,
-                                      rmask, gmask, bmask, amask);
+    rect.x = (new_width - rect.w)/2;
+    rect.y = (new_height - rect.h)/2;
     
-    SDL_SetSurfaceBlendMode(video_surface, SDL_BLENDMODE_NONE);
-    SDL_SetSurfaceBlendMode(ui_surface, SDL_BLENDMODE_BLEND);
+    
+    SDL_RenderSetViewport(renderer,
+                          &rect);
+    SDL_RenderPresent(renderer);
     
     EndTimer();
     
@@ -608,17 +572,19 @@ ResizeScreen(program_data *pdata, int x, int y)
 }
 
 void
-PlatformInitVideo(program_data *pdata)
+PlatformInitVideo(open_file_info *file)
 {
-    SDL_Surface *win = SDL_GetWindowSurface(window);
-    ResizeScreen(pdata, win->w, win->h);
-    /*
-if(video_surface)
-        SDL_FreeSurface(video_surface);
-        
-    video_surface = SDL_CreateRGBSurfaceWithFormat(0, pdata->file.width, pdata->file.height, 32, SDL_PIXELFORMAT_BGRA32);
-    SDL_SetSurfaceRLE(video_surface, 1);
-*/
+    video_texture = SDL_CreateTexture(renderer,
+                                      SDL_PIXELFORMAT_BGRA32,
+                                      SDL_TEXTUREACCESS_STREAMING,
+                                      file->width,
+                                      file->height);
+    
+    if(!video_texture)
+        dbg_error("%s\n", SDL_GetError());
+    
+    
+    ResizeScreen(pdata, file->width, file->height);
 }
 
 int32
@@ -634,7 +600,7 @@ PlatformGetInput(program_data *pdata)
     StartTimer("SDL_WaitEventTimeout()");
     while(pdata->running &&
           input->keyboard.n < MAX_KEYS-1 &&
-          SDL_WaitEventTimeout(&event, 15))
+          SDL_PollEvent(&event))
     {
         EndTimer();
         //dbg_info("Event received.\n");
@@ -745,19 +711,24 @@ PlatformGetThreadID()
     return SDL_ThreadID();
 }
 
-static int32 InitializeSurfaces(int width, int height)
+static int32
+InitializeTextures()
 {
-    if(ui_surface)
-        SDL_FreeSurface(ui_surface);
+    int32 width;
+    int32 height;
     
-    ui_surface = SDL_CreateRGBSurfaceWithFormat(0, width, height, 32, SDL_PIXELFORMAT_BGRA32);
-    if (ui_surface == NULL) {
-        dbg_error("SDL_CreateRGBSurface: %s\n", SDL_GetError());
-        
-        RETURN(UNKNOWN_ERROR);
-    }
-    SDL_SetSurfaceBlendMode(ui_surface, SDL_BLENDMODE_BLEND);
-    //SDL_SetSurfaceRLE(ui_surface, 1);
+    SDL_GetWindowSize(window,
+                      &width,
+                      &height);
+    
+    ui_texture = SDL_CreateTexture(renderer,
+                                   SDL_PIXELFORMAT_BGRA32,
+                                   SDL_TEXTUREACCESS_STREAMING,
+                                   width,
+                                   height);
+    
+    SDL_SetTextureBlendMode(ui_texture,
+                            SDL_BLENDMODE_BLEND);
     
     pdata->client.output_width = width;
     pdata->client.output_height = height;
@@ -772,6 +743,7 @@ static int32 InitializeSurfaces(int width, int height)
 
 int main(int argc, char *argv[])
 {
+    int ret = 0;
     // initialize all the necessary SDL stuff
     if(argc == 1)
     {
@@ -815,14 +787,13 @@ int main(int argc, char *argv[])
 #endif
     
     // TODO(Val): Check if this actually gives us the proper client area
-    window = SDL_CreateWindow(
-        WT_WINDOW_TITLE,                  // window title
-        SDL_WINDOWPOS_UNDEFINED,           // initial x position
-        SDL_WINDOWPOS_UNDEFINED,           // initial y position
-        1280,                               // width, in pixels
-        720,                               // height, in pixels
-        SDL_WINDOW_RESIZABLE
-        );
+    ret = SDL_CreateWindowAndRenderer(1280,
+                                      720,
+                                      0,//SDL_WINDOW_RESIZABLE,
+                                      &window,
+                                      &renderer);
+    if(ret)
+        dbg_error("%s\n", SDL_GetError());
     
     if(window == NULL)
     {
@@ -831,12 +802,15 @@ int main(int argc, char *argv[])
         return -1;
     }
     
+    SDL_SetWindowTitle(window,
+                       WT_WINDOW_TITLE);
+    
     SDL_ShowWindow(window);
     
     pdata = calloc(sizeof(program_data), 1);
     pdata->running = 1;
     
-    if(InitializeSurfaces(1280, 720))
+    if(InitializeTextures())
         RETURN(UNKNOWN_ERROR);
     
     int argi = 1;

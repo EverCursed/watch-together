@@ -13,10 +13,10 @@ void
 PlatformPauseAudio(bool32);
 
 int32
-PlatformUpdateVideoFrame(program_data *);
+PlatformUpdateVideoFrame(output_video *);
 
 int32
-PlatformUpdateFrame(program_data *);
+PlatformRender();
 
 
 // Threads 
@@ -55,7 +55,7 @@ void
 PlatformCloseAudio(program_data *);
 
 void
-PlatformInitVideo(program_data *);
+PlatformInitVideo(open_file_info *);
 
 void
 PlatformToggleFullscreen(program_data *);

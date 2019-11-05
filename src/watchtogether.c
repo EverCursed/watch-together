@@ -49,7 +49,6 @@ ProcessInput(program_data *pdata)
     // Get input
     // TODO(Val): Introduce some kind of timing system to see how long keys are held
     //if(pdata->running)
-    PlatformGetInput(pdata);
     
     // Process input
     StartTimer("Input processing");
@@ -223,7 +222,7 @@ ProcessAudio(program_data *pdata)
 static void
 ProcessVideo(program_data *pdata)
 {
-    PlatformUpdateVideoFrame(pdata);
+    PlatformUpdateVideoFrame(&pdata->video);
     //ClearVideoOutput(&pdata->video);
     
     increment_video_times(&pdata->playback, av_q2d(pdata->decoder.video_time_base));
@@ -431,6 +430,8 @@ MainLoopThread(void *arg)
         
         assert_memory_bounds();
         
+        PlatformGetInput(pdata);
+        ProcessInput(pdata);
         StartTimer("ProcessMessages()");
         ProcessMessages(pdata);
         EndTimer();
@@ -477,7 +478,7 @@ MainLoopThread(void *arg)
         //client->next_refresh_time,
         //time);
         
-        PlatformUpdateFrame(pdata);
+        PlatformRender(pdata);
         
         StartTimer("Sleep()");
         //PlatformSleep(sleep_time);
@@ -607,9 +608,8 @@ FileOpen(program_data *pdata)
         if(pdata->file.has_video)
         {
             pdata->video.frame_duration = pdata->file.target_time;
-            PlatformInitVideo(pdata);
+            PlatformInitVideo(&pdata->file);
         }
-        //PlatformPauseAudio(1);
         
         AllocateBuffers(pdata);
         
@@ -673,9 +673,8 @@ MainThread(program_data *pdata)
     
     if(!FileOpen(pdata))
     {
-        pdata->threads.main_thread = PlatformCreateThread(MainLoopThread, pdata, "main_thread");
-        InputLoopThread(pdata);
-        //MainLoopThread(pdata);
+        //pdata->threads.main_thread = PlatformCreateThread(MainLoopThread, pdata, "main_thread");
+        MainLoopThread(pdata);
         FileClose(pdata);
     }
     else
