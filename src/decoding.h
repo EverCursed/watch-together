@@ -24,14 +24,16 @@ typedef struct _decoder_info {
     
     int32 video_stream;
     int32 audio_stream;
+    int32 subtitle_stream;
     
     const char *filename;
     
+    real64 avg_video_framerate;
     cond_info condition;
 } decoder_info;
 
 
-int32 DecodingThreadStart(void *ptr);
-AVFrame* DecodePacket(avpacket_queue *queue, AVCodecContext *codec_context);
+int32 DecodingThreadStart(void *);
+int32 DecodePacket(AVFrame **, AVPacket *, AVCodecContext *);
 
 #endif

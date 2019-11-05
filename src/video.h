@@ -8,7 +8,7 @@ typedef struct _ouput_video {
     void *video_frame;
     void *video_frame_sup1;
     void *video_frame_sup2;
-    AVRational framerate;
+    real64 frame_duration;
     uint32 pitch;
     uint32 pitch_sup1;
     uint32 pitch_sup2;

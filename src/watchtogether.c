@@ -228,6 +228,7 @@ ProcessVideo(program_data *pdata)
     
     increment_video_times(&pdata->playback, av_q2d(pdata->decoder.video_time_base));
     
+    ClearVideoOutput(&pdata->video);
     pdata->video.is_ready = 0;
 }
 
@@ -322,7 +323,7 @@ ProcessPlayback(program_data *pdata)
     if(need_audio || need_video)
     {
         dbg_warn("Video or audio needed.\n");
-        //PlatformConditionSignal(&pdata->decoder.condition);
+        PlatformConditionSignal(&pdata->decoder.condition);
     }
     //update_playback_time(playback);
     
@@ -384,7 +385,7 @@ StartPlayback(program_data *pdata)
     //ProcessVideo(pdata);
     //ProcessAudio(pdata);
     
-    //PlatformConditionSignal(&pdata->decoder.condition);
+    PlatformConditionSignal(&pdata->decoder.condition);
     
     //TogglePlayback(pdata);
     dbg_info("Playback started!\n");
@@ -450,19 +451,20 @@ MainLoopThread(void *arg)
             }
         }
         
-        if(!pdata->file.open_failed)
+        if(pdata->playing && !pdata->paused)
         {
-            if(pdata->playing && !pdata->paused)
-            {
-                StartTimer("ProcessPlayback()");
-                ProcessPlayback(pdata);
-                EndTimer();
-                //playback->playback_time += pdata->client.refresh_target;
-            }
-            else
-            {
-                dbg_error("Not playing or paused.\n");
-            }
+            StartTimer("ProcessPlayback()");
+            ProcessPlayback(pdata);
+            EndTimer();
+            //playback->playback_time += pdata->client.refresh_target;
+        }
+        else
+        {
+            dbg_error("Not playing or paused.\n"
+                      "\tplaying: %s\n"
+                      "\tpaused: %s\n",
+                      pdata->playing ? "true" : "false",
+                      pdata->paused ? "true" : "false");
         }
         //dbg_print("Loop time: %ld\n", playback->time_end - playback->time_start);
         
@@ -475,6 +477,8 @@ MainLoopThread(void *arg)
         //client->next_refresh_time,
         //time);
         
+        PlatformUpdateFrame(pdata);
+        
         StartTimer("Sleep()");
         //PlatformSleep(sleep_time);
         WaitUntil(client->next_refresh_time, 0.002);
@@ -486,7 +490,6 @@ MainLoopThread(void *arg)
             PlatformPauseAudio(0);
             playback->started_playing = 1;
         }
-        PlatformUpdateFrame(pdata);
         PlatformFlipBuffers(pdata);
         EndTimer();
         
@@ -603,6 +606,7 @@ FileOpen(program_data *pdata)
         }
         if(pdata->file.has_video)
         {
+            pdata->video.frame_duration = pdata->file.target_time;
             PlatformInitVideo(pdata);
         }
         //PlatformPauseAudio(1);
@@ -633,7 +637,7 @@ FileClose(program_data *pdata)
     pdata->playing = 0;
     pdata->paused = 0;
     
-    //PlatformConditionSignal(&pdata->decoder.condition);
+    PlatformConditionSignal(&pdata->decoder.condition);
     
     MediaClose(&pdata->file, &pdata->decoder, &pdata->encoder);
     PlatformConditionDestroy(&pdata->decoder.condition);
@@ -653,7 +657,6 @@ FileClose(program_data *pdata)
 int32
 MainThread(program_data *pdata)
 {
-    InitializeTimingSystem("main");
     InitializeApplication(pdata);
     // NOTE(Val): Initialize things here that will last the entire runtime of the application
     
@@ -667,10 +670,10 @@ MainThread(program_data *pdata)
     dbg_info("Client refresh target time set to %lfs.\n", pdata->client.refresh_target);
     
     //pdata->threads.input_thread = PlatformCreateThread(InputLoopThread, pdata, "input_thread");
-    pdata->threads.main_thread = PlatformCreateThread(MainLoopThread, pdata, "main_thread");
     
     if(!FileOpen(pdata))
     {
+        pdata->threads.main_thread = PlatformCreateThread(MainLoopThread, pdata, "main_thread");
         InputLoopThread(pdata);
         //MainLoopThread(pdata);
         FileClose(pdata);
