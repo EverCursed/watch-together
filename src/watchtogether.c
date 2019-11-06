@@ -256,12 +256,7 @@ ProcessPlayback(program_data *pdata)
         {
             StartTimer("Processing video");
             
-            dbg_success("pdata->video.is_ready\n");
-            
-            StartTimer("ProcessVideo()");
             ProcessVideo(pdata);
-            EndTimer();
-            
             need_video = 1;
             
             EndTimer();

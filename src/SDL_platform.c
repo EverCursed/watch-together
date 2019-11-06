@@ -44,53 +44,6 @@ global program_data *pdata;
 
 #define TESTING_FILE "data/video_test/video.mp4"
 
-/*
-static void 
-Deb_ResizePixelBuffer(SDL_Renderer *renderer)
-{
-    int width, height;
-    
-    SDL_GetRendererOutputSize(renderer,
-                              &width,
-                              &height);
-                              
-    texture_height = height;
-    texture_width = width;
-    
-    dbg_print("Renderer width: %d,\theight: %d\n", width, height);
-    
-    if(background_texture)
-        SDL_DestroyTexture(background_texture);
-        
-    //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
-    
-}
-*/ 
-
-static inline int32
-LockSurface(SDL_Surface *surface)
-{
-    int32 ret = 0;
-    StartTimer("LockSurface");
-    
-    if(SDL_MUSTLOCK(surface))
-        ret = SDL_LockSurface(surface);
-    
-    EndTimer();
-    return ret;
-}
-
-static inline void
-UnlockSurface(SDL_Surface *surface)
-{
-    StartTimer("UnlockSurface");
-    
-    if(SDL_MUSTLOCK(surface))
-        SDL_UnlockSurface(surface);
-    
-    EndTimer();
-}
-
 int32
 PlatformQueueAudio(output_audio *audio)
 {
@@ -361,7 +314,7 @@ PlatformUpdateVideoFrame(output_video *video)
     
     //int32 pitch = video_surface->pitch;
     //void *data = video_surface->pixels;
-    StartTimer("SDL_CreateRGBSurfaceWithFormatFrom()");
+    StartTimer("SDL_UpdateTexture()");
     ret = SDL_UpdateTexture(video_texture,
                             NULL,
                             video->video_frame,
@@ -436,12 +389,12 @@ PlatformRender()
                          NULL);
     EndTimer();
     
-    StartTimer("SDL_RenderCopy(ui_texture)");
-    ret = SDL_RenderCopy(renderer,
-                         ui_texture,
-                         NULL,
-                         NULL);
-    EndTimer();
+    //StartTimer("SDL_RenderCopy(ui_texture)");
+    //ret = SDL_RenderCopy(renderer,
+    //ui_texture,
+    //NULL,
+    //NULL);
+    //EndTimer();
     
     EndTimer();
     RETURN(SUCCESS);
@@ -535,6 +488,7 @@ static int32
 ResizeScreen(program_data *pdata, int x, int y)
 {
     StartTimer("ResizeScreen()");
+    int ret = 0;
     
     int new_width = x;
     int new_height = y;
@@ -562,9 +516,12 @@ ResizeScreen(program_data *pdata, int x, int y)
     rect.y = (new_height - rect.h)/2;
     
     
-    SDL_RenderSetViewport(renderer,
-                          &rect);
-    SDL_RenderPresent(renderer);
+    ret = SDL_RenderSetViewport(renderer,
+                                &rect);
+    //SDL_RenderPresent(renderer);
+    
+    if(ret)
+        dbg_error("%s\n", SDL_GetError());
     
     EndTimer();
     
@@ -656,7 +613,7 @@ PlatformGetInput(program_data *pdata)
                 if(event.key.keysym.sym == KB_F4 && alt_down)
                 {
                     PlatformToggleFullscreen(pdata);
-                    PlatformFlipBuffers(pdata);
+                    //PlatformFlipBuffers(pdata);
                 }
                 else
                 {
@@ -871,6 +828,9 @@ int main(int argc, char *argv[])
     
     dbg_info("Cleaning up.\n");
     
+    SDL_DestroyTexture(video_texture);
+    SDL_DestroyTexture(ui_texture);
+    SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     
     //free(pdata);

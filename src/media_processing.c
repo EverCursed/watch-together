@@ -601,7 +601,6 @@ MediaClose(open_file_info *file, decoder_info *decoder, encoder_info *encoder)
 }
 
 static void
-
 ProcessEverything(decoder_info *decoder, output_video *video, output_audio *audio)
 {
     StartTimer("ProcessEverything()");
@@ -648,6 +647,7 @@ ProcessEverything(decoder_info *decoder, output_video *video, output_audio *audi
         // TODO(Val): unknown type
     }
     
+    av_packet_unref(packet);
     av_frame_unref(frame);
     
     EndTimer();
