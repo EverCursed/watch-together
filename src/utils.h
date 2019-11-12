@@ -21,9 +21,13 @@ static uint32 round_up_align(uint32 val)
     return (val + BYTES_ALIGNMENT - 1)  - (((val + BYTES_ALIGNMENT - 1) % BYTES_ALIGNMENT));
 }
 */
-#define MS(real) (real/1000.0)
 
 #define smallest(a, b) (a < b ? a : b)
 #define largest(a,b) (a > b ? a : b)
+
+#define FF_Test(ret)
+
+#define SDL_PrintError() dbg_error("%s\n", SDL_GetError())
+#define SDL_Test(ret) do { if(ret) SDL_PrintError(); } while(0)
 
 #endif

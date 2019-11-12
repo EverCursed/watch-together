@@ -267,8 +267,8 @@ PlatformCreateMutex()
 {
     platform_mutex m = {};
     m.mutex = SDL_CreateMutex();
-    if(m.mutex == NULL)
-        dbg_error("%s\n", SDL_GetError());
+    if(!m.mutex)
+        SDL_PrintError();
     return m;
 }
 
@@ -309,21 +309,13 @@ PlatformUpdateVideoFrame(output_video *video)
     
     int ret = 0;
     
-    if(ret)
-        dbg_error("%s\n", SDL_GetError());
-    
-    //int32 pitch = video_surface->pitch;
-    //void *data = video_surface->pixels;
     StartTimer("SDL_UpdateTexture()");
     ret = SDL_UpdateTexture(video_texture,
                             NULL,
                             video->video_frame,
                             video->pitch);
+    SDL_Test(ret);
     EndTimer();
-    
-    if(ret)
-        dbg_error("%s\n", SDL_GetError());
-    
     
     /*
 StartTimer("memcpy");
@@ -380,6 +372,7 @@ PlatformRender()
     
     StartTimer("SDL_RenderClear()");
     ret = SDL_RenderClear(renderer);
+    SDL_Test(ret);
     EndTimer();
     
     StartTimer("SDL_RenderCopy(video_texture)");
@@ -387,6 +380,7 @@ PlatformRender()
                          video_texture,
                          NULL,
                          NULL);
+    SDL_Test(ret);
     EndTimer();
     
     //StartTimer("SDL_RenderCopy(ui_texture)");
@@ -414,7 +408,8 @@ void
 PlatformToggleFullscreen(program_data *pdata)
 {
     dbg_success("TOGGLING FULLSCREEN\n");
-    SDL_SetWindowFullscreen(window, pdata->is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+    int ret = SDL_SetWindowFullscreen(window, pdata->is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+    SDL_Test(ret);
     pdata->is_fullscreen = !pdata->is_fullscreen;
 }
 
@@ -518,10 +513,7 @@ ResizeScreen(program_data *pdata, int x, int y)
     
     ret = SDL_RenderSetViewport(renderer,
                                 &rect);
-    //SDL_RenderPresent(renderer);
-    
-    if(ret)
-        dbg_error("%s\n", SDL_GetError());
+    SDL_Test(ret);
     
     EndTimer();
     
@@ -537,9 +529,7 @@ PlatformInitVideo(open_file_info *file)
                                       file->width,
                                       file->height);
     
-    if(!video_texture)
-        dbg_error("%s\n", SDL_GetError());
-    
+    if(!video_texture) SDL_PrintError();
     
     ResizeScreen(pdata, file->width, file->height);
 }
@@ -749,8 +739,7 @@ int main(int argc, char *argv[])
                                       0,//SDL_WINDOW_RESIZABLE,
                                       &window,
                                       &renderer);
-    if(ret)
-        dbg_error("%s\n", SDL_GetError());
+    SDL_Test(ret);
     
     if(window == NULL)
     {
