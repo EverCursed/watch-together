@@ -161,31 +161,20 @@ close_avpacket_queue(avpacket_queue *queue)
     RETURN(SUCCESS);
 }
 
-/*
 void
-print_packets(avpacket_queue *queue, program_data *pdata)
+print_packets(avpacket_queue *queue)
 {
     int32 i = queue->next;
     while(i != queue->end)
     {
         AVPacket *packet = queue->array[i];
         
-        dbg_packet(packet);
-        dbg_info("-----------------------------\n");
+        dbg_info("Packet %d: pts - %ld\n"
+                 "           dts - %ld\n",
+                 i,
+                 (long int)packet->pts,
+                 (long int)packet->dts);
         
         i = (i + 1) % queue->maxn;
     }
-}
-*/
-
-bool32
-pq_is_full(avpacket_queue *queue)
-{
-    return (queue->n == queue->maxn);
-}
-
-bool32
-pq_is_empty(avpacket_queue *queue)
-{
-    return (queue->n == 0);
 }
