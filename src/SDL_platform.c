@@ -792,6 +792,7 @@ int main(int argc, char *argv[])
         {
             if(!pdata->is_host)
             {
+                pdata->server_address = (char *)argv[++argi];
                 pdata->is_partner = 1;
             }
             else

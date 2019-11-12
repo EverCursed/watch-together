@@ -399,7 +399,7 @@ MainLoopThread(void *arg)
     //client->next_refresh_time = (client->start_time + client->refresh_target);
     
     // now start main loop
-    
+    /*
     if(pdata->is_host)
     {
         StartServer();
@@ -417,7 +417,7 @@ MainLoopThread(void *arg)
             RETURN(CONNECTION_FAILED);
         }
     }
-    
+    */
     StartTimer("Main loop");
     while(pdata->running)
     {

@@ -12,18 +12,20 @@
 #include "packet_queue.h"
 #include "time.h"
 #include "debug.h"
+#include "streaming.h"
 
 static real64 next_audio_time;
 static real64 next_video_time;
 
-static inline int32 is_video(AVPacket *packet, decoder_info *decoder) {return (packet->stream_index == decoder->video_stream);}
-static inline int32 is_audio(AVPacket *packet, decoder_info *decoder) {return (packet->stream_index == decoder->audio_stream);}
-static inline int32 is_subtitle(AVPacket *packet, decoder_info *decoder) {return (packet->stream_index == decoder->subtitle_stream);}
+static inline int32 is_video(AVPacket *packet, decoder_info *decoder) {return (packet->stream_index == decoder->video_stream->index);}
+static inline int32 is_audio(AVPacket *packet, decoder_info *decoder) {return (packet->stream_index == decoder->audio_stream->index);}
+static inline int32 is_subtitle(AVPacket *packet, decoder_info *decoder) {return (packet->stream_index == decoder->subtitle_stream->index);}
 
 static int32
-LoadPacket(decoder_info *decoder, AVPacket *packet)
+LoadPacket(decoder_info *decoder, AVPacket **packet)
 {
-    int ret = av_read_frame(decoder->format_context, packet);
+    *packet = av_packet_alloc();
+    int ret = av_read_frame(decoder->format_context, *packet);
     
     if(ret == AVERROR_STREAM_NOT_FOUND)
     {
@@ -34,6 +36,7 @@ LoadPacket(decoder_info *decoder, AVPacket *packet)
     {
         // TODO(Val): Mark that there are no more packets for this file. 
         dbg_error("End of file.\n");
+        decoder->file_fully_loaded = 1;
         RETURN(FILE_EOF);
     }
     else if(ret != 0)
@@ -338,6 +341,7 @@ if(file->has_video)
 EndTimer();
 }
 */
+/*
 static void
 SortPackets(program_data *pdata)
 {
@@ -367,6 +371,7 @@ SortPackets(program_data *pdata)
         pkt = NULL;
     }
 }
+*/
 /*
 static void
 EnqueuePackets(program_data *pdata)
@@ -443,38 +448,38 @@ MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder)
     av_dump_format(decoder->format_context, 0, file->filename, 0);
     
     // Query stream indexes from opened file
-    decoder->video_stream = av_find_best_stream(decoder->format_context, AVMEDIA_TYPE_VIDEO, -1, -1, &decoder->video_codec, 0);
-    decoder->audio_stream = av_find_best_stream(decoder->format_context, AVMEDIA_TYPE_AUDIO, -1, -1, &decoder->audio_codec, 0);
+    decoder->video_stream_index = av_find_best_stream(decoder->format_context, AVMEDIA_TYPE_VIDEO, -1, -1, &decoder->video_codec, 0);
+    decoder->audio_stream_index = av_find_best_stream(decoder->format_context, AVMEDIA_TYPE_AUDIO, -1, -1, &decoder->audio_codec, 0);
     
-    if(decoder->video_stream >= 0)
+    if(decoder->video_stream_index >= 0)
     {
         dbg_success("av_find_best_steam successful for video.\n");
     }
-    else if(decoder->video_stream == AVERROR_STREAM_NOT_FOUND)
+    else if(decoder->video_stream_index == AVERROR_STREAM_NOT_FOUND)
     {
         dbg_error("AVERROR_STREAM_NOT_FOUND\n");
     }
-    else if(decoder->video_stream == AVERROR_DECODER_NOT_FOUND)
+    else if(decoder->video_stream_index == AVERROR_DECODER_NOT_FOUND)
     {
         dbg_error("AVERROR_DECODER_NOT_FOUND\n");
     }
     
-    if(decoder->audio_stream >= 0)
+    if(decoder->audio_stream_index >= 0)
     {
         dbg_success("av_find_best_steam successful for audio.\n");
     }
-    else if(decoder->audio_stream == AVERROR_STREAM_NOT_FOUND)
+    else if(decoder->audio_stream_index == AVERROR_STREAM_NOT_FOUND)
     {
         dbg_warn("AVERROR_STREAM_NOT_FOUND\n");
         file->has_audio = 0;
     }
-    else if(decoder->audio_stream == AVERROR_DECODER_NOT_FOUND)
+    else if(decoder->audio_stream_index == AVERROR_DECODER_NOT_FOUND)
     {
         dbg_error("AVERROR_DECODER_NOT_FOUND\n");
     }
     
     // Init video codec context
-    if(decoder->video_stream >= 0)
+    if(decoder->video_stream_index >= 0)
     {
         decoder->video_codec_context = avcodec_alloc_context3(decoder->video_codec);
         if(!decoder->video_codec_context)
@@ -482,7 +487,7 @@ MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder)
             dbg_error("Video: avcodec_alloc_context3() failed!\n");
             RETURN(UNKNOWN_ERROR);
         }
-        avcodec_parameters_to_context(decoder->video_codec_context, decoder->format_context->streams[decoder->video_stream]->codecpar);
+        avcodec_parameters_to_context(decoder->video_codec_context, decoder->format_context->streams[decoder->video_stream_index]->codecpar);
         
         if(avcodec_open2(decoder->video_codec_context, decoder->video_codec, NULL) < 0)
         {
@@ -490,7 +495,7 @@ MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder)
             RETURN(UNKNOWN_ERROR);
         }
         
-        if(decoder->format_context->streams[decoder->video_stream]->codecpar->format == AV_PIX_FMT_YUV420P)
+        if(decoder->format_context->streams[decoder->video_stream_index]->codecpar->format == AV_PIX_FMT_YUV420P)
         {
             file->video_format = VIDEO_YUV;
         }
@@ -502,18 +507,20 @@ MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder)
         file->width = decoder->video_codec_context->width;
         file->height = decoder->video_codec_context->height;
         
-        AVRational time = decoder->format_context->streams[decoder->video_stream]->avg_frame_rate;
+        AVRational time = decoder->format_context->streams[decoder->video_stream_index]->avg_frame_rate;
         file->fps = av_q2d(time);
         file->target_time = av_q2d(av_inv_q(time));
         
         file->has_video = 1;
         
         decoder->video_time_base = //av_inv_q(
-            decoder->format_context->streams[decoder->video_stream]->time_base;
+            decoder->format_context->streams[decoder->video_stream_index]->time_base;
         decoder->avg_video_framerate = file->target_time;
+        
+        decoder->video_stream = decoder->format_context->streams[decoder->video_stream_index];
     }
     
-    if(decoder->audio_stream >= 0)
+    if(decoder->audio_stream_index >= 0)
     {
         
         // Init audio codec context
@@ -523,7 +530,7 @@ MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder)
             dbg_error("Audio: avcodec_alloc_context3() failed!\n");
             RETURN(UNKNOWN_ERROR);
         }
-        avcodec_parameters_to_context(decoder->audio_codec_context, decoder->format_context->streams[decoder->audio_stream]->codecpar);
+        avcodec_parameters_to_context(decoder->audio_codec_context, decoder->format_context->streams[decoder->audio_stream_index]->codecpar);
         
         if(avcodec_open2(decoder->audio_codec_context, decoder->audio_codec, NULL) < 0)
         {
@@ -575,7 +582,8 @@ MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder)
         
         file->has_audio = 1;
         
-        decoder->audio_time_base = av_inv_q(decoder->format_context->streams[decoder->audio_stream]->avg_frame_rate);
+        decoder->audio_time_base = av_inv_q(decoder->format_context->streams[decoder->audio_stream_index]->avg_frame_rate);
+        decoder->audio_stream = decoder->format_context->streams[decoder->audio_stream_index];
     }
     
     RETURN(SUCCESS);
@@ -608,10 +616,10 @@ ProcessEverything(decoder_info *decoder, output_video *video, output_audio *audi
     int ret = 0;
     
     AVFrame *frame = av_frame_alloc();
-    AVPacket *packet = av_packet_alloc();
+    AVPacket *packet;
     
     load_another_packet:
-    ret = LoadPacket(decoder, packet);
+    ret = dequeue_packet(decoder->queue, &packet);
     if(ret == FILE_EOF)
     {
         // TODO(Val): Mark file as fully read
@@ -672,6 +680,43 @@ EnoughDurations(output_audio *audio, output_video *video, playback_data *playbac
     return (refresh_target < smallest(audio_time, video_time)) ;
 }
 
+static int32
+PreLoadPackets(decoder_info *decoder, bool32 is_host)
+{
+    while(!pq_is_full(decoder->queue)) // TODO(Val): or file has been fully read
+    {
+        AVPacket *packet;
+        LoadPacket(decoder, &packet);
+        enqueue_packet(decoder->queue, packet);
+    }
+    
+    print_packets(decoder->queue);
+    
+    RETURN(SUCCESS);
+}
+
+static int32
+RefillPackets(decoder_info *decoder, bool32 is_host)
+{
+    while(!pq_is_full(decoder->queue)) // TODO(Val): or file has been fully read
+    {
+        AVPacket *packet;
+        LoadPacket(decoder, &packet);
+        
+        if(!decoder->file_fully_loaded)
+        {
+            enqueue_packet(decoder->queue, packet);
+            
+            if(is_host)
+                Streaming_Host_SendPacket(decoder, packet);
+        }
+    }
+    
+    RETURN(SUCCESS);
+}
+
+#define PACKET_BUFFER 30
+
 int32
 MediaThreadStart(void *arg)
 {
@@ -683,12 +728,17 @@ MediaThreadStart(void *arg)
     //encoder_info *encoder = &pdata->encoder;
     playback_data *playback = &pdata->playback;
     
+    decoder->queue = init_avpacket_queue(PACKET_BUFFER);
+    
     next_audio_time = 0.0;
     next_video_time = 0.0;
     
+    if(pdata->is_host)
+        Streaming_Host_Initialize(decoder);
+    
     int ret = 0;
     
-    //LoadPackets(pdata, file);
+    PreLoadPackets(decoder, pdata->is_host);
     
     real64 decoding_start_time = PlatformGetTime();
     
@@ -712,13 +762,18 @@ MediaThreadStart(void *arg)
             ProcessEverything(decoder, &pdata->video, &pdata->audio);
         /*
         if(!start_notified &&
-           (!pdata->file.has_audio || pdata->audio.is_ready) &&
-           (!pdata->file.has_video || pdata->video.is_ready))
+        (!pdata->file.has_audio || pdata->audio.is_ready) &&
+        (!pdata->file.has_video || pdata->video.is_ready))
         {
-            start_notified = 1;
-            pdata->start_playback = 1;
+        start_notified = 1;
+        pdata->start_playback = 1;
         }
         */
+        EndTimer();
+        
+        StartTimer("RefillPackets()");
+        if(!decoder->file_fully_loaded)
+            RefillPackets(decoder, pdata->is_host);
         EndTimer();
         
         StartTimer("Waiting");
@@ -744,6 +799,9 @@ MediaThreadStart(void *arg)
             break;
     }
     EndTimer();
+    
+    if(pdata->is_host)
+        Streaming_Host_Close();
     
     FinishTiming();
     RETURN(SUCCESS);
