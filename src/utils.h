@@ -25,9 +25,11 @@ static uint32 round_up_align(uint32 val)
 #define smallest(a, b) (a < b ? a : b)
 #define largest(a,b) (a > b ? a : b)
 
-#define FF_Test(ret)
-
 #define SDL_PrintError() dbg_error("%s\n", SDL_GetError())
 #define SDL_Test(ret) do { if(ret) SDL_PrintError(); } while(0)
+#define FF_PrintError(ret) av_err2str(ret)
+#define FF_Test(ret) do { if(ret) FF_PrintError(ret); } while(0)
+
+#define b2str(v) (v ? "true" : "false")
 
 #endif
