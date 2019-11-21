@@ -1,6 +1,7 @@
 #include "network.h"
 #include "utils.h"
 #include <SDL2/SDL_net.h>
+#include "communication_messages.h"
 
 static uint16 message_ports[4] = {8212, 8418, 23458, 28002};
 //static uint16 rtp_ports[4] = {9165, 9347, 18669, 21222};
