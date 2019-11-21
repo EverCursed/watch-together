@@ -9,7 +9,6 @@
 #include <Windows.h>
 #define CHANGE_COLOR(x) SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), x)
 
-#define dbg_print(...) do { fprintf(stderr, __VA_ARGS__); } while(0)
 #define dbg_error(...) \
 do { \
     CHANGE_COLOR(FOREGROUND_RED); \
@@ -17,6 +16,9 @@ do { \
     fprintf(stderr, __VA_ARGS__); \
     CHANGE_COLOR(FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_GREEN); \
 } while(0)
+
+#ifndef ERRORS_ONLY
+#define dbg_print(...) do { fprintf(stderr, __VA_ARGS__); } while(0)
 
 #define dbg_info(...) \
 do { \
@@ -43,15 +45,15 @@ do { \
 #define dbg_warn(...) \
 do { } while(0)
 #endif // SUPPRESS_WARN
-
+#else
+#define dbg_print(...) do {} while(0)
+#define dbg_info(...) do {} while(0)
+#define dbg_success(...) do {} while(0)
+#define dbg_warn(...) do {} while(0)
+#endif // ERRORS_ONLY
 #define dbg(x) x
 
 #elif defined(__linux__)
-
-#define dbg_print(...) \
-do {\
-    fprintf(stderr, __VA_ARGS__);\
-} while(0)
 
 #define dbg_error(...)\
 do {\
@@ -59,6 +61,13 @@ do {\
     fprintf(stderr, "%s %d : ", __FILE__, __LINE__);\
     fprintf(stderr, __VA_ARGS__);\
     fprintf(stderr, KNRM);\
+} while(0)
+
+#ifndef ERRORS_ONLY
+
+#define dbg_print(...) \
+do {\
+    fprintf(stderr, __VA_ARGS__);\
 } while(0)
 
 #define dbg_info(...) \
@@ -86,7 +95,7 @@ do { \
 #define dbg_warn(...) \
 do { } while(0)
 #endif // SUPPRESS_WARN
-
+#endif
 #define dbg(x) x
 #endif // OS
 
