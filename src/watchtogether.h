@@ -38,11 +38,12 @@ struct _thread_info;
 struct _cond_info;
 
 typedef struct _threads_info_all {
-    struct _thread_info main_thread;
-    struct _thread_info decoder_thread;
-    struct _thread_info blt_thread;
+    struct _thread_info media_thread;
+    //struct _thread_info main_thread;
+    //struct _thread_info decoder_thread;
+    //struct _thread_info blt_thread;
     //struct _thread_info audio_thread;
-    struct _thread_info input_thread;
+    //struct _thread_info input_thread;
 } threads_info_all;
 
 typedef struct _socket_info {
@@ -171,6 +172,7 @@ typedef struct _avpacket_queue avpacket_queue;
 
 #define NUM_FRAMES 30
 
+#if 0
 typedef struct _video_queue_data {
     uint32 vq_width;
     uint32 vq_height;
@@ -212,6 +214,7 @@ typedef struct _video_queue_data {
     
     uint32 vq_timestamps[NUM_FRAMES];
 } video_queue_data;
+#endif 
 
 typedef struct _playback_data playback_data;
 typedef struct _message_queue message_queue;
@@ -229,12 +232,11 @@ typedef struct _program_data {
     hardware_info hardware;
     message_queue messages;
     
-    // TODO(Val): Will we need multiple packet queues?
-    avpacket_queue *pq_main;
-    avpacket_queue *pq_playback;
-    avpacket_queue *pq_stream;
-    avpacket_queue *pq_video;
-    avpacket_queue *pq_audio;
+    //avpacket_queue *pq_main;
+    //avpacket_queue *pq_playback;
+    //avpacket_queue *pq_stream;
+    //avpacket_queue *pq_video;
+    //avpacket_queue *pq_audio;
     
     // TODO(Val): remove this or make it more organized. 
     real32 volume;

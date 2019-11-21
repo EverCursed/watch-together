@@ -225,7 +225,6 @@ PlatformConditionWait(cond_info *c)
     while(!c->test && pdata->running)
     {
         SDL_CondWait(c->cond, c->mutex);
-        //PlatformSleep(0.001);
     }
     c->test = 0;
     SDL_UnlockMutex(c->mutex);
@@ -261,6 +260,7 @@ PlatformConditionDestroy(cond_info *c)
     
     RETURN(SUCCESS);
 }
+
 
 platform_mutex
 PlatformCreateMutex()

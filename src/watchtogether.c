@@ -18,8 +18,6 @@
 // TODO(Val): NAT-T implementation, see how it works
 // TODO(Val): Encryption
 
-// TODO(Val): Test a variety of these, and see how long it's possible to go
-// NOTE(Val): This will directly affect our maximum refresh rate. 
 #define MS_SAFETY_MARGIN 2.0
 
 #define PACKET_QUEUE_SIZE 60
@@ -223,6 +221,8 @@ ProcessAudio(program_data *pdata)
 static void
 ProcessVideo(program_data *pdata)
 {
+    StartTimer("ProcessVideo()");
+    
     PlatformUpdateVideoFrame(&pdata->video);
     //ClearVideoOutput(&pdata->video);
     
@@ -231,6 +231,8 @@ ProcessVideo(program_data *pdata)
     
     ClearVideoOutput(&pdata->video);
     pdata->video.is_ready = 0;
+    
+    EndTimer();
 }
 
 static void
@@ -293,7 +295,6 @@ ProcessPlayback(program_data *pdata)
         if(pdata->audio.is_ready &&
            (should_queue(playback) || !playback->started_playing))
         {
-            dbg_error("Processing audio.\n");
             ProcessAudio(pdata);
             
             need_audio = 1;
@@ -311,15 +312,15 @@ ProcessPlayback(program_data *pdata)
         }
         else
         {
-            dbg_error("Audio is not ready.\n");
+            
         }
         EndTimer();
     }
     
-    
     if(need_audio || need_video)
     {
         dbg_warn("Video or audio needed.\n");
+        
         PlatformConditionSignal(&pdata->decoder.condition);
     }
     //update_playback_time(playback);
@@ -434,20 +435,20 @@ MainLoopThread(void *arg)
         ProcessMessages(pdata);
         EndTimer();
         
-        if(pdata->file.open_failed)
-        {
-            //pdata->file.open_failed = 0;
-            
-            // TODO(Val): Opening file failed.
-            
-            dbg_error("Opening file failed.\n");
-        }
-        else 
+        if(!pdata->file.open_failed)
         {
             if(pdata->start_playback)
             {
                 StartPlayback(pdata);
             }
+        }
+        else 
+        {
+            //pdata->file.open_failed = 0;
+            
+            // TODO(Val): Opening file failed.
+            
+            dbg_warn("Opening file failed.\n");
         }
         
         if(pdata->playing && !pdata->paused)
@@ -459,11 +460,11 @@ MainLoopThread(void *arg)
         }
         else
         {
-            dbg_error("Not playing or paused.\n"
-                      "\tplaying: %s\n"
-                      "\tpaused: %s\n",
-                      pdata->playing ? "true" : "false",
-                      pdata->paused ? "true" : "false");
+            dbg_info("Not playing or paused.\n"
+                     "\tplaying: %s\n"
+                     "\tpaused: %s\n",
+                     pdata->playing ? "true" : "false",
+                     pdata->paused ? "true" : "false");
         }
         //dbg_print("Loop time: %ld\n", playback->time_end - playback->time_start);
         
@@ -559,6 +560,7 @@ InitializeApplication(program_data *pdata)
 static int32
 InitQueues(program_data *pdata)
 {
+#if 0
     pdata->pq_main = init_avpacket_queue(PACKET_QUEUE_SIZE);
     
     if(pdata->file.has_video)
@@ -574,25 +576,24 @@ InitQueues(program_data *pdata)
         if(pdata->pq_audio == NULL)
             RETURN(NO_MEMORY);
     }
-    
+#endif 
     RETURN(SUCCESS);
 }
 
 static int32
 TerminateQueues(program_data *pdata)
 {
+#if 0
     close_avpacket_queue(pdata->pq_audio);
     close_avpacket_queue(pdata->pq_video);
     close_avpacket_queue(pdata->pq_main);
-    
+#endif 
     RETURN(SUCCESS);
 }
 
 static int32
 FileOpen(program_data *pdata)
 {
-    pdata->decoder.condition = PlatformCreateConditionVar();
-    
     if(!MediaOpen(&pdata->file, &pdata->decoder, &pdata->encoder))
     {
         InitQueues(pdata);
@@ -610,9 +611,10 @@ FileOpen(program_data *pdata)
         
         AllocateBuffers(pdata);
         
-        pdata->threads.decoder_thread =
-            PlatformCreateThread(MediaThreadStart, pdata, "decoder");
+        pdata->decoder.condition = PlatformCreateConditionVar();
         
+        pdata->threads.media_thread =
+            PlatformCreateThread(MediaThreadStart, pdata, "media");
         
         pdata->file.file_ready = 1;
         pdata->playing = 0;
@@ -640,7 +642,7 @@ FileClose(program_data *pdata)
     PlatformConditionDestroy(&pdata->decoder.condition);
     
     // TODO(Val): This will block forever, need to fix
-    PlatformWaitThread(pdata->threads.decoder_thread, NULL);
+    PlatformWaitThread(pdata->threads.media_thread, NULL);
     
     DeallocateBuffers(pdata);
     
