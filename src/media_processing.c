@@ -192,7 +192,7 @@ process_video_frame(AVFrame *frame, output_video *video, decoder_info *decoder)
 #define AUDIO    2
 #define SUBTITLE 3
 
-int32
+static int32
 ProcessPacket(AVFrame **frame, int32 *type, AVPacket *packet, decoder_info *decoder)
 {
     StartTimer("ProcessPacket()");
@@ -422,11 +422,15 @@ LoadPackets(program_data *pdata, open_file_info *file)
 }
 */
 
+#define PACKET_BUFFER 30
+
 int32
 MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder)
 {
     // Open video file
     dbg_print("avformat version: %d - %d\n", LIBAVFORMAT_VERSION_INT, avformat_version());
+    
+    decoder->queue = init_avpacket_queue(PACKET_BUFFER);
     
     if(avformat_open_input(&decoder->format_context, file->filename, NULL, NULL) < 0)
     {
@@ -518,7 +522,6 @@ MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder)
     
     if(decoder->audio_stream_index >= 0)
     {
-        
         // Init audio codec context
         decoder->audio_codec_context = avcodec_alloc_context3(decoder->audio_codec);
         if(!decoder->audio_codec_context)
@@ -598,8 +601,7 @@ MediaClose(open_file_info *file, decoder_info *decoder, encoder_info *encoder)
     decoder->audio_codec = NULL;
     decoder->video_codec = NULL;
     
-    memset(file, 0, sizeof(open_file_info));
-    memset(decoder, 0, sizeof(decoder_info));
+    close_avpacket_queue(decoder->queue);
     
     RETURN(SUCCESS);
 }
@@ -622,6 +624,7 @@ ProcessEverything(decoder_info *decoder, output_video *video, output_audio *audi
     }
     else if(fail(ret))
     {
+        return;
         // TODO(Val): make this more foolproof
         //dbg_print
     }
@@ -636,10 +639,12 @@ ProcessEverything(decoder_info *decoder, output_video *video, output_audio *audi
     
     if(media_type == VIDEO)
     {
+        //if(!video->is_ready)
         process_video_frame(frame, video, decoder);
     }
     else if(media_type == AUDIO)
     {
+        //if(!audio->is_ready)
         process_audio_frame(frame, audio, decoder);
     }
     else if(media_type == SUBTITLE)
@@ -688,24 +693,19 @@ EnoughDurations(output_audio *audio, output_video *video, playback_data *playbac
 static int32
 RefillPackets(decoder_info *decoder, bool32 is_host)
 {
-    while(!pq_is_full(decoder->queue)) // TODO(Val): or file has been fully read
+    while(!pq_is_full(decoder->queue) && !decoder->file_fully_loaded)
     {
         AVPacket *packet;
         LoadPacket(decoder, &packet);
         
-        if(!decoder->file_fully_loaded)
-        {
-            enqueue_packet(decoder->queue, packet);
-            
-            if(is_host)
-                Streaming_Host_SendPacket(decoder, packet);
-        }
+        enqueue_packet(decoder->queue, packet);
+        
+        if(is_host)
+            Streaming_Host_SendPacket(decoder, packet);
     }
     
     RETURN(SUCCESS);
 }
-
-#define PACKET_BUFFER 30
 
 int32
 MediaThreadStart(void *arg)
@@ -718,13 +718,12 @@ MediaThreadStart(void *arg)
     //encoder_info *encoder = &pdata->encoder;
     playback_data *playback = &pdata->playback;
     
-    decoder->queue = init_avpacket_queue(PACKET_BUFFER);
     if(pdata->is_host)
         Streaming_Host_Initialize(decoder);
     
     int ret = 0;
     
-    PreLoadPackets(decoder, pdata->is_host);
+    RefillPackets(decoder, pdata->is_host);
     
     bool32 start_notified = 0;
     
@@ -736,10 +735,17 @@ MediaThreadStart(void *arg)
             ProcessEverything(decoder, &pdata->video, &pdata->audio);
         EndTimer();
         
-        if(pdata->is_host)
-        {
-            //StreamPackets();
-        }
+        dbg_print("Playback start check:\n"
+                  "\tstart_notified:  %s\n"
+                  "\tfile.has_audio: %s\n"
+                  "\taudio.is_ready:  %s\n"
+                  "\tfile.has_video: %s\n"
+                  "\tvideo.is_ready:  %s\n",
+                  b2str(start_notified),
+                  b2str(pdata->file.has_audio),
+                  b2str(pdata->audio.is_ready),
+                  b2str(pdata->file.has_video),
+                  b2str(pdata->video.is_ready));
         
         
         if(!start_notified &&
@@ -758,29 +764,12 @@ MediaThreadStart(void *arg)
         StartTimer("Waiting");
         PlatformConditionWait(&decoder->condition);
         EndTimer();
-        /*
-        dbg_info("Media processing:\n"
-        "\tSleeping data:\n"
-        "\t\tdecoding_start_time: %lf\n"
-        "\t\tnext_video_time: %lf\n"
-        "\t\tnext_audio_time: %lf\n"
-        "\t\tcurrent_time: %lf\n",
-        decoding_start_time,
-        next_video_time,
-        next_audio_time,
-        PlatformGetTime());
-        //WaitUntil(decoding_start_time + next_time, 0.002);
-        //PlatformSleep(0.010);
-        */
-        
-        
-        if(!file->file_ready)
-            break;
     }
     EndTimer();
     
     if(pdata->is_host)
         Streaming_Host_Close();
+    
     
     FinishTiming();
     RETURN(SUCCESS);
