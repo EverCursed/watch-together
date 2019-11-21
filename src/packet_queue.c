@@ -46,6 +46,7 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
         queue->n++;
         queue->end = (queue->end + 1) % queue->maxn;
         
+        PlatformUnlockMutex(&queue->mutex);
         RETURN(SUCCESS);
     }
     else
@@ -139,6 +140,7 @@ clear_avpacket_queue(avpacket_queue *queue)
         av_packet_unref(queue->buffer + i*AVPACKET_SIZE);
     }
     */
+    PlatformLockMutex(&queue->mutex);
     
     queue->n = 0;
     queue->next = 0;
