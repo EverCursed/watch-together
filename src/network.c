@@ -1,6 +1,7 @@
+#include <SDL2/SDL_net.h>
+
 #include "network.h"
 #include "utils.h"
-#include <SDL2/SDL_net.h>
 #include "communication_messages.h"
 
 static uint16 message_ports[4] = {8212, 8418, 23458, 28002};
@@ -61,19 +62,16 @@ ConnectToIP(destination_IP ip)
 }
 
 int32
-SendControlMessage(int32 msg, int n, ...)
+SendControlMessage(int32 msg, int32 n, ...)
 {
     char buff[256];
     int32 size = 0;
     
     SDLNet_Write32(msg, buff+size);
-    size += 4;
     
-    //int32 n;
     va_list args;
     va_start(args, n);
     
-    SDLNet_Write32(n, buff+size);
     size += 4;
     
     for(int i = 0; i < n; i++ )
@@ -89,6 +87,49 @@ SendControlMessage(int32 msg, int n, ...)
         RETURN(SENDING_ERROR);
     
     RETURN(SUCCESS);
+}
+
+int32
+ReceiveControlMessage()
+{
+    
+    RETURN(NOT_YET_IMPLEMENTED);
+}
+
+int32
+SendRequestPortMessage()
+{
+    int ret = SendControlMessage(REQUEST_PORT, 0);
+    if(ret)
+    {
+        
+    }
+    
+    RETURN(SUCCESS);
+}
+
+int32
+SendHelloMessage()
+{
+    RETURN(NOT_YET_IMPLEMENTED);
+}
+
+int32
+SendPauseMessage()
+{
+    RETURN(NOT_YET_IMPLEMENTED);
+}
+
+int32
+SendSeekMessage(int64 seek_time)
+{
+    RETURN(NOT_YET_IMPLEMENTED);
+}
+
+int32
+SendDisconnectMessage()
+{
+    RETURN(NOT_YET_IMPLEMENTED);
 }
 
 int32
@@ -110,4 +151,3 @@ CloseServer()
     
     RETURN(SUCCESS);
 }
-
