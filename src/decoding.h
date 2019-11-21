@@ -13,11 +13,13 @@
 typedef struct _decoder_info {
     AVRational video_time_base;
     AVRational audio_time_base;
+    AVRational subtitle_time_base;
     
     AVFormatContext *format_context;
     
     AVCodec *audio_codec;
     AVCodec *video_codec;
+    AVCodec *subtitle_codec;
     
     AVCodecContext *audio_codec_context;
     AVCodecContext *video_codec_context;

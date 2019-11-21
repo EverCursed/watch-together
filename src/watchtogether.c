@@ -210,6 +210,7 @@ ProcessAudio(program_data *pdata)
     
     PlatformQueueAudio(&pdata->audio);
     increment_audio_times(&pdata->playback, pdata->audio.duration);
+    pdata->audio.requested_timestamp = get_future_playback_time(&pdata->playback);
     PrepareAudioOutput(&pdata->audio);
     
     pdata->audio.is_ready = 0;
@@ -226,6 +227,7 @@ ProcessVideo(program_data *pdata)
     //ClearVideoOutput(&pdata->video);
     
     increment_video_times(&pdata->playback, av_q2d(pdata->decoder.video_time_base));
+    pdata->video.requested_timestamp = get_future_playback_time(&pdata->playback);
     
     ClearVideoOutput(&pdata->video);
     pdata->video.is_ready = 0;
@@ -245,6 +247,7 @@ static int32
 ProcessPlayback(program_data *pdata)
 {
     playback_data *playback = &pdata->playback;
+    client_info *client = &pdata->client;
     
     bool32 need_video = 0;
     bool32 need_audio = 0;
@@ -261,19 +264,19 @@ ProcessPlayback(program_data *pdata)
             
             EndTimer();
         }
-        else if(pdata->video.is_ready && 
-                should_skip(playback, pdata->video.pts))
-        {
-            StartTimer("Skipping video");
-            
-            dbg_warn("Skipping frame.\n");
-            
-            StartTimer("SkipVideoFrame()");
-            SkipVideoFrame(pdata);
-            EndTimer();
-            
-            EndTimer();
-        }
+        //else if(pdata->video.is_ready && 
+        //should_skip(playback, pdata->video.pts))
+        //{
+        //StartTimer("Skipping video");
+        //
+        //dbg_warn("Skipping frame.\n");
+        //
+        //StartTimer("SkipVideoFrame()");
+        //SkipVideoFrame(pdata);
+        //EndTimer();
+        //
+        //EndTimer();
+        //}
         else if(!pdata->video.is_ready)
         {
             dbg_warn("Video was not ready.\n");
@@ -282,7 +285,7 @@ ProcessPlayback(program_data *pdata)
         {
             dbg_warn("Not time to display yet.\n");
         }
-    }
+    } 
     
     if(pdata->file.has_audio)
     {
@@ -487,10 +490,9 @@ MainLoopThread(void *arg)
             playback->started_playing = 1;
         }
         PlatformFlipBuffers(pdata);
-        EndTimer();
         
-        client->current_frame_time = client->next_refresh_time;
-        client->next_refresh_time += client->refresh_target;
+        Client_UpdateTime(client);
+        EndTimer();
         
         EndTimer();
     }
@@ -649,20 +651,22 @@ FileClose(program_data *pdata)
     RETURN(SUCCESS);
 }
 
+static void inline
+InitializePointers(program_data *pdata)
+{
+    pdata->playback.current_frame_time = &pdata->client.current_frame_time;
+    pdata->playback.next_frame_time = &pdata->client.next_refresh_time;
+    pdata->playback.refresh_target = &pdata->client.refresh_target;
+}
+
 int32
 MainThread(program_data *pdata)
 {
     InitializeApplication(pdata);
     // NOTE(Val): Initialize things here that will last the entire runtime of the application
     
-    pdata->client.refresh_target = 1.0 / (real64)pdata->hardware.monitor_refresh_rate;
-    //pdata->client.
-    
-    pdata->playback.current_frame_time = &pdata->client.current_frame_time;
-    pdata->playback.next_frame_time = &pdata->client.next_refresh_time;
-    pdata->playback.refresh_target = &pdata->client.refresh_target;
-    
-    dbg_info("Client refresh target time set to %lfs.\n", pdata->client.refresh_target);
+    Client_SetRefreshTime(&pdata->client, 1.0 / (real64)pdata->hardware.monitor_refresh_rate);
+    InitializePointers(pdata);
     
     //pdata->threads.input_thread = PlatformCreateThread(InputLoopThread, pdata, "input_thread");
     

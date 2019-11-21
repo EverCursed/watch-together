@@ -24,18 +24,19 @@ increment_audio_times(playback_data *playback, real64 duration)
 bool32
 should_display(playback_data *playback, real64 video_ts)
 {
-    real64 playback_time = get_playback_time(playback);
-    real64 n = playback_time + *playback->refresh_target;
+    real64 current_time = get_playback_time(playback);
+    real64 next_time = current_time + *playback->refresh_target;
     
-    bool32 result = video_ts > playback_time && video_ts < n;
+    //bool32 result = video_ts - *playback->refresh_target < playback_time;
+    bool32 result = video_ts < next_time;// playback_time && video_ts < n;
     //(playback_time <= video_ts && video_ts <= n);
     //|| (video_ts > n && video_ts <= n + VIDEO_QUEUE_MARGIN);
     
-    dbg_print("should_display(): %lf <= %lf  < %lf\t%s\n",
-              playback_time,
-              video_ts,
-              n,
-              result ? "YES" : "NO");
+    //dbg_print("should_display(): %lf <= %lf  < %lf\t%s\n",
+    //playback_time,
+    //video_ts,
+    //n,
+    //result ? "YES" : "NO");
     
     return result;
 }
@@ -69,6 +70,12 @@ get_next_playback_time(playback_data *p)
     return get_playback_time(p) + *p->refresh_target;
 }
 
+real64
+get_next_frame_time(playback_data *p)
+{
+    return *p->next_frame_time;
+}
+
 bool32
 should_skip(playback_data *playback, real64 video_ts)
 {
@@ -79,18 +86,20 @@ bool32
 should_queue(playback_data *playback)
 {
     real64 playback_time = get_playback_time(playback);
-    real64 n = playback_time + (*playback->refresh_target*2);
+    real64 n = playback_time + (*playback->refresh_target);
     
-    bool32 result = ((playback_time <= playback->audio_total_queued) &&
-                     (playback->audio_total_queued < n));
+    //bool32 result = ((playback_time <= playback->audio_total_queued) &&
+    //(playback->audio_total_queued < n));
+    
+    bool32 result = playback->audio_total_queued < n;
     
     //bool32 result = (playback_time - *playback->refresh_target) < 
     
-    dbg_print("should_queue(): %lf <= %lf < %lf\t%s\n",
-              playback_time,
-              playback->audio_total_queued,
-              n,
-              result ? "YES" : "NO");
+    //dbg_print("should_queue(): %lf <= %lf < %lf\t%s\n",
+    //playback_time,
+    //playback->audio_total_queued,
+    //n,
+    //result ? "YES" : "NO");
     
     return result;
 }

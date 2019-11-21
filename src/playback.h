@@ -54,4 +54,10 @@ get_next_playback_time(playback_data *playback);
 int32
 start_playback(playback_data *p, real64 time);
 
+static inline real64
+get_future_playback_time(playback_data *playback)
+{
+    return (get_next_playback_time(playback) + *playback->refresh_target);
+}
+
 #endif 

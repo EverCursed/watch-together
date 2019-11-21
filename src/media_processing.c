@@ -14,9 +14,6 @@
 #include "debug.h"
 #include "streaming.h"
 
-static real64 next_audio_time;
-static real64 next_video_time;
-
 static inline int32 is_video(AVPacket *packet, decoder_info *decoder) {return (packet->stream_index == decoder->video_stream->index);}
 static inline int32 is_audio(AVPacket *packet, decoder_info *decoder) {return (packet->stream_index == decoder->audio_stream->index);}
 static inline int32 is_subtitle(AVPacket *packet, decoder_info *decoder) {return (packet->stream_index == decoder->subtitle_stream->index);}
@@ -130,7 +127,6 @@ process_audio_frame(AVFrame *frame, output_audio *audio, decoder_info *decoder)
     
     real64 duration = (real64)SampleCount / (real64)Frequency;
     audio->duration += duration;
-    next_audio_time += duration;
     dbg_print("new audio duration: %lf\n", audio->duration);
     //dbg_info("Audio frame duration: %lf\n", pdata->audio.duration);
     
@@ -183,7 +179,7 @@ process_video_frame(AVFrame *frame, output_video *video, decoder_info *decoder)
     EndTimer();
     
     video->type = VIDEO_RGB;
-    video->pts = next_video_time = frame->pts * av_q2d(decoder->video_time_base); 
+    video->pts = frame->pts * av_q2d(decoder->video_time_base); 
     video->frame_duration = decoder->avg_video_framerate;
     
     video->is_ready = 1;
@@ -664,35 +660,29 @@ ProcessEverything(decoder_info *decoder, output_video *video, output_audio *audi
 static bool32
 EnoughDurations(output_audio *audio, output_video *video, playback_data *playback)
 {
+    StartTimer("EnoughDurations()");
+    
     real64 audio_time = audio->duration;
     // TODO(Val): This will break the application if the framerate is larger than the monitor refresh rate.
     real64 video_time = video->frame_duration;
-    real64 refresh_target = *playback->refresh_target;
+    real64 refresh_time = *playback->refresh_target;
+    real64 next_time = get_next_playback_time(playback);
     
-    dbg_print("EnoughDurations:\n"
-              "\taudio_time: %lf\n"
-              "\tvideo_time: %lf\n"
-              "\trefresh: %lf\n",
-              audio_time,
-              video_time,
-              refresh_target);
+    bool32 audio_enough = video->is_ready && ((playback->audio_total_queued + audio->duration) > audio->requested_timestamp);
+    bool32 video_enough = audio->is_ready && ((video->pts + video->frame_duration) > video->requested_timestamp);
     
-    return (refresh_target < smallest(audio_time, video_time)) ;
-}
-
-static int32
-PreLoadPackets(decoder_info *decoder, bool32 is_host)
-{
-    while(!pq_is_full(decoder->queue)) // TODO(Val): or file has been fully read
-    {
-        AVPacket *packet;
-        LoadPacket(decoder, &packet);
-        enqueue_packet(decoder->queue, packet);
-    }
+    dbg_print("EnoughDurations():\n"
+              "\taudio_enough: %s\taudio time: %lf\n"
+              "\tvideo_enough: %s\tvideo time: %lf\n"
+              "\tnext_time: %lf\n",
+              b2str(audio_enough), (audio->duration+playback->audio_total_queued),
+              b2str(video_enough), (video->pts + video->frame_duration),
+              next_time);
     
-    print_packets(decoder->queue);
+    //return (refresh_target < smallest(audio_time, video_time)) ;
+    EndTimer();
     
-    RETURN(SUCCESS);
+    return audio_enough && video_enough;
 }
 
 static int32
@@ -729,10 +719,6 @@ MediaThreadStart(void *arg)
     playback_data *playback = &pdata->playback;
     
     decoder->queue = init_avpacket_queue(PACKET_BUFFER);
-    
-    next_audio_time = 0.0;
-    next_video_time = 0.0;
-    
     if(pdata->is_host)
         Streaming_Host_Initialize(decoder);
     
@@ -740,36 +726,29 @@ MediaThreadStart(void *arg)
     
     PreLoadPackets(decoder, pdata->is_host);
     
-    real64 decoding_start_time = PlatformGetTime();
-    
-    while(!EnoughDurations(&pdata->audio, &pdata->video, playback))
-        ProcessEverything(decoder, &pdata->video, &pdata->audio);
-    pdata->start_playback = 1;
+    bool32 start_notified = 0;
     
     StartTimer("Processing Loop");
     while(pdata->running && !pdata->playback_finished)
     {
         StartTimer("Start processing loop");
+        while(!EnoughDurations(&pdata->audio, &pdata->video, playback))
+            ProcessEverything(decoder, &pdata->video, &pdata->audio);
+        EndTimer();
         
         if(pdata->is_host)
         {
             //StreamPackets();
         }
         
-        real64 next_time = smallest(next_video_time, next_audio_time);
         
-        while(!EnoughDurations(&pdata->audio, &pdata->video, playback))
-            ProcessEverything(decoder, &pdata->video, &pdata->audio);
-        /*
         if(!start_notified &&
-        (!pdata->file.has_audio || pdata->audio.is_ready) &&
-        (!pdata->file.has_video || pdata->video.is_ready))
+           (!pdata->file.has_audio || pdata->audio.is_ready) &&
+           (!pdata->file.has_video || pdata->video.is_ready))
         {
-        start_notified = 1;
-        pdata->start_playback = 1;
+            start_notified = 1;
+            pdata->start_playback = 1;
         }
-        */
-        EndTimer();
         
         StartTimer("RefillPackets()");
         if(!decoder->file_fully_loaded)

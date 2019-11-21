@@ -146,6 +146,21 @@ typedef struct _client_info {
     real64 next_refresh_time;
 } client_info;
 
+static inline void
+Client_UpdateTime(client_info *client)
+{
+    client->current_frame_time = client->next_refresh_time;
+    client->next_refresh_time += client->refresh_target;
+}
+
+static inline void
+Client_SetRefreshTime(client_info *client, real64 target_time)
+{
+    client->refresh_target = target_time;
+    
+    dbg_info("Client refresh target time set to %lfs.\n", client->refresh_target);
+}
+
 typedef struct _output_audio {
     void *buffer;
     platform_mutex mutex;
@@ -159,7 +174,7 @@ typedef struct _output_audio {
     volatile bool32 is_ready;
     real64 pts;
     real64 duration;
-    real64 required_duration;
+    real64 requested_timestamp;
 } output_audio;
 
 #define VIDEO_RGB 1
