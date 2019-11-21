@@ -450,6 +450,7 @@ MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder)
     // Query stream indexes from opened file
     decoder->video_stream_index = av_find_best_stream(decoder->format_context, AVMEDIA_TYPE_VIDEO, -1, -1, &decoder->video_codec, 0);
     decoder->audio_stream_index = av_find_best_stream(decoder->format_context, AVMEDIA_TYPE_AUDIO, -1, -1, &decoder->audio_codec, 0);
+    decoder->subtitle_stream_index = av_find_best_stream(decoder->format_context, AVMEDIA_TYPE_SUBTITLE, -1, -1, &decoder->subtitle_codec, 0);
     
     if(decoder->video_stream_index >= 0)
     {

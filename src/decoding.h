@@ -23,14 +23,27 @@ typedef struct _decoder_info {
     
     AVCodecContext *audio_codec_context;
     AVCodecContext *video_codec_context;
+    AVCodecContext *subtitle_codec_context;
+    
+    AVCodecContext *output_audio_codec_context;
+    AVCodecContext *output_video_codec_context;
+    AVCodecContext *output_subtitle_codec_context;
     
     AVStream *video_stream;
     AVStream *audio_stream;
     AVStream *subtitle_stream;
     
+    AVStream *output_video_stream;
+    AVStream *output_audio_stream;
+    AVStream *output_subtitle_stream;
+    
     int32 video_stream_index;
     int32 audio_stream_index;
     int32 subtitle_stream_index;
+    
+    int32 output_video_stream_index;
+    int32 output_audio_stream_index;
+    int32 output_subtitle_stream_index;
     
     const char *filename;
     

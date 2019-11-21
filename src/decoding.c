@@ -59,7 +59,6 @@ DecodePacket(AVFrame **frame, AVPacket *pkt, AVCodecContext *codec_context)
     StartTimer("DecodePacket()");
     
     int ret = 0;
-    
     ret = avcodec_send_packet(codec_context, pkt);
     
     if(ret == 0)
