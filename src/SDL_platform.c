@@ -510,7 +510,6 @@ ResizeScreen(program_data *pdata, int x, int y)
     rect.x = (new_width - rect.w)/2;
     rect.y = (new_height - rect.h)/2;
     
-    
     ret = SDL_RenderSetViewport(renderer,
                                 &rect);
     SDL_Test(ret);
@@ -563,6 +562,7 @@ PlatformGetInput(program_data *pdata)
             {
                 switch(event.window.event)
                 {
+                    case SDL_WINDOWEVENT_SIZE_CHANGED:
                     case SDL_WINDOWEVENT_RESIZED:
                     {
                         dbg_error("SDL_WINDOWEVENT_RESIZED fired.\n");

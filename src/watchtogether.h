@@ -155,7 +155,7 @@ typedef struct _output_audio {
     uint32 sample_format;
     uint32 size;
     uint32 max_buffer_size;
-    volatile bool32 is_ready;
+    bool32 is_ready;
     real64 pts;
     real64 duration;
     real64 requested_timestamp;

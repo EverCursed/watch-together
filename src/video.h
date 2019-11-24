@@ -15,7 +15,7 @@ typedef struct _ouput_video {
     uint32 width;
     uint32 height;
     int32 type;
-    volatile bool32 is_ready;
+    bool32 is_ready;
     real64 pts;
     real64 requested_timestamp;
 } output_video;
