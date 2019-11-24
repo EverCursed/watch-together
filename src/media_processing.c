@@ -49,14 +49,14 @@ static int32
 process_audio_frame(AVFrame *frame, output_audio *audio, decoder_info *decoder)
 {
     StartTimer("process_audio_frame");
-    
+#if 0
     if(audio->is_ready)
     {
         dbg_warn("Started processing an audio frame, while the previous one hasn't been used.\n");
         EndTimer();
         RETURN(UNKNOWN_ERROR);
     }
-    
+#endif
     int32 size = av_samples_get_buffer_size(NULL,
                                             frame->channels,
                                             frame->nb_samples,
@@ -459,6 +459,7 @@ MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder)
     else if(decoder->video_stream_index == AVERROR_STREAM_NOT_FOUND)
     {
         dbg_error("AVERROR_STREAM_NOT_FOUND\n");
+        file->has_video = 0;
     }
     else if(decoder->video_stream_index == AVERROR_DECODER_NOT_FOUND)
     {
@@ -664,7 +665,7 @@ ProcessEverything(decoder_info *decoder, output_video *video, output_audio *audi
 }
 
 static bool32
-EnoughDurations(output_audio *audio, output_video *video, playback_data *playback)
+EnoughDurations(output_audio *audio, open_file_info *file, output_video *video, playback_data *playback)
 {
     StartTimer("EnoughDurations()");
     
@@ -672,10 +673,10 @@ EnoughDurations(output_audio *audio, output_video *video, playback_data *playbac
     // TODO(Val): This will break the application if the framerate is larger than the monitor refresh rate.
     real64 video_time = video->frame_duration;
     real64 refresh_time = *playback->refresh_target;
-    real64 next_time = get_next_playback_time(playback);
+    real64 next_time = get_future_playback_time(playback);
     
-    bool32 audio_enough = video->is_ready && ((playback->audio_total_queued + audio->duration) > audio->requested_timestamp);
-    bool32 video_enough = audio->is_ready && ((video->pts + video->frame_duration) > video->requested_timestamp);
+    bool32 audio_enough = !file->has_audio || (audio->is_ready && ((playback->audio_total_queued + audio->duration) > audio->requested_timestamp));
+    bool32 video_enough = !file->has_video || (video->is_ready && ((video->pts + video->frame_duration) > next_time));
     
     dbg_print("EnoughDurations():\n"
               "\taudio_enough: %s\taudio time: %lf\n"
@@ -732,8 +733,11 @@ MediaThreadStart(void *arg)
     while(pdata->running && !pdata->playback_finished)
     {
         StartTimer("Start processing loop");
-        while(!EnoughDurations(&pdata->audio, &pdata->video, playback))
+        while(!EnoughDurations(&pdata->audio, &pdata->file, &pdata->video, playback))
+        {
             ProcessEverything(decoder, &pdata->video, &pdata->audio);
+            RefillPackets(decoder, pdata->is_host);
+        }
         EndTimer();
         
         dbg_print("Playback start check:\n"
