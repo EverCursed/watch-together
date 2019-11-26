@@ -254,10 +254,9 @@ ProcessPlayback(program_data *pdata)
     bool32 need_video = 0;
     bool32 need_audio = 0;
     
-    if(pdata->file.has_video)
+    if(pdata->file.has_video && pdata->video.is_ready)
     {
-        if(pdata->video.is_ready &&
-           (should_display(playback, pdata->video.pts) || !playback->started_playing))
+        if(should_display(playback, pdata->video.pts) || !playback->started_playing)
         {
             StartTimer("Processing video");
             
@@ -266,34 +265,20 @@ ProcessPlayback(program_data *pdata)
             
             EndTimer();
         }
-        //else if(pdata->video.is_ready && 
-        //should_skip(playback, pdata->video.pts))
-        //{
-        //StartTimer("Skipping video");
-        //
-        //dbg_warn("Skipping frame.\n");
-        //
-        //StartTimer("SkipVideoFrame()");
-        //SkipVideoFrame(pdata);
-        //EndTimer();
-        //
-        //EndTimer();
-        //}
-        else if(!pdata->video.is_ready)
-        {
-            dbg_warn("Video was not ready.\n");
-        }
         else
         {
-            dbg_warn("Not time to display yet.\n");
+            dbg_print("Not time to display yet.\n");
         }
     } 
+    else
+    {
+        dbg_warn("Video was not ready.\n");
+    }
     
-    if(pdata->file.has_audio)
+    if(pdata->file.has_audio && pdata->audio.is_ready)
     {
         StartTimer("Processing audio");
-        if(pdata->audio.is_ready &&
-           (should_queue(playback) || !playback->started_playing))
+        if(should_queue(playback) || !playback->started_playing)
         {
             ProcessAudio(pdata);
             
@@ -306,13 +291,9 @@ ProcessPlayback(program_data *pdata)
         //pdata->audio.is_ready = 0;
         //need_audio = 1;
         //}
-        else if(pdata->audio.is_ready)
-        {
-            dbg_info("Just waiting as it's not yet time to queue.\n");
-        }
         else
         {
-            
+            dbg_info("Just waiting as it's not yet time to queue.\n");
         }
         EndTimer();
     }
@@ -323,7 +304,6 @@ ProcessPlayback(program_data *pdata)
         
         PlatformConditionSignal(&pdata->decoder.condition);
     }
-    //update_playback_time(playback);
     
     RETURN(SUCCESS);
 }
@@ -641,7 +621,6 @@ FileClose(program_data *pdata)
     MediaClose(&pdata->file, &pdata->decoder, &pdata->encoder);
     PlatformConditionDestroy(&pdata->decoder.condition);
     
-    // TODO(Val): This will block forever, need to fix
     PlatformWaitThread(pdata->threads.media_thread, NULL);
     
     DeallocateBuffers(pdata);

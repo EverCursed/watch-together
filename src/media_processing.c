@@ -675,8 +675,11 @@ EnoughDurations(output_audio *audio, open_file_info *file, output_video *video, 
     real64 refresh_time = *playback->refresh_target;
     real64 next_time = get_future_playback_time(playback);
     
-    bool32 audio_enough = !file->has_audio || (audio->is_ready && ((playback->audio_total_queued + audio->duration) > audio->requested_timestamp));
-    bool32 video_enough = !file->has_video || (video->is_ready && ((video->pts + video->frame_duration) > next_time));
+    bool32 audio_enough =
+        !file->has_audio ||
+        (audio->is_ready && ((playback->audio_total_queued + audio->duration) >= next_time)) ||
+        (playback->audio_total_queued >= next_time);
+    bool32 video_enough = !file->has_video || (video->is_ready && ((video->pts + video->frame_duration) >= next_time));
     
     dbg_print("EnoughDurations():\n"
               "\taudio_enough: %s\taudio time: %lf\n"

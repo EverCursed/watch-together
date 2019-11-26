@@ -97,7 +97,7 @@ DecodePacket(AVFrame **frame, AVPacket *pkt, AVCodecContext *codec_context)
     
     if(ret == AVERROR(EAGAIN))
     {
-        // NOTE(Val): This means a frame must be read before we can send another packet
+        // NOTE(Val): This means we need to send more data
         RETURN(NEED_DATA);
     }
     else if(ret == AVERROR_EOF)
