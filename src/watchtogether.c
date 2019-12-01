@@ -1,4 +1,5 @@
 #include "common/custom_malloc.h"
+#include "attributes.h"
 
 #include "watchtogether.h"
 #include "message_queue.h"
@@ -7,12 +8,7 @@
 #include "network.h"
 #include "media_processing.h"
 #include "time.h"
-//#include "platform.h"
-//#include "kbkeys.h"
-//#include "utils.h"
-//#include "audio.h"
-//#include "playback.h"
-//#include "packet_queue.h"
+#include "avframe_pts_ordered_queue.h"
 
 //#include <time.h>
 // TODO(Val): NAT-T implementation, see how it works
@@ -204,18 +200,28 @@ ProcessAudio(program_data *pdata)
 {
     StartTimer("ProcessAudio()");
     
-    PlatformLockMutex(&pdata->audio.mutex);
+    //PlatformLockMutex(&pdata->audio.mutex);
     
-    PlatformQueueAudio(&pdata->audio);
-    increment_audio_times(&pdata->playback, pdata->audio.duration);
-    pdata->audio.requested_timestamp = get_future_playback_time(&pdata->playback);
-    PrepareAudioOutput(&pdata->audio);
-    
-    pdata->audio.is_ready = 0;
-    
-    PlatformUnlockMutex(&pdata->audio.mutex);
-    
-    EndTimer();
+    AVFrame *frame = NULL;
+    if(!avframe_queue_dequeue(&pdata->audio.queue, &frame, NULL))
+    {
+        PlatformQueueAudio(frame);
+        
+        increment_audio_times(&pdata->playback, (real64)frame->nb_samples/(real64)frame->sample_rate);
+        //pdata->audio.requested_timestamp = get_future_playback_time(&pdata->playback);
+        //PrepareAudioOutput(&pdata->audio);
+        
+        pdata->audio.is_ready = 0;
+        
+        //PlatformUnlockMutex(&pdata->audio.mutex);
+        
+        av_frame_unref(frame);
+        EndTimer();
+    }
+    else
+    {
+        dbg_warn("There were no frames in queue.\n");
+    }
 }
 
 static void
@@ -223,19 +229,22 @@ ProcessVideo(program_data *pdata)
 {
     StartTimer("ProcessVideo()");
     
-    PlatformUpdateVideoFrame(&pdata->video);
-    //ClearVideoOutput(&pdata->video);
-    
-    increment_video_times(&pdata->playback, av_q2d(pdata->decoder.video_time_base));
-    pdata->video.requested_timestamp = get_future_playback_time(&pdata->playback);
-    
-    ClearVideoOutput(&pdata->video);
-    pdata->video.is_ready = 0;
+    AVFrame *frame = NULL;
+    if(!avframe_queue_dequeue(&pdata->video.queue, &frame, NULL))
+    {
+        PlatformUpdateVideoFrame(frame);
+        
+        increment_video_times(&pdata->playback, av_q2d(pdata->decoder.video_time_base));
+        
+        av_frame_unref(frame);
+        ClearVideoOutput(&pdata->video);
+        pdata->video.is_ready = 0;
+    }
     
     EndTimer();
 }
 
-static void
+not_used static void
 SkipVideoFrame(program_data *pdata)
 {
     //ClearVideoOutput(&pdata->video);
@@ -250,13 +259,15 @@ ProcessPlayback(program_data *pdata)
 {
     playback_data *playback = &pdata->playback;
     client_info *client = &pdata->client;
+    output_audio *audio = &pdata->audio;
+    output_video *video = &pdata->video;
     
     bool32 need_video = 0;
     bool32 need_audio = 0;
     
-    if(pdata->file.has_video && pdata->video.is_ready)
+    if(pdata->file.has_video && !avframe_queue_empty(&pdata->video.queue))
     {
-        if(should_display(playback, pdata->video.pts) || !playback->started_playing)
+        if(should_display(playback, avframe_queue_next_pts(&video->queue)))
         {
             StartTimer("Processing video");
             
@@ -275,10 +286,10 @@ ProcessPlayback(program_data *pdata)
         dbg_warn("Video was not ready.\n");
     }
     
-    if(pdata->file.has_audio && pdata->audio.is_ready)
+    if(pdata->file.has_audio && !avframe_queue_empty(&pdata->audio.queue))
     {
         StartTimer("Processing audio");
-        if(should_queue(playback) || !playback->started_playing)
+        if(should_queue(playback, avframe_queue_next_pts(&pdata->audio.queue)) || !playback->started_playing)
         {
             ProcessAudio(pdata);
             
@@ -291,10 +302,10 @@ ProcessPlayback(program_data *pdata)
         //pdata->audio.is_ready = 0;
         //need_audio = 1;
         //}
-        else
-        {
-            dbg_info("Just waiting as it's not yet time to queue.\n");
-        }
+        //else
+        //{
+        //dbg_info("Just waiting as it's not yet time to queue.\n");
+        //}
         EndTimer();
     }
     
@@ -574,19 +585,23 @@ TerminateQueues(program_data *pdata)
 static int32
 FileOpen(program_data *pdata)
 {
-    if(!MediaOpen(&pdata->file, &pdata->decoder, &pdata->encoder))
+    if(!MediaOpen(&pdata->file, &pdata->decoder, &pdata->encoder, &pdata->audio, &pdata->video))
     {
         InitQueues(pdata);
         
         if(pdata->file.has_audio)
         {
             pdata->audio.mutex = PlatformCreateMutex();
-            PlatformInitAudio(pdata);
+            PlatformInitAudio(&pdata->file);
+            avframe_queue_init(&pdata->video.queue, AVFQ_ORDERED_PTS);
+            
+            PlatformResizeClientArea(&pdata->file, 0, 0);
         }
         if(pdata->file.has_video)
         {
             pdata->video.frame_duration = pdata->file.target_time;
             PlatformInitVideo(&pdata->file);
+            avframe_queue_init(&pdata->audio.queue, AVFQ_ORDERED_PTS);
         }
         
         AllocateBuffers(pdata);
@@ -618,7 +633,7 @@ FileClose(program_data *pdata)
     
     PlatformConditionSignal(&pdata->decoder.condition);
     
-    MediaClose(&pdata->file, &pdata->decoder, &pdata->encoder);
+    MediaClose(&pdata->file, &pdata->decoder, &pdata->encoder, &pdata->audio, &pdata->video);
     PlatformConditionDestroy(&pdata->decoder.condition);
     
     PlatformWaitThread(pdata->threads.media_thread, NULL);

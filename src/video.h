@@ -3,8 +3,10 @@
 
 #include <libavutil/rational.h>
 #include "defines.h"
+#include "avframe_pts_ordered_queue.h"
 
-typedef struct _ouput_video {
+typedef struct _output_video {
+    avframe_queue queue;
     void *video_frame;
     void *video_frame_sup1;
     void *video_frame_sup2;
@@ -17,7 +19,6 @@ typedef struct _ouput_video {
     int32 type;
     bool32 is_ready;
     real64 pts;
-    real64 requested_timestamp;
 } output_video;
 
 int32

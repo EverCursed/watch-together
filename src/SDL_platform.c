@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_net.h>
 #include <assert.h>
+#include <libavutil/frame.h>
 
 #include "watchtogether.h"
 #include "utils/timing.h"
@@ -45,11 +46,19 @@ global program_data *pdata;
 #define TESTING_FILE "data/video_test/video.mp4"
 
 int32
-PlatformQueueAudio(output_audio *audio)
+PlatformQueueAudio(AVFrame *frame)
 {
+    //output_audio *audio = &pdata->audio;
+    int32 size = frame->nb_samples * frame->channels * av_get_bytes_per_sample(frame->format);
+    dbg_info("Audio frame:\n"
+             "\tframe->data[0]: %p\n"
+             "\tsize:           %d\n",
+             frame->data[0],
+             size);
+    
     int ret = SDL_QueueAudio(AudioID,
-                             audio->buffer,
-                             audio->size);
+                             frame->data[0],
+                             size);
     
     if(ret < 0)
     {
@@ -86,12 +95,13 @@ AudioCallback(void*  userdata,
 }
 */
 int32
-PlatformInitAudio(program_data *pdata)
+PlatformInitAudio(open_file_info *file)
 {
+    output_audio *audio = &pdata->audio;
     //dbg_info("PlatformInitAudio called.\n");
     
-    open_file_info *file = &pdata->file;
-    output_audio *output = &pdata->audio;
+    //open_file_info *file = &pdata->file;
+    //output_audio *output = &pdata->audio;
     
     SDL_AudioSpec DesiredAudioSpec = {};
     SDL_AudioSpec ReceivedAudioSpec = {};
@@ -144,12 +154,12 @@ PlatformInitAudio(program_data *pdata)
     {
         audio_initialized = 1;
         
-        output->sample_rate = ReceivedAudioSpec.freq;
-        output->channels = ReceivedAudioSpec.channels;
+        audio->sample_rate = ReceivedAudioSpec.freq;
+        audio->channels = ReceivedAudioSpec.channels;
         
         // TODO(Val): This doesnt check what audio device params we received.
-        output->bytes_per_sample = bytes_per_sample;
-        output->sample_format = file->sample_format;
+        audio->bytes_per_sample = bytes_per_sample;
+        audio->sample_format = file->sample_format;
         
         pdata->audio_format = ReceivedAudioSpec.format;
         
@@ -167,7 +177,7 @@ PlatformInitAudio(program_data *pdata)
 }
 
 void
-PlatformCloseAudio(program_data *pdata)
+PlatformCloseAudio()
 {
     SDL_CloseAudioDevice(AudioID);
 }
@@ -293,6 +303,12 @@ PlatformUnlockMutex(platform_mutex *m)
         RETURN(UNKNOWN_ERROR);
 }
 
+void
+PlatformDestroyMutex(platform_mutex *m)
+{
+    SDL_DestroyMutex(m->mutex);
+}
+
 /*
 real64
 PlatformGetTime()
@@ -303,17 +319,18 @@ PlatformGetTime()
 }
 */
 int32
-PlatformUpdateVideoFrame(output_video *video)
+PlatformUpdateVideoFrame(AVFrame *frame)
 {
     StartTimer("PlatformUpdateVideoFrame()");
     
     int ret = 0;
     
     StartTimer("SDL_UpdateTexture()");
+    
     ret = SDL_UpdateTexture(video_texture,
                             NULL,
-                            video->video_frame,
-                            video->pitch);
+                            frame->data[0],
+                            frame->linesize[0]);
     SDL_Test(ret);
     EndTimer();
     
@@ -395,7 +412,7 @@ PlatformRender()
 }
 
 int32
-PlatformFlipBuffers(program_data *pdata)
+PlatformFlipBuffers()
 {
     StartTimer("PlatformFlipBuffers()");
     SDL_RenderPresent(renderer);
@@ -405,7 +422,7 @@ PlatformFlipBuffers(program_data *pdata)
 }
 
 void
-PlatformToggleFullscreen(program_data *pdata)
+PlatformToggleFullscreen()
 {
     dbg_success("TOGGLING FULLSCREEN\n");
     int ret = SDL_SetWindowFullscreen(window, pdata->is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
@@ -479,32 +496,42 @@ int resize_filter(void *userdata,
 }
 #endif
 
-static int32
-ResizeScreen(program_data *pdata, int x, int y)
+int32
+PlatformResizeClientArea(open_file_info *file, int x, int y)
 {
     StartTimer("ResizeScreen()");
     int ret = 0;
+    
+    if(!x || !y)
+    {
+        int32 win_width, win_height;
+        SDL_GetWindowSize(window, &win_width, &win_height);
+        if(!x)
+            x = win_width;
+        if(!y)
+            y = win_height;
+    }
     
     int new_width = x;
     int new_height = y;
     
     SDL_Rect rect = {};
     
-    real32 width_ratio = (real32)new_width/pdata->file.width;
-    real32 height_ratio = (real32)new_height/pdata->file.height;
+    real32 width_ratio = (real32)new_width/file->width;
+    real32 height_ratio = (real32)new_height/file->height;
     
-    real32 ratio = (real32)pdata->file.width / (real32)pdata->file.height;
+    real32 ratio = (real32)file->width / (real32)file->height;
     real32 new_ratio = (real32)new_width / (real32)new_height;
     
     if(new_ratio >= ratio)
     {
         rect.h = new_height;
-        rect.w = (real32)pdata->file.width * height_ratio;
+        rect.w = (real32)file->width * height_ratio;
     }
     else
     {
         rect.w = new_width;
-        rect.h = (real32)pdata->file.height * width_ratio;
+        rect.h = (real32)file->height * width_ratio;
     }
     
     rect.x = (new_width - rect.w)/2;
@@ -530,11 +557,11 @@ PlatformInitVideo(open_file_info *file)
     
     if(!video_texture) SDL_PrintError();
     
-    ResizeScreen(pdata, file->width, file->height);
+    PlatformResizeClientArea(file, 0, 0);
 }
 
 int32
-PlatformGetInput(program_data *pdata)
+PlatformGetInput()
 {
     StartTimer("PlatformGetInput()");
     
@@ -567,7 +594,7 @@ PlatformGetInput(program_data *pdata)
                     {
                         dbg_error("SDL_WINDOWEVENT_RESIZED fired.\n");
                         
-                        ResizeScreen(pdata, event.window.data1, event.window.data2);
+                        PlatformResizeClientArea(&pdata->file, event.window.data1, event.window.data2);
                         /*
                         int width = pdata->vq_data.video_queue_width;
                         int height = pdata->vq_data.video_queue_height;

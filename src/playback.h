@@ -59,13 +59,27 @@ get_future_playback_time(playback_data *playback)
 static inline bool32
 should_display(playback_data *playback, real64 video_ts)
 {
+    real64 t = get_next_playback_time(playback);
+    dbg_info("should_display:\n"
+             "\tvideo_timestamp: %lf\n"
+             "\tnext timestamp:  %lf\n",
+             video_ts,
+             t);
     return (video_ts < get_next_playback_time(playback));
 }
 
 static inline bool32
-should_queue(playback_data *playback)
+should_queue(playback_data *playback, real64 audio_ts)
 {
-    return (playback->audio_total_queued < get_next_playback_time(playback));
+    real64 following_time =  get_future_playback_time(playback);
+    return (playback->audio_total_queued < following_time) &&
+        (audio_ts < following_time);
+    //return (playback->audio_total_queued < get_future_playback_time(playback));
 }
 
+static inline bool32
+enough_audio(playback_data *playback)
+{
+    return (playback->audio_total_queued >= get_next_playback_time(playback));
+}
 #endif 

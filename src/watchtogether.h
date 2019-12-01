@@ -1,22 +1,24 @@
 #ifndef WT
 #define WT
 
-//#include "audio_queue.h"
-//#include "video_queue.h"
-//#include "decoding.h"
 #include <libavutil/rational.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 
 #include "wt_version.h"
-#include "SDL_platform.h"
+#include "platform.h"
 #include "playback.h"
 #include "message_queue.h"
 #include "packet_queue.h"
 #include "decoding.h"
 #include "encoding.h"
 #include "kbkeys.h"
+
+// must be above video, audio, and subtitles
+#include "avframe_pts_ordered_queue.h"
 #include "video.h"
+#include "audio.h"
+
 #include "utils.h"
 #include "media_processing.h"
 #include "network.h"
@@ -145,26 +147,12 @@ Client_SetRefreshTime(client_info *client, real64 target_time)
     dbg_info("Client refresh target time set to %lfs.\n", client->refresh_target);
 }
 
-typedef struct _output_audio {
-    void *buffer;
-    platform_mutex mutex;
-    AVRational time_base;
-    uint32 sample_rate;
-    uint32 bytes_per_sample;
-    uint32 channels;
-    uint32 sample_format;
-    uint32 size;
-    uint32 max_buffer_size;
-    bool32 is_ready;
-    real64 pts;
-    real64 duration;
-    real64 requested_timestamp;
-} output_audio;
 
 #define VIDEO_RGB 1
 #define VIDEO_YUV 2
 
-typedef struct _ouput_video output_video;
+typedef struct _output_audio output_audio;
+typedef struct _output_video output_video;
 
 typedef struct _open_file_info open_file_info;
 

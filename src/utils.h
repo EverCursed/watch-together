@@ -12,9 +12,10 @@
 
 #define BYTES_ALIGNMENT 16
 
-#define round_up_align(v) \
-((v + BYTES_ALIGNMENT -1) - (((v + BYTES_ALIGNMENT - 1) % BYTES_ALIGNMENT)))
-
+static inline int round_up_align(int v)
+{
+    return ((v + BYTES_ALIGNMENT -1) - (((v + BYTES_ALIGNMENT - 1) % BYTES_ALIGNMENT)));
+}
 /*
 static uint32 round_up_align(uint32 val)
 {
@@ -24,6 +25,14 @@ static uint32 round_up_align(uint32 val)
 
 #define smallest(a, b) (a < b ? a : b)
 #define largest(a,b) (a > b ? a : b)
+
+#define minint(a,b) ({int _a = (a), _b = (b); _a < _b ? _a : _b; })
+#define minfloat(a,b) ({float _a = (a), _b = (b); _a < _b ? _a : _b; })
+#define mindouble(a,b) ({double _a = (a), _b = (b); _a < _b ? _a : _b; })
+
+#define maxint(a,b) ({int _a = (a), _b = (b); _a > _b ? _a : _b; })
+#define maxfloat(a,b) ({float _a = (a), _b = (b); _a > _b ? _a : _b; })
+#define maxdouble(a,b) ({double _a = (a), _b = (b); _a > _b ? _a : _b; })
 
 #define SDL_PrintError() dbg_error("%s\n", SDL_GetError())
 #define SDL_Test(ret) do { if(ret) SDL_PrintError(); } while(0)

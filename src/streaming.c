@@ -21,6 +21,7 @@ TODO(Val):
 #include "network.h"
 #include "debug.h"
 #include "decoding.h"
+#include "attributes.h"
 
 static char* connection_type = "rtp";
 static char* connection_ip = "127.0.0.1";
@@ -64,7 +65,7 @@ Streaming_Client_Initialize()
     RETURN(UNKNOWN_ERROR);
 }
 
-static AVStream *
+not_used static AVStream *
 add_stream(decoder_info *decoder,
            AVFormatContext *output_format_context,
            AVCodec *codec)
@@ -120,7 +121,7 @@ Streaming_Host_Initialize(decoder_info *decoder)
     //int *stream_mapping = NULL;
     //int stream_mapping_size = 0;
     
-    avformat_alloc_output_context2(&output_fmt_context, NULL, "mpegts", address);
+    avformat_alloc_output_context2(&output_fmt_context, NULL, "mpegts", NULL); //address);
     if (!output_fmt_context) {
         dbg_error("Could not create output context.\n");
         RETURN(UNKNOWN_ERROR);
