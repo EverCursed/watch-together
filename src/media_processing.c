@@ -834,7 +834,8 @@ MediaThreadStart(void *arg)
                   b2str(pdata->file.has_video),
                   b2str(!avframe_queue_empty(&pdata->video.queue)));
         */
-        if(!start_notified &&
+        if(!WaitingForPlaybackStart(pdata) &&
+           !start_notified &&
            !avframe_queue_empty(&pdata->video.queue) &&
            !avframe_queue_empty(&pdata->audio.queue))
             //(!pdata->file.has_audio || pdata->audio.is_ready) &&
@@ -850,9 +851,10 @@ MediaThreadStart(void *arg)
         EndTimer();
         
         StartTimer("Waiting");
-        if(pdata->running)
-            PlatformConditionWait(&decoder->condition);
+        PlatformConditionWait(&decoder->condition);
         EndTimer();
+        
+        dbg_warn("ProcessingLoop\n");
     }
     EndTimer();
     

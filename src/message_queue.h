@@ -5,16 +5,22 @@
 
 #define MSG_QUEUE_SIZE 16
 
-#define MSG_NO_MORE_MESSAGES   0
-#define MSG_START_PLAYBACK     1
-#define MSG_STOP_PLAYBACK      2
-#define MSG_PAUSE              3
-#define MSG_SEEK               4
-#define MSG_CONNECT            5
-#define MSG_WINDOW_RESIZED     6
-#define MSG_CLOSE              7
-#define MSG_TOGGLE_FULLSCREEN  8
-#define MSG_VOLUME_CHANGE      9
+#define MSG_NO_MORE_MESSAGES    0
+#define MSG_START_PLAYBACK      1
+#define MSG_STOP_PLAYBACK       2
+#define MSG_PAUSE               3
+#define MSG_SEEK                4
+#define MSG_CONNECT             5
+#define MSG_WINDOW_RESIZED      6
+#define MSG_CLOSE               7
+#define MSG_TOGGLE_FULLSCREEN   8
+#define MSG_VOLUME_CHANGE       9
+#define MSG_FILE_OPEN          10
+#define MSG_FILE_CLOSE         11
+#define MSG_START_SERVER       12
+#define MSG_CONNECT_TO_SERVER  13
+#define MSG_DISCONNECT         14
+#define MSG_START_CLIENT       15
 
 typedef struct _arg {
     union {

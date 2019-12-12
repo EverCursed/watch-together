@@ -228,7 +228,6 @@ PlatformCreateConditionVar()
 int32
 PlatformConditionWait(cond_info *c)
 {
-    
     if(SDL_LockMutex(c->mutex))
         RETURN(UNKNOWN_ERROR);
     
@@ -808,6 +807,7 @@ int main(int argc, char *argv[])
         {
             if(!pdata->is_host)
             {
+                //pdata->file.filename = (char *)argv[++argi];
                 pdata->server_address = (char *)argv[++argi];
                 pdata->is_partner = 1;
             }

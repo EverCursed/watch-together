@@ -50,7 +50,6 @@ void StartTimer(char* name_c);
 void EndTimer();
 void FinishTiming();
 
-
 #else
 
 // DEBUG is not defined, remove all timing information
