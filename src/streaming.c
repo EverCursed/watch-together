@@ -22,18 +22,24 @@ TODO(Val):
 #include "debug.h"
 #include "decoding.h"
 #include "attributes.h"
+#include "file_data.h"
 
-static char* connection_type = "rtp";
+static char* connection_type = "rtsp";
 static char* connection_ip = "127.0.0.1";
 static char* video_port = "16334";
-//static char* audio_port = "16336";
-//static char* subtitle_port = "16338";
-//static char* connection_file = "live";
+static char* audio_port = "16336";
+static char* subtitle_port = "16338";
 
-static AVFormatContext *output_fmt_context;
-static AVOutputFormat *output_fmt;
+static AVFormatContext *output_video_context;
+static AVOutputFormat *output_video_format;
 static AVStream *output_video_stream;
+
+static AVFormatContext *output_audio_context;
+static AVOutputFormat *output_audio_format;
 static AVStream *output_audio_stream;
+
+static AVFormatContext *output_subtitle_context;
+static AVOutputFormat *output_subtitle_format;
 static AVStream *output_subtitle_stream;
 
 static char* sdp_file;
@@ -60,9 +66,7 @@ Streaming_Deinitialize()
 int32
 Streaming_Client_Initialize()
 {
-    
-    
-    RETURN(UNKNOWN_ERROR);
+    RETURN(NOT_YET_IMPLEMENTED);
 }
 
 not_used static AVStream *
@@ -109,54 +113,133 @@ copy_stream_to_output(AVFormatContext *output_fmt_context, AVStream *input_strea
 }
 
 int32
-Streaming_Host_Initialize(decoder_info *decoder)
+Streaming_Host_Initialize(decoder_info *decoder, open_file_info *file)
 {
     int ret = 0;
     int stream_count = 0;
-    char address[256];
-    sprintf(address, "%s://%s:%s", connection_type, connection_ip, video_port); //, connection_file);
+    char video_address[256];
+    //char audio_address[256];
+    //char subtitle_address[256];
+    sprintf(video_address, "%s://%s:%s", connection_type, connection_ip, video_port); //, connection_file);
+    //sprintf(address, "%s://%s:%s", connection_type, connection_ip, video_port); //, connection_file);
+    //sprintf(address, "%s://%s:%s", connection_type, connection_ip, subtitle_port); //, connection_file);
     
-    //int ret, i;
-    //int stream_index = 0;
-    //int *stream_mapping = NULL;
-    //int stream_mapping_size = 0;
-    
-    avformat_alloc_output_context2(&output_fmt_context, NULL, "mpegts", NULL); //address);
-    if (!output_fmt_context) {
-        dbg_error("Could not create output context.\n");
-        RETURN(UNKNOWN_ERROR);
+    if(decoder->video_stream_index >= 0)
+    {
+        avformat_alloc_output_context2(&output_video_context, NULL, connection_type, video_address); //address);
+        if (!output_video_context) {
+            dbg_error("Could not create output context.\n");
+            RETURN(UNKNOWN_ERROR);
+        }
     }
+    
+    /*
+    if(decoder->audio_stream_index >= 0)
+    {
+        avformat_alloc_output_context2(&output_audio_context, NULL, "rtp", NULL); //address);
+        if (!output_fmt_context) {
+            dbg_error("Could not create output context.\n");
+            RETURN(UNKNOWN_ERROR);
+        }
+    }
+    
+    if(decoder->subtitle_stream_index >= 0)
+    {
+        avformat_alloc_output_context2(&output_subtitle_context, NULL, "rtp", NULL); //address);
+        if (!output_fmt_context) {
+            dbg_error("Could not create output context.\n");
+            RETURN(UNKNOWN_ERROR);
+        }
+    }
+    */
     //stream_mapping_size = ifmt_ctx->nb_streams;
     //stream_mapping = av_mallocz_array(stream_mapping_size, sizeof(*stream_mapping));
     //if (!stream_mapping) {
     //ret = AVERROR(ENOMEM);
     //goto end;
     //}
-    output_fmt = output_fmt_context->oformat;
+    output_audio_format = output_audio_context->oformat;
+    output_video_format = output_video_context->oformat;
+    output_subtitle_format = output_subtitle_context->oformat;
     
-    if(decoder->video_stream)
+    if(file->has_video)
     {
-        decoder->output_video_stream = copy_stream_to_output(output_fmt_context, decoder->video_stream);
-        if(!output_video_stream)
-            dbg_error("Failed to create a video stream.\n");
+        decoder->output_video_stream = copy_stream_to_output(output_video_context, decoder->video_stream);
         decoder->output_video_stream_index = stream_count++;
+        if(!decoder->output_video_stream)
+            dbg_error("Failed to create a video stream.\n");
     }
-    if(decoder->audio_stream)
+    
+    if(file->has_audio)
     {
-        decoder->output_audio_stream = copy_stream_to_output(output_fmt_context, decoder->audio_stream);
+        decoder->output_audio_stream = copy_stream_to_output(output_video_context, decoder->audio_stream);
+        decoder->output_audio_stream_index = stream_count++;
+        if(!decoder->output_audio_stream)
+            dbg_error("Failed to create an audio stream.\n");
+    }
+    
+    if(file->has_subtitles)
+    {
+        decoder->output_subtitle_stream = copy_stream_to_output(output_video_context, decoder->subtitle_stream);
+        decoder->output_subtitle_stream_index = stream_count++;
+        if(!decoder->output_subtitle_stream)
+            dbg_error("Failed to create a subtitle stream.\n");
+    }
+    
+    /*
+    if(file->has_audio)
+    {
+        decoder->output_audio_stream = copy_stream_to_output(output_audio_context, decoder->audio_stream);
+        decoder->output_audio_stream_index = stream_count++;
         if(!output_audio_stream)
             dbg_error("Failed to create a audio stream.\n");
-        decoder->output_audio_stream_index = stream_count++;
-    }
-    if(decoder->subtitle_stream)
-    {
-        decoder->output_subtitle_stream = copy_stream_to_output(output_fmt_context, decoder->subtitle_stream);
-        if(!output_subtitle_stream)
-            dbg_error("Failed to create a subtitle stream.\n");
-        decoder->output_subtitle_stream_index = stream_count++;
     }
     
-    av_dump_format(output_fmt_context, 0, address, 1);
+    if(file->has_video)
+    {
+        decoder->output_subtitle_stream = copy_stream_to_output(output_subtitle_context, decoder->subtitle_stream);
+        decoder->output_subtitle_stream_index = stream_count++;
+        if(!output_subtitle_stream)
+            dbg_error("Failed to create a video stream.\n");
+    }
+    */
+    /*
+        if(decoder->audio_stream)
+        {
+            decoder->output_audio_stream = copy_stream_to_output(output_fmt_context, decoder->audio_stream);
+            if(!output_audio_stream)
+                dbg_error("Failed to create a audio stream.\n");
+            decoder->output_audio_stream_index = stream_count++;
+        }
+        
+        if(decoder->subtitle_stream)
+        {
+            decoder->output_subtitle_stream = copy_stream_to_output(output_fmt_context, decoder->subtitle_stream);
+            if(!output_subtitle_stream)
+                dbg_error("Failed to create a subtitle stream.\n");
+            decoder->output_subtitle_stream_index = stream_count++;
+        }
+        */
+    av_dump_format(output_video_context, 0, video_address, 1);
+    if (!(output_video_format->flags & AVFMT_NOFILE)) {
+        ret = avio_open(&output_video_context->pb, video_address, AVIO_FLAG_WRITE);
+        if (ret < 0) {
+            dbg_error("Could not open output file '%s'", video_address);
+            RETURN(UNKNOWN_ERROR);
+        }
+    }
+    
+    /*
+    av_dump_format(output_audio_context, 0, address, 1);
+    if (!(output_fmt->flags & AVFMT_NOFILE)) {
+        ret = avio_open(&output_fmt_context->pb, address, AVIO_FLAG_WRITE);
+        if (ret < 0) {
+            dbg_error("Could not open output file '%s'", address);
+            RETURN(UNKNOWN_ERROR);
+        }
+        
+}
+    av_dump_format(output_subtitle_context, 0, address, 1);
     if (!(output_fmt->flags & AVFMT_NOFILE)) {
         ret = avio_open(&output_fmt_context->pb, address, AVIO_FLAG_WRITE);
         if (ret < 0) {
@@ -164,7 +247,9 @@ Streaming_Host_Initialize(decoder_info *decoder)
             RETURN(UNKNOWN_ERROR);
         }
     }
-    //ret = avformat_write_header(output_fmt_context, NULL);
+    */
+    
+    ret = avformat_write_header(output_video_context, NULL);
     /*
     if (ret < 0) {
         fprintf(stderr, "Error occurred when opening output file\n");
@@ -288,9 +373,9 @@ Streaming_Host_Close()
 {
     //av_write_trailer(output_fmt_context);
     
-    if (output_fmt_context && !(output_fmt->flags & AVFMT_NOFILE))
-        avio_close(output_fmt_context->pb);
-    avformat_free_context(output_fmt_context);
+    if(output_video_context && !(output_video_format->flags & AVFMT_NOFILE))
+        avio_close(output_video_context->pb);
+    avformat_free_context(output_video_context);
     
     RETURN(SUCCESS);
 }
@@ -332,6 +417,13 @@ Streaming_Client_Connect(char* address)
     
     
     RETURN(NOT_YET_IMPLEMENTED);
+}
+
+int32 Streaming_Client_GetFileName(char *address, char *buffer)
+{
+    sprintf(buffer, "%s://%s:%s", connection_type, address, video_port);
+    
+    RETURN(SUCCESS);
 }
 
 int32
@@ -432,12 +524,12 @@ Streaming_Host_SendPacket(decoder_info *decoder, AVPacket *packet)
     pkt->duration = av_rescale_q(pkt->duration, input_stream->time_base, output_stream->time_base);
     pkt->pos = -1;
     
-    ret = avformat_write_header(output_fmt_context, NULL);
+    ret = avformat_write_header(output_video_context, NULL);
     
-    ret = av_interleaved_write_frame(output_fmt_context, pkt);
+    ret = av_interleaved_write_frame(output_video_context, pkt);
     FF_Test(ret);
     
-    ret = av_write_trailer(output_fmt_context);
+    ret = av_write_trailer(output_video_context);
     FF_Test(ret);
     
     av_packet_free(&pkt);

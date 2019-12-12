@@ -798,7 +798,7 @@ MediaThreadStart(void *arg)
     playback_data *playback = &pdata->playback;
     
     if(pdata->is_host)
-        Streaming_Host_Initialize(decoder);
+        Streaming_Host_Initialize(decoder, file);
     
     int ret = 0;
     
