@@ -23,6 +23,7 @@
 #include "media_processing.h"
 #include "network.h"
 #include "file_data.h"
+#include "attributes.h"
 
 #define KNRM  "\x1B[0m"
 #define KRED  "\x1B[31m"
@@ -252,6 +253,14 @@ MainThread(program_data *);
 int32
 MainLoop(program_data  *);
 
-#include "platform.h"
+not_used static bool32 WaitingForPlaybackStart(program_data *pdata)
+{
+    return (pdata->is_host || pdata->is_partner) ? !pdata->connected : 0;
+}
+
+not_used static bool32 Connected(program_data *pdata)
+{
+    return pdata->connected;
+}
 
 #endif

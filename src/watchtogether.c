@@ -9,6 +9,7 @@
 #include "media_processing.h"
 #include "time.h"
 #include "avframe_pts_ordered_queue.h"
+#include "attributes.h"
 
 //#include <time.h>
 // TODO(Val): NAT-T implementation, see how it works
