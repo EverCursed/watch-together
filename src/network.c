@@ -26,13 +26,15 @@ static SDLNet_SocketSet socket_set;
 static bool32 is_host = 0;
 static bool32 is_client = 0;
 
-static TCPsocket here = NULL;
-static TCPsocket there = NULL;
+static TCPsocket server = NULL;
+static TCPsocket partner = NULL;
 
-static int8 temp_buffer[MAX_NETWORK_BUFFER_SIZE] = {};
+static void *temp_buffer = NULL;
+//static int8 temp_buffer[MAX_NETWORK_BUFFER_SIZE] = {};
 static int32 temp_buffer_used = 0;
 
-static int8 recv_buffer[MAX_NETWORK_BUFFER_SIZE] = {};
+static void *recv_buffer = NULL;
+//static int8 recv_buffer[MAX_NETWORK_BUFFER_SIZE] = {};
 static int32 recv_buffer_used = 0;
 static int32 recv_buffer_size = 0;
 
@@ -48,9 +50,12 @@ else \
 RETURN(SUCCESS); \
 do { } while(0)
 
-#define copy_msg(type, ptr, src) do { \
+//*(type *)ptr = *(type *)src; 
+
+#define copy_msg(type, ptr, src) \
+do { \
     ptr = custom_malloc(sizeof(type)); \
-    *(type *)ptr = *(type *)src; \
+    memcpy(ptr, src, sizeof(type)); \
     recv_buffer_used += sizeof(type); \
 } while(0)
 
@@ -60,49 +65,82 @@ reset_message_buffer()
     temp_buffer_used = 0;
 }
 
+static void
+reset_recv_buffer()
+{
+    recv_buffer_used = 0;
+    recv_buffer_size = 0;
+}
+
+static bool32
+initialize_buffers()
+{
+    recv_buffer = custom_malloc(MAX_NETWORK_BUFFER_SIZE);
+    temp_buffer = custom_malloc(MAX_NETWORK_BUFFER_SIZE);
+    
+    return (recv_buffer && temp_buffer);
+}
+
+static void
+terminate_buffers()
+{
+    custom_free(recv_buffer);
+    custom_free(temp_buffer);
+}
+
 int32
 StartServer()
 {
     // this client is hosting the media file
-    for(int i = 0; i < ArrayCount(message_ports) && here==NULL; i++)
+    for(int i = 0; i < ArrayCount(message_ports) && server==NULL; i++)
     {
         IPaddress ip;
         SDLNet_ResolveHost(&ip, NULL, message_ports[i]);
-        here = SDLNet_TCP_Open(&ip);
+        server = SDLNet_TCP_Open(&ip);
     }
     
-    if(here == NULL)
+    if(server == NULL)
         RETURN(SOCKET_CREATION_FAIL);
     
     socket_set = SDLNet_AllocSocketSet(1);
     is_host = 1;
     
-    RETURN(SUCCESS);
+    if(initialize_buffers())
+        RETURN(SUCCESS);
+    else
+        RETURN(NO_MEMORY);
 }
 
 int32
 StartClient()
 {
     socket_set = SDLNet_AllocSocketSet(1);
-    is_client = 0;
-    RETURN(SUCCESS);
+    is_client = 1;
+    
+    if(initialize_buffers())
+        RETURN(SUCCESS);
+    else
+        RETURN(NO_MEMORY);
 }
 
 int32
 CloseServer()
 {
-    if(here)
+    if(server)
     {
-        SDLNet_TCP_Close(here);
+        SDLNet_TCP_Close(server);
     }
-    if(there)
+    if(partner)
     {
-        SDLNet_TCP_Close(there);
+        SDLNet_TCP_Close(partner);
     }
     if(socket_set)
     {
         SDLNet_FreeSocketSet(socket_set);
     }
+    
+    terminate_buffers();
+    is_host = 0;
     
     RETURN(SUCCESS);
 }
@@ -110,15 +148,17 @@ CloseServer()
 int32
 CloseClient()
 {
-    if(there)
+    if(partner)
     {
-        SDLNet_TCP_Close(there);
-        here = there;
+        SDLNet_TCP_Close(partner);
     }
     if(socket_set)
     {
         SDLNet_FreeSocketSet(socket_set);
     }
+    
+    terminate_buffers();
+    is_client = 0;
     
     RETURN(SUCCESS);
 }
@@ -126,9 +166,9 @@ CloseClient()
 int32
 AcceptConnection()
 {
-    if((there = SDLNet_TCP_Accept(here)))
+    if((partner  = SDLNet_TCP_Accept(server)))
     {
-        SDLNet_TCP_AddSocket(socket_set, there);
+        SDLNet_TCP_AddSocket(socket_set, partner);
         RETURN(CONNECTED);
     }
     
@@ -138,33 +178,28 @@ AcceptConnection()
 int32
 ConnectToIP(const char *ip)
 {
-    for(int i = 0; i < ArrayCount(message_ports) && there==NULL; i++)
+    for(int i = 0; i < ArrayCount(message_ports) && partner==NULL; i++)
     {
         IPaddress ip_address;
         SDLNet_ResolveHost(&ip_address, ip, message_ports[i]);
         
-        here = there = SDLNet_TCP_Open(&ip_address);
+        partner = SDLNet_TCP_Open(&ip_address);
     }
     
-    if(there == NULL)
+    if(partner == NULL)
         RETURN(CONNECTION_FAILED);
     
-    SDLNet_TCP_AddSocket(socket_set, there);
+    SDLNet_TCP_AddSocket(socket_set, partner);
     SendInitRequestMessage();
     
     RETURN(SUCCESS);
 }
 
-
 static int32
 QueueControlMessage(void *buffer, int32 size)
 {
-    int32 step = 4;
-    for(int i = 0; i < size; i+=step)
-    {
-        SDLNet_Write32(*(int32 *)(buffer+i), (temp_buffer+temp_buffer_used));
-        temp_buffer_used += step;
-    }
+    memcpy(temp_buffer+temp_buffer_used, buffer, size);
+    temp_buffer_used += size;
     
     RETURN(SUCCESS);
 }
@@ -172,23 +207,41 @@ QueueControlMessage(void *buffer, int32 size)
 int32
 SendControlMessages()
 {
-    int8 buffer[2052];
-    int32 n = 0;
+    if(temp_buffer_used == 0)
+        RETURN(SUCCESS);
     
-    SDLNet_Write32(temp_buffer_used, buffer);
-    n += 4;
+    void *buffer = custom_malloc(MAX_NETWORK_BUFFER_SIZE);
+    //int8 buffer[MAX_NETWORK_BUFFER_SIZE];
+    
+    int32 temp;
+    SDLNet_Write32(temp_buffer_used, &temp);
+    
+    SDLNet_TCP_Send(partner, &temp, sizeof(temp));
     
     for(int i = 0; i < temp_buffer_used; i+=4)
     {
-        SDLNet_Write32(*((int32 *)temp_buffer+i), buffer+n+i);
+        int temp = *((int32 *)(temp_buffer+i));
+        SDLNet_Write32(temp, buffer+i);
     }
     
-    if(SDLNet_TCP_Send(there, buffer, n) <= 0)
+    if(SDLNet_TCP_Send(partner, buffer, temp_buffer_used) <= 0)
     {
-        
+        custom_free(buffer);
         RETURN(DISCONNECTED);
     }
+    /*
+    dbg_print("SendControlMessages():\n"
+              "\tSize: %d\n"
+              "\tConverted: %d\n"
+              "\tType: %d\n"
+              "\tConverted: %d\n",
+              temp_buffer_used,
+              temp,
+              *((int32 *)temp_buffer),
+              *((int32 *)buffer));
+    */
     
+    custom_free(buffer);
     reset_message_buffer();
     
     RETURN(SUCCESS);
@@ -200,56 +253,58 @@ Message must be freed after using
 net_message *
 GetNextMessage()
 {
-    if(recv_buffer_used >= MAX_NETWORK_BUFFER_SIZE)
-        return NULL;
-    if(recv_buffer_used == recv_buffer_size)
+    if(recv_buffer_size == 0)
         return NULL;
     
     net_message *msg = (net_message *)(recv_buffer + recv_buffer_used);
     net_message *new_msg = NULL;
+    
     switch(msg->type)
     {
         case MESSAGE_INIT:
         {
             copy_msg(struct _init_msg, new_msg, msg);
-            recv_buffer_used += sizeof(struct _init_msg);
+            print_init_msg((struct _init_msg *)msg, 1);
         } break;
         case MESSAGE_REQUEST_INIT:
         {
             copy_msg(struct _request_init_msg, new_msg, msg);
-            recv_buffer_used += sizeof(struct _request_init_msg);
+            print_request_init_msg((struct _request_init_msg *)msg, 1);
         } break;
         case MESSAGE_REQUEST_PORT:
         {
             copy_msg(struct _request_port_msg, new_msg, msg);
-            recv_buffer_used += sizeof(struct _request_port_msg);
+            
         } break;
         case MESSAGE_INFO:
         {
             copy_msg(struct _request_info_msg, new_msg, msg);
-            recv_buffer_used += sizeof(struct _request_info_msg);
+            
         } break;
         case MESSAGE_PAUSE:
         {
             copy_msg(struct _pause_msg, new_msg, msg);
-            recv_buffer_used += sizeof(struct _pause_msg);
+            
         } break;
         case MESSAGE_PLAY:
         {
             copy_msg(struct _play_msg, new_msg, msg);
-            recv_buffer_used += sizeof(struct _play_msg);
+            
         } break;
         case MESSAGE_SEEK:
         {
             copy_msg(struct _seek_msg, new_msg, msg);
-            recv_buffer_used += sizeof(struct _seek_msg);
+            
         } break;
         case MESSAGE_DISCONNECT:
         {
             copy_msg(struct _disconnect_msg, new_msg, msg);
-            recv_buffer_used += sizeof(struct _disconnect_msg);
+            
         } break;
     }
+    
+    if(recv_buffer_used >= recv_buffer_size)
+        reset_recv_buffer();
     
     return new_msg;
 }
@@ -260,27 +315,27 @@ ReceiveControlMessages()
     int ret = SDLNet_CheckSockets(socket_set, 0);
     if(ret > 0)
     {
-        int8 buffer[MAX_NETWORK_BUFFER_SIZE];
-        int32 n = 0;
-        
-        int32 temp;
-        int ret = SDLNet_TCP_Recv(there, &temp, sizeof(temp));
-        if(ret <= 0)
+        if(SDLNet_SocketReady(partner))
         {
-            RETURN(DISCONNECTED);
+            void *buffer = custom_malloc(MAX_NETWORK_BUFFER_SIZE);
+            //int8 buffer[MAX_NETWORK_BUFFER_SIZE];
+            
+            int32 temp;
+            int32 ret = SDLNet_TCP_Recv(partner, &temp, sizeof(temp));
+            if(ret <= 0)
+                RETURN(DISCONNECTED);
+            
+            recv_buffer_size = SDLNet_Read32(&temp);
+            recv_buffer_used = 0;
+            
+            SDLNet_TCP_Recv(partner, buffer, recv_buffer_size);
+            
+            for(int i = 0; i < recv_buffer_size; i+=4)
+            {
+                int temp = SDLNet_Read32(buffer+i);
+                *((int32 *)(recv_buffer+i)) = temp;
+            }
         }
-        
-        n = SDLNet_Read32(&temp);
-        
-        recv_buffer_size = n;
-        recv_buffer_used = 0;
-        
-        SDLNet_TCP_Recv(there, &buffer, n);
-        for(int i = 0; i < n; i+=4)
-        {
-            *((int32 *)(recv_buffer+i)) = SDLNet_Read32(buffer+i);
-        }
-        
     }
     else if(ret < 0)
     {
@@ -292,6 +347,15 @@ ReceiveControlMessages()
     RETURN(SUCCESS);
 }
 
+void
+GetPartnerIP(char **buffer)
+{
+    IPaddress *temp_ip = SDLNet_TCP_GetPeerAddress(partner);
+    
+    IPv4 ip;
+    ip.ip = SDLNet_Read32(&temp_ip->host);
+}
+
 int32
 SendInitMessage(real64 start_timestamp,
                 real64 file_duration,
@@ -300,7 +364,7 @@ SendInitMessage(real64 start_timestamp,
                 int32 subtitle_port,
                 int32 flags)
 {
-    Qmsg_init(MESSAGE_REQUEST_PORT, struct _init_msg, msg);
+    Qmsg_init(MESSAGE_INIT, struct _init_msg, msg);
     
     msg.flags = flags;
     msg.start_time = start_timestamp;
@@ -309,13 +373,18 @@ SendInitMessage(real64 start_timestamp,
     msg.video_port = video_port;
     msg.subtitle_port = subtitle_port;
     
+    print_init_msg(&msg, 0);
+    
     Qmsg_send(msg);
+    
 }
 
 int32
 SendInitRequestMessage()
 {
     Qmsg_init(MESSAGE_REQUEST_INIT, struct _request_init_msg, msg);
+    
+    print_request_init_msg(&msg, 0);
     
     Qmsg_send(msg);
 }
@@ -333,6 +402,8 @@ SendPlayMessage()
 {
     Qmsg_init(MESSAGE_PLAY, struct _play_msg, msg);
     
+    print_play_msg(&msg, 0);
+    
     Qmsg_send(msg);
 }
 
@@ -340,6 +411,8 @@ int32
 SendPauseMessage()
 {
     Qmsg_init(MESSAGE_PAUSE, struct _pause_msg, msg);
+    
+    print_pause_msg(&msg, 0);
     
     Qmsg_send(msg);
 }
@@ -350,6 +423,8 @@ SendSeekMessage(real64 timestamp)
     Qmsg_init(MESSAGE_SEEK, struct _seek_msg, msg);
     
     msg.time = timestamp;
+    
+    print_seek_msg(&msg, 0);
     
     Qmsg_send(msg);
 }
@@ -365,10 +440,10 @@ SendDisconnectMessage()
 int32
 CloseConnection()
 {
-    SDLNet_TCP_Close(there);
+    SDLNet_TCP_Close(partner);
     
     if(is_host)
-        SDLNet_TCP_Close(here);
+        SDLNet_TCP_Close(server);
     
     RETURN(SUCCESS);
 }

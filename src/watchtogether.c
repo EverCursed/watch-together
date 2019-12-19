@@ -126,6 +126,7 @@ AllocateBuffers(program_data *pdata)
     int32 bytes_per_sample = pdata->file.bytes_per_sample;
     int32 sample_rate = pdata->file.sample_rate;
     int32 channels = pdata->file.channels;
+    
     int32 seconds = 1;
     
     pdata->audio.max_buffer_size = bytes_per_sample*sample_rate*channels*seconds;
@@ -364,8 +365,11 @@ ProcessMessages(program_data *pdata)
             {
                 if(!ConnectToIP(pdata->server_address))
                 {
+                    dbg_info("Connecting to server... Success.\n");
                     pdata->connected = 1;
                 }
+                else
+                    dbg_info("Connecting to server... Failure.\n");
             } break;
             case MSG_DISCONNECT:
             {
@@ -513,17 +517,17 @@ ProcessNetwork(program_data *pdata)
 {
     StartTimer("ProcessNetwork()");
     
-    if(unlikely(!pdata->connected))
+    if(unlikely(pdata->is_host && !pdata->connected))
     {
         // NOTE(Val): Need to accept a client
         if(AcceptConnection() == CONNECTED)
         {
             pdata->connected = 1;
-            
-            //PreSendPackets();
+            //pdata->partner_address = 
         }
     }
-    else if(pdata->is_host || pdata->is_partner)
+    
+    if(pdata->connected)
     {
         int ret = ReceiveControlMessages();
         if(ret == DISCONNECTED)
@@ -542,11 +546,20 @@ ProcessNetwork(program_data *pdata)
                 {
                     struct _init_msg *msg_p = (struct _init_msg *)msg;
                     
+                    Streaming_GetFileName(pdata->file.filename, pdata->server_address, msg_p->video_port, NULL);
+                    
+                    AddMessage0(&pdata->messages, MSG_FILE_OPEN, PlatformGetTime());
                 } break;
                 case MESSAGE_REQUEST_INIT:
                 {
                     struct _request_init_msg *msg_p = (struct _request_init_msg *)msg;
                     
+                    SendInitMessage(0.0,
+                                    0.0,
+                                    0,
+                                    Streaming_Get_Port(),
+                                    0,
+                                    1);
                 } break;
                 case MESSAGE_REQUEST_PORT:
                 {
@@ -584,7 +597,7 @@ ProcessNetwork(program_data *pdata)
                 } break;
             }
             
-            c_free(msg);
+            custom_free(msg);
         }
         
         ret = SendControlMessages();
@@ -775,8 +788,8 @@ MainThread(program_data *pdata)
     
     if(pdata->is_host)
     {
-        AddMessage0(&pdata->messages, MSG_START_SERVER, PlatformGetTime());
         AddMessage0(&pdata->messages, MSG_FILE_OPEN, PlatformGetTime());
+        AddMessage0(&pdata->messages, MSG_START_SERVER, PlatformGetTime());
     }
     else if(pdata->is_partner)
     {

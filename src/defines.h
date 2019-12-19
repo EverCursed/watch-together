@@ -20,7 +20,6 @@ typedef uint32_t uint32;
 typedef uint64_t uint64;
 typedef unsigned __int128 uint128;
 
-
 typedef float real32;
 typedef double real64;
 
@@ -28,6 +27,5 @@ typedef int8_t  bool8;
 typedef int16_t bool16;
 typedef int32_t bool32;
 typedef int64_t bool64;
-
 
 #endif

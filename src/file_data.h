@@ -4,7 +4,7 @@
 #include "defines.h"
 
 typedef struct _open_file_info {
-    char *filename;
+    char filename[256];
     
     uint32 width;
     uint32 height;

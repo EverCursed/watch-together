@@ -23,6 +23,7 @@ typedef int err_code;
 #define NEED_DATA            (-15)
 #define CONTAINER_EMPTY      (-16)
 #define DISCONNECTED         (-17)
+#define UNKNOWN_STREAM       (-18)
 
 #define success(a) (a >= SUCCESS)
 #define fail(a) (a < SUCCESS)

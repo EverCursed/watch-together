@@ -392,10 +392,11 @@ PlatformRender()
     EndTimer();
     
     StartTimer("SDL_RenderCopy(video_texture)");
-    ret = SDL_RenderCopy(renderer,
-                         video_texture,
-                         NULL,
-                         NULL);
+    if(video_texture)
+        ret = SDL_RenderCopy(renderer,
+                             video_texture,
+                             NULL,
+                             NULL);
     SDL_Test(ret);
     EndTimer();
     
@@ -790,7 +791,7 @@ int main(int argc, char *argv[])
     {
         if(!strcmp(argv[argi], "-i"))
         {
-            pdata->file.filename = (char *)argv[++argi];
+            strcpy(pdata->file.filename, (char *)argv[++argi]);
         }
         else if(!strcmp(argv[argi], "-s") || !strcmp(argv[argi], "--server"))
         {

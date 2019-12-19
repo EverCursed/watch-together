@@ -466,6 +466,7 @@ MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder, ou
     decoder->queue = init_avpacket_queue(PACKET_BUFFER);
     
     // Open video file
+    dbg_info("Opening file: %s\n", file->filename);
     if(avformat_open_input(&decoder->format_context, file->filename, NULL, NULL) < 0)
     {
         dbg_error("AV open input failed.\n");
@@ -799,26 +800,34 @@ MediaThreadStart(void *arg)
     
     if(pdata->is_host)
         Streaming_Host_Initialize(decoder, file);
+    if(pdata->is_partner)
+        Streaming_Client_Initialize(decoder);
     
     int ret = 0;
     
-    RefillPackets(decoder, pdata->is_host);
-    
     bool32 start_notified = 0;
     
-    StartTimer("Processing Loop");
     while(pdata->running && !pdata->playback_finished)
     {
         StartTimer("Start processing loop");
         //while(!EnoughDurations(&pdata->audio, &pdata->file, &pdata->video, playback))
         //{
+        
+        StartTimer("Waiting");
+        //if(!WaitingForPlaybackStart(pdata))
+        //PlatformConditionWait(&decoder->condition);
+        //else
+        PlatformSleep(0.016);
+        EndTimer();
+        
         while(!avframe_queue_full(&pdata->video.queue) &&
-              !avframe_queue_full(&pdata->audio.queue))
+              !avframe_queue_full(&pdata->audio.queue)
+              && !WaitingForPlaybackStart(pdata))
         {
-            ProcessEverything(decoder, &pdata->video, &pdata->audio);
             RefillPackets(decoder, pdata->is_host);
+            ProcessEverything(decoder, &pdata->video, &pdata->audio);
         }
-        //}
+        
         
         EndTimer();
         /*
@@ -834,8 +843,7 @@ MediaThreadStart(void *arg)
                   b2str(pdata->file.has_video),
                   b2str(!avframe_queue_empty(&pdata->video.queue)));
         */
-        if(!WaitingForPlaybackStart(pdata) &&
-           !start_notified &&
+        if(!start_notified &&
            !avframe_queue_empty(&pdata->video.queue) &&
            !avframe_queue_empty(&pdata->audio.queue))
             //(!pdata->file.has_audio || pdata->audio.is_ready) &&
@@ -845,21 +853,16 @@ MediaThreadStart(void *arg)
             pdata->start_playback = 1;
         }
         
-        StartTimer("RefillPackets()");
-        if(!decoder->file_fully_loaded)
-            RefillPackets(decoder, pdata->is_host);
-        EndTimer();
+        //StartTimer("RefillPackets()");
+        //if(!decoder->file_fully_loaded)
+        //RefillPackets(decoder, pdata->is_host);
+        //EndTimer();
         
-        StartTimer("Waiting");
-        PlatformConditionWait(&decoder->condition);
-        EndTimer();
-        
-        dbg_warn("ProcessingLoop\n");
     }
     EndTimer();
     
     if(pdata->is_host)
-        Streaming_Host_Close();
+        Streaming_Host_Close(decoder);
     
     FinishTiming();
     RETURN(SUCCESS);

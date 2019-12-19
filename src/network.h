@@ -88,6 +88,60 @@ struct align(4) _disconnect_msg {
 };
 
 
+not_used static void
+print_init_msg(struct _init_msg *msg, bool32 received)
+{
+    dbg_info("%s:\n"
+             "\tMESSAGE_INIT\n"
+             "\tflags: %d\n"
+             "\tstart_time: %lf\n"
+             "\tfile_duration: %lf\n"
+             "\taudio_port: %d\n"
+             "\tvideo_port: %d\n"
+             "\tsubtitle_port: %d\n",
+             received ? "Receiving" : "Sending",
+             msg->flags,
+             msg->start_time,
+             msg->file_duration,
+             msg->audio_port,
+             msg->video_port,
+             msg->subtitle_port);
+}
+
+not_used static void
+print_request_init_msg(struct _request_init_msg *msg, bool32 received)
+{
+    dbg_info("%s:\n"
+             "\tMESSAGE_REQUEST_INIT\n",
+             received ? "Receiving" : "Sending");
+}
+
+not_used static void
+print_play_msg(struct _play_msg *msg, bool32 received)
+{
+    dbg_info("%s:\n"
+             "\tMESSAGE_PLAY\n",
+             received ? "Receiving" : "Sending");
+}
+
+not_used static void
+print_pause_msg(struct _pause_msg *msg, bool32 received)
+{
+    dbg_info("%s:\n"
+             "\tMESSAGE_PAUSE\n",
+             received ? "Receiving" : "Sending");
+}
+
+not_used static void
+print_seek_msg(struct _seek_msg *msg, bool32 received)
+{
+    dbg_info("%s:\n"
+             "\tMESSAGE_SEEK\n"
+             "\ttime: %lf\n",
+             received ? "Receiving" : "Sending",
+             msg->time);
+}
+
 int32 StartServer();
 int32 StartClient();
 int32 CloseServer();
@@ -105,4 +159,4 @@ int32 SendSeekMessage(real64);
 int32 SendDisconnectMessage();
 int32 CloseConnection();
 
-#endif 
+#endif
