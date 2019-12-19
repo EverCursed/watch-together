@@ -21,26 +21,33 @@
 #define PACKET_QUEUE_SIZE 60
 
 static void
-TogglePlayback(program_data *pdata)
+LocalTogglePlayback(program_data *pdata)
 {
     if(!pdata->paused)
     {
         pdata->playback.pause_started = *pdata->playback.current_frame_time;
-        
-        if(pdata->connected)
-            SendPauseMessage();
     }
     else
     {
         real64 time = *pdata->playback.current_frame_time;
         pdata->playback.aggregated_pause_time += (time - pdata->playback.pause_started);
-        
-        if(pdata->connected)
-            SendPlayMessage();
     }
     
     pdata->paused = !pdata->paused;
     PlatformPauseAudio(pdata->paused);
+}
+
+static void
+TogglePlayback(program_data *pdata)
+{
+    if(pdata->connected)
+    {
+        if(!pdata->paused)
+            SendPauseMessage();
+        else if(pdata->paused)
+            SendPlayMessage();
+    }
+    LocalTogglePlayback(pdata);
 }
 
 static int32
@@ -574,12 +581,12 @@ ProcessNetwork(program_data *pdata)
                 case MESSAGE_PAUSE:
                 {
                     struct _pause_msg *msg_p = (struct _pause_msg *)msg;
-                    
+                    LocalTogglePlayback(pdata);
                 } break;
                 case MESSAGE_PLAY:
                 {
                     struct _play_msg *msg_p = (struct _play_msg *)msg;
-                    
+                    LocalTogglePlayback(pdata);
                 } break;
                 case MESSAGE_SEEK:
                 {
