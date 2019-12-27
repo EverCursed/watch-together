@@ -16,12 +16,6 @@ static inline int round_up_align(int v)
 {
     return ((v + BYTES_ALIGNMENT -1) - (((v + BYTES_ALIGNMENT - 1) % BYTES_ALIGNMENT)));
 }
-/*
-static uint32 round_up_align(uint32 val)
-{
-    return (val + BYTES_ALIGNMENT - 1)  - (((val + BYTES_ALIGNMENT - 1) % BYTES_ALIGNMENT));
-}
-*/
 
 #define smallest(a, b) (a < b ? a : b)
 #define largest(a,b) (a > b ? a : b)

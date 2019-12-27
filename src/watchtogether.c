@@ -23,6 +23,7 @@
 static void
 LocalTogglePlayback(program_data *pdata)
 {
+#if 0
     if(!pdata->paused)
     {
         pdata->playback.pause_started = *pdata->playback.current_frame_time;
@@ -32,7 +33,8 @@ LocalTogglePlayback(program_data *pdata)
         real64 time = *pdata->playback.current_frame_time;
         pdata->playback.aggregated_pause_time += (time - pdata->playback.pause_started);
     }
-    
+    #endif
+
     pdata->paused = !pdata->paused;
     PlatformPauseAudio(pdata->paused);
 }
@@ -216,47 +218,68 @@ TerminateQueues(program_data *pdata)
 }
 
 static int32
-FileOpen(program_data *pdata)
+FileOpen_LoadData(program_data *pdata)
 {
-    int32 ret = 0;
+    int ret = MediaOpen(&pdata->file, &pdata->decoder, &pdata->encoder, &pdata->audio, &pdata->video);
     
-    if(!MediaOpen(&pdata->file, &pdata->decoder, &pdata->encoder, &pdata->audio, &pdata->video))
+    if(!ret)
     {
         InitQueues(pdata);
         
-        if(pdata->file.has_audio)
-        {
-            pdata->audio.mutex = PlatformCreateMutex();
-            PlatformInitAudio(&pdata->file);
-            avframe_queue_init(&pdata->video.queue, AVFQ_ORDERED_PTS);
-            
-            PlatformResizeClientArea(&pdata->file, 0, 0);
-        }
-        if(pdata->file.has_video)
-        {
-            pdata->video.frame_duration = pdata->file.target_time;
-            PlatformInitVideo(&pdata->file);
-            avframe_queue_init(&pdata->audio.queue, AVFQ_ORDERED_PTS);
-        }
+    if(pdata->file.has_audio)
+    {
+        pdata->audio.mutex = PlatformCreateMutex();
+        PlatformInitAudio(&pdata->file);
+        avframe_queue_init(&pdata->video.queue, AVFQ_ORDERED_PTS);
         
-        AllocateBuffers(pdata);
-        
-        pdata->decoder.condition = PlatformCreateConditionVar();
-        
-        pdata->threads.media_thread =
-            PlatformCreateThread(MediaThreadStart, pdata, "media");
-        
-        pdata->file.file_ready = 1;
-        pdata->playing = 0;
-        pdata->paused = 0;
-        
-        RETURN(SUCCESS);
+        PlatformResizeClientArea(&pdata->file, 0, 0);
+    }
+    if(pdata->file.has_video)
+    {
+        pdata->video.frame_duration = pdata->file.target_time;
+        PlatformInitVideo(&pdata->file);
+        avframe_queue_init(&pdata->audio.queue, AVFQ_ORDERED_PTS);
+    }
+    
+    RETURN(SUCCESS);
+}
+    else
+        RETURN(UNKNOWN_ERROR);
+}
+static int32
+FileOpen_StartThread(program_data *pdata)
+{
+    AllocateBuffers(pdata);
+    
+    pdata->decoder.condition = PlatformCreateConditionVar();
+    
+    pdata->threads.media_thread =
+        PlatformCreateThread(MediaThreadStart, pdata, "media");
+    
+    pdata->file.file_ready = 1;
+    pdata->playing = 0;
+    pdata->paused = 0;
+    
+    RETURN(SUCCESS);
+}
+
+static int32
+FileOpen(program_data *pdata)
+{
+    int32 ret = 0;
+    ret = FileOpen_LoadData(pdata);
+    
+    if(!ret)
+    {
+        FileOpen_StartThread(pdata);
     }
     else
     {
         pdata->file.open_failed = 1;
         RETURN(UNKNOWN_ERROR);
     }
+    
+    RETURN(SUCCESS);
 }
 
 static bool32
@@ -519,6 +542,9 @@ ProcessPlayback(program_data *pdata)
     RETURN(SUCCESS);
 }
 
+#define setup_msg_processing(type, var, message) \
+type *var = (type *)message;
+
 static int32
 ProcessNetwork(program_data *pdata)
 {
@@ -544,59 +570,104 @@ ProcessNetwork(program_data *pdata)
             dbg_success("Disconnected\n");
         }
         
-        net_message *msg; 
-        while((msg = GetNextMessage()))
+        net_message *msg_r; 
+        while((msg_r = GetNextMessage()))
         {
-            switch(msg->type)
+            StartTimer("GetNextMessage() loop");
+            switch(msg_r->type)
             {
-                case MESSAGE_INIT:
-                {
-                    struct _init_msg *msg_p = (struct _init_msg *)msg;
-                    
-                    Streaming_GetFileName(pdata->file.filename, pdata->server_address, msg_p->video_port, NULL);
-                    
-                    AddMessage0(&pdata->messages, MSG_FILE_OPEN, PlatformGetTime());
-                } break;
                 case MESSAGE_REQUEST_INIT:
                 {
-                    struct _request_init_msg *msg_p = (struct _request_init_msg *)msg;
+                    // NOTE(Val): Server responds to the init request by sending the required information  
+                    
+                    setup_msg_processing(struct _request_init_msg, msg, msg_r)
+                    
+                    destination_IP ip = {};
+                    GetPartnerIPInt(&ip.v4.ip);
                     
                     SendInitMessage(0.0,
                                     0.0,
-                                    0,
-                                    Streaming_Get_Port(),
-                                    0,
-                                    1);
+                                    0);
+                    
+                    FileOpen_LoadData(pdata);
                 } break;
+                case MESSAGE_INIT:
+                {
+                    // NOTE(Val): Client replies by sending the server its own IP address
+                    
+                    setup_msg_processing(struct _init_msg, msg, msg_r)
+                    
+                    //Streaming_GetFileName(pdata->file.filename, pdata->server_address, msg_p->port, NULL);
+                    
+                    destination_IP ip = {};
+                    GetPartnerIPInt(&ip.v4.ip);
+                    SendFinishInitMessage(ip);
+                } break;
+                case MESSAGE_FINISH_INIT:
+                {
+                    // NOTE(Val): Server receives its own IP as visible to the client and creates an output file at that IP
+                    
+                    setup_msg_processing(struct _finish_init_msg, msg, msg_r);
+                    
+                    destination_IP ip = {};
+                    ip.v4.ip = msg->ip;
+                    
+                    char server_address[16];
+                    IPToStr(server_address, ip);
+                    
+                    Streaming_Host_Initialize(&pdata->decoder, &pdata->file, server_address);
+                    
+                    FileOpen_StartThread(pdata);
+                    
+                    SendReadyPlaybackMessage();
+                } break;
+                case MESSAGE_READY_PLAYBACK:
+                {
+                    // NOTE(Val): Since file is ready, the client opens the file on server's address
+                    
+                    setup_msg_processing(struct _ready_playback_msg, msg, msg_r);
+                    
+                    
+                    Streaming_GetFileName(pdata->file.filename, pdata->server_address, Streaming_Get_Port(), NULL);
+                                          
+                    AddMessage0(&pdata->messages, MSG_FILE_OPEN, PlatformGetTime());
+                } break;
+                
+                // NOTE(Val): Starting here are the supplementary messages.
+                
                 case MESSAGE_REQUEST_PORT:
                 {
-                    struct _request_port_msg *msg_p = (struct _request_port_msg *)msg;
+                    setup_msg_processing(struct _request_port_msg, msg, msg_r);
                     
                 } break;
                 case MESSAGE_INFO:
                 {
-                    struct _request_info_msg *msg_p = (struct _request_info_msg *)msg;
+                    setup_msg_processing(struct _request_info_msg, msg, msg_r);
                     
                 } break;
                 case MESSAGE_PAUSE:
                 {
-                    struct _pause_msg *msg_p = (struct _pause_msg *)msg;
+                    setup_msg_processing(struct _pause_msg, msg, msg_r)
+                        
                     LocalTogglePlayback(pdata);
                 } break;
                 case MESSAGE_PLAY:
                 {
-                    struct _play_msg *msg_p = (struct _play_msg *)msg;
-                    LocalTogglePlayback(pdata);
+                    setup_msg_processing(struct _play_msg, msg, msg_r)
+                        
+                        LocalTogglePlayback(pdata);
                 } break;
                 case MESSAGE_SEEK:
                 {
-                    struct _seek_msg *msg_p = (struct _seek_msg *)msg;
-                    
+                    setup_msg_processing(struct _seek_msg, msg, msg_r)
+                        
+                        
                 } break;
                 case MESSAGE_DISCONNECT:
                 {
-                    struct _disconnect_msg *msg_p = (struct _disconnect_msg *)msg;
-                    
+                    setup_msg_processing(struct _disconnect_msg, msg, msg_r)
+                        
+                        
                 } break;
                 default:
                 {
@@ -604,7 +675,9 @@ ProcessNetwork(program_data *pdata)
                 } break;
             }
             
-            custom_free(msg);
+            custom_free(msg_r);
+            
+            EndTimer();
         }
         
         ret = SendControlMessages();
@@ -620,6 +693,8 @@ ProcessNetwork(program_data *pdata)
     
     RETURN(SUCCESS);
 }
+
+#undef setup_msg_processing
 
 int32
 InputLoopThread(void *arg)
@@ -795,8 +870,8 @@ MainThread(program_data *pdata)
     
     if(pdata->is_host)
     {
-        AddMessage0(&pdata->messages, MSG_FILE_OPEN, PlatformGetTime());
         AddMessage0(&pdata->messages, MSG_START_SERVER, PlatformGetTime());
+        //AddMessage0(&pdata->messages, MSG_FILE_OPEN, PlatformGetTime());
     }
     else if(pdata->is_partner)
     {
@@ -808,8 +883,6 @@ MainThread(program_data *pdata)
         AddMessage0(&pdata->messages, MSG_FILE_OPEN, PlatformGetTime());
     }
     
-    //pdata->threads.input_thread = PlatformCreateThread(InputLoopThread, pdata, "input_thread");
-    //pdata->threads.main_thread = PlatformCreateThread(MainLoopThread, pdata, "main_thread");
     MainLoopThread(pdata);
     
     pdata->running = 0;

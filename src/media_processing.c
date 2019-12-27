@@ -16,9 +16,14 @@
 #include "audio.h"
 #include "video.h"
 
-static inline int32 is_video(AVPacket *packet, decoder_info *decoder) { return (packet->stream_index == decoder->video_stream->index); }
-static inline int32 is_audio(AVPacket *packet, decoder_info *decoder) { return (packet->stream_index == decoder->audio_stream->index); }
-static inline int32 is_subtitle(AVPacket *packet, decoder_info *decoder) { return (packet->stream_index == decoder->subtitle_stream->index); }
+static inline int32 is_video(AVPacket *packet, decoder_info *decoder)
+{ return (packet->stream_index == decoder->video_stream->index); }
+
+static inline int32 is_audio(AVPacket *packet, decoder_info *decoder)
+{ return (packet->stream_index == decoder->audio_stream->index); }
+
+static inline int32 is_subtitle(AVPacket *packet, decoder_info *decoder)
+{ return (packet->stream_index == decoder->subtitle_stream->index); }
 
 static int32
 LoadPacket(decoder_info *decoder, AVPacket **packet)
@@ -102,49 +107,6 @@ process_audio_frame(AVFrame **frame, output_audio *audio, decoder_info *decoder)
             memcpy(new_frame->data[0], (*frame)->data[0], new_frame->linesize[0]);
         }
     }
-    /*
-uint32 real_size = size;
-
-dbg_print("Audio processing:\n"
-          "\tSampleCount:\t%d\n"
-          "\tFrequency:\t%d\n"
-          "\tChannels:\t%d\n",
-          SampleCount,
-          Frequency,
-          Channels);
-          
-if(!data)
-{
-    dbg_error("Audio buffer wasn't allocated. Returning.\n");
-    
-    EndTimer();
-    RETURN(NOT_INITIALIZED);
-}
-
-PlatformLockMutex(&audio->mutex);
-if(!is_planar)
-{
-    StartTimer("memcpy");
-    memcpy(data + audio->size, frame->data[0], real_size);
-    EndTimer();
-}
-else
-{
-    // NOTE(Val): manually interleaving audio for however
-    // many channels
-}
-PlatformUnlockMutex(&audio->mutex);
-
-audio->size += real_size;
-dbg_print("audio duration: %lf\n", audio->duration);
-
-real64 duration = (real64)SampleCount / (real64)Frequency;
-audio->duration += duration;
-dbg_print("new audio duration: %lf\n", audio->duration);
-//dbg_info("Audio frame duration: %lf\n", pdata->audio.duration);
-
-audio->is_ready = 1;
-*/
     
     av_frame_free(frame);
     *frame = new_frame;
@@ -258,201 +220,6 @@ ProcessPacket(AVFrame **frame, int32 *type, AVPacket *packet, decoder_info *deco
     EndTimer();
     RETURN(SUCCESS);
 }
-/*
-if(!audio->is_ready && !pq_is_empty(pdata->pq_audio))
-{
-StartTimer("Processing Audio");
-
-dbg_print("Processing Audio:\n"
-"\tready: %d\n"
-"\tplayback->audio_total_queued: %lf\n"
-"\tplayback->audio_total_decoded: %lf\n",
-audio->is_ready,
-playback->audio_total_queued,
-playback->audio_total_decoded);
-
-if(!audio->is_ready && 
-playback->audio_total_queued + pdata->client.refresh_target >= playback->audio_total_decoded)
-{
-PlatformLockMutex(&audio->mutex);
-
-AVFrame *frame;
-frame = DecodePacket(pdata->pq_audio, pdata->decoder.audio_codec_context);
-
-do {
-dbg_success("Audio packets not empty, starting to process. %lf\n", file->target_time);
-
-if(frame)
-{
-dbg_success("Processing audio.\n");
-
-process_audio_frame(pdata, frame);
-av_frame_free(&frame);
-}
-else
-{
-dbg_error("Audio queue was empty.\n");
-}
-
-if(!pdata->running)
-break;
-} while (audio->duration <= file->target_time);
-
-dbg_error("Setting audio readiness.\n");
-pdata->playback.audio_total_decoded += audio->duration;
-audio->is_ready = 1;
-
-PlatformUnlockMutex(&audio->mutex);
-}
-else if(audio->is_ready)
-{
-dbg_error("Decoding: Audio was already ready.\n");
-}
-else
-{
-dbg_error("Decoding: Queued audio and decoded audio not equal.\n");
-}
-
-EndTimer();
-}
-else
-{
-dbg_success("Audio not marked ready or no audio packets left.\n");
-}
-
-if(file->has_video)
-{
-if(!pdata->video.is_ready && !pq_is_empty(pdata->pq_video))
-{
-StartTimer("Processing Video");
-
-AVFrame *frame;
-if((frame = DecodePacket(pdata->pq_video, pdata->decoder.video_codec_context)))
-{
-dbg_success("Processing video.\n");
-
-int32 ret = process_video_frame(pdata, frame);
-if(ret < 0)
-{
-dbg_error("process_video_frame() failed.\n");
-}
-
-StartTimer("av_frame_free()");
-av_frame_free(&frame);
-EndTimer();
-}
-else
-{
-dbg_error("get_frame failed.\n");
-}
-
-pdata->video.is_ready = 1;
-
-EndTimer();
-}
-else if(!pdata->video.is_ready)
-{
-dbg_error("No video packets to process.\n");
-}
-else
-{
-//dbg_info("Video frame has not been used yet.\n");
-}
-}
-// TODO(Val): This may not be fool proof
-//if(pq_is_empty(pdata->pq_video) && pq_is_empty(pdata->pq_audio))
-//pdata->playback_finished = 1;
-//else
-//{
-//dbg_info("Decoder: Starting condition wait.\n");
-
-EndTimer();
-}
-*/
-/*
-static void
-SortPackets(program_data *pdata)
-{
-AVPacket *pkt;
-// NOTE(Val): if there are packets in main queue and audio/video queues aren't full
-while(!pq_is_empty(pdata->pq_main) &&
-!pq_is_full(pdata->pq_audio) &&
-!pq_is_full(pdata->pq_video))
-{
-dequeue_packet(pdata->pq_main, &pkt);
-
-if(pkt->stream_index == pdata->decoder.video_stream)
-{
-//dbg_info("Queued video packet.\n");
-enqueue_packet(pdata->pq_video, pkt);
-}
-else if(pkt->stream_index == pdata->decoder.audio_stream)
-{
-//dbg_info("Queued audio packet.\n");
-enqueue_packet(pdata->pq_audio, pkt);
-}
-else
-{
-dbg_info("Discarded unknown packet.\n");
-}
-
-pkt = NULL;
-}
-}
-*/
-/*
-static void
-EnqueuePackets(program_data *pdata)
-{
-while(!pq_is_full(pdata->pq_main) &&
-!pdata->file.file_finished &&
-pdata->running)
-{
-AVPacket *pkt = av_packet_alloc();
-
-int ret = get_packet(pdata, pkt);
-
-if(ret >= 0)
-{
-enqueue_packet(pdata->pq_main, pkt);
-}
-else
-{
-dbg_error("get_packet() failed.\n");
-break;
-}
-}
-}
-static void
-LoadPackets(program_data *pdata, open_file_info *file)
-{
-StartTimer("Load Packets");
-
-if(pdata->is_partner)
-{
-// TODO(Val): test if this works with streamed files.
-while(!pq_is_full(pdata->pq_audio) &&
-!pq_is_full(pdata->pq_video) &&
-!file->file_finished)
-{
-EnqueuePackets(pdata);
-SortPackets(pdata);
-}
-}
-else
-{
-while(!pq_is_full(pdata->pq_audio) &&
-!pq_is_full(pdata->pq_video) &&
-!file->file_finished)
-{
-EnqueuePackets(pdata);
-SortPackets(pdata);
-}
-}
-
-EndTimer();
-}
-*/
 
 #define PACKET_BUFFER 30
 
@@ -798,10 +565,10 @@ MediaThreadStart(void *arg)
     //encoder_info *encoder = &pdata->encoder;
     playback_data *playback = &pdata->playback;
     
-    if(pdata->is_host)
-        Streaming_Host_Initialize(decoder, file);
-    if(pdata->is_partner)
-        Streaming_Client_Initialize(decoder);
+    //if(pdata->is_host)
+        //Streaming_Host_Initialize(decoder, file);
+    //if(pdata->is_partner)
+        //Streaming_Client_Initialize(decoder);
     
     int ret = 0;
     

@@ -4,6 +4,7 @@
 #include "utils.h"
 #include "communication_messages.h"
 #include "common/custom_malloc.h"
+#include "utils/timing.h"
 
 static uint16 message_ports[4] = {8212, 8418, 23458, 28002};
 //static uint16 rtp_ports[4] = {9165, 9347, 18669, 21222};
@@ -271,11 +272,21 @@ GetNextMessage()
             copy_msg(struct _request_init_msg, new_msg, msg);
             print_request_init_msg((struct _request_init_msg *)msg, 1);
         } break;
-        case MESSAGE_REQUEST_PORT:
+        //case MESSAGE_REQUEST_PORT:
+        //{
+            //copy_msg(struct _request_port_msg, new_msg, msg);
+            //print_request_port_msg((struct _request_port_msg *)msg, 1);
+        //} break;
+        case MESSAGE_FINISH_INIT:
         {
-            copy_msg(struct _request_port_msg, new_msg, msg);
-            
+            copy_msg(struct _finish_init_msg, new_msg, msg);
+            print_finish_init_msg((struct _finish_init_msg *)&msg, 1);
         } break;
+        case MESSAGE_READY_PLAYBACK:
+        {
+            copy_msg(struct _ready_playback_msg, new_msg, msg);
+            print_ready_playback_msg((struct _ready_playback_msg *)&msg, 1);
+        }
         case MESSAGE_INFO:
         {
             copy_msg(struct _request_info_msg, new_msg, msg);
@@ -284,22 +295,22 @@ GetNextMessage()
         case MESSAGE_PAUSE:
         {
             copy_msg(struct _pause_msg, new_msg, msg);
-            
+            print_pause_msg((struct _pause_msg *)msg, 1);
         } break;
         case MESSAGE_PLAY:
         {
             copy_msg(struct _play_msg, new_msg, msg);
-            
+            print_play_msg((struct _play_msg *)msg, 1);
         } break;
         case MESSAGE_SEEK:
         {
             copy_msg(struct _seek_msg, new_msg, msg);
-            
+            print_seek_msg((struct _seek_msg *)msg, 1);
         } break;
         case MESSAGE_DISCONNECT:
         {
             copy_msg(struct _disconnect_msg, new_msg, msg);
-            
+            print_disconnect_msg((struct _disconnect_msg *)msg, 1);
         } break;
     }
     
@@ -312,6 +323,8 @@ GetNextMessage()
 int32
 ReceiveControlMessages()
 {
+    StartTimer("ReceiveControlMessages()");
+    
     int ret = SDLNet_CheckSockets(socket_set, 0);
     if(ret > 0)
     {
@@ -341,42 +354,41 @@ ReceiveControlMessages()
     {
         // TODO(Val): This is an error and need to handle it
         dbg_error("ReceiveControlMesssages(): SDLNet_CheckSockets() error.\n");
+        
+        EndTimer();
         RETURN(UNKNOWN_ERROR);
     }
+    
+    EndTimer();
     
     RETURN(SUCCESS);
 }
 
 void
-GetPartnerIP(char **buffer)
+GetPartnerIPStr(char **buffer)
+{
+    if(*buffer)
+        custom_free(*buffer);
+    *buffer = custom_malloc(256);
+
+    IPaddress *temp_ip = SDLNet_TCP_GetPeerAddress(partner);
+    destination_IP ip = {};
+    
+#if 0    
+    ip.v4.ip = SDLNet_Read32(&temp_ip->host);
+#else
+    ip.v4.ip = temp_ip->host;
+#endif
+    
+    IPToStr(*buffer, ip);
+}
+
+void
+GetPartnerIPInt(uint32 *buffer)
 {
     IPaddress *temp_ip = SDLNet_TCP_GetPeerAddress(partner);
     
-    IPv4 ip;
-    ip.ip = SDLNet_Read32(&temp_ip->host);
-}
-
-int32
-SendInitMessage(real64 start_timestamp,
-                real64 file_duration,
-                int32 audio_port,
-                int32 video_port,
-                int32 subtitle_port,
-                int32 flags)
-{
-    Qmsg_init(MESSAGE_INIT, struct _init_msg, msg);
-    
-    msg.flags = flags;
-    msg.start_time = start_timestamp;
-    msg.file_duration = file_duration;
-    msg.audio_port = audio_port;
-    msg.video_port = video_port;
-    msg.subtitle_port = subtitle_port;
-    
-    print_init_msg(&msg, 0);
-    
-    Qmsg_send(msg);
-    
+    *buffer = temp_ip->host;//SDLNet_Read32(&temp_ip->host);
 }
 
 int32
@@ -385,6 +397,44 @@ SendInitRequestMessage()
     Qmsg_init(MESSAGE_REQUEST_INIT, struct _request_init_msg, msg);
     
     print_request_init_msg(&msg, 0);
+    
+    Qmsg_send(msg);
+}
+
+int32
+SendInitMessage(real64 start_timestamp,
+                real64 file_duration,
+                int32 flags)
+{
+    Qmsg_init(MESSAGE_INIT, struct _init_msg, msg);
+    
+    msg.flags = flags;
+    msg.start_time = start_timestamp;
+    msg.file_duration = file_duration;
+    
+    print_init_msg(&msg, 0);
+    
+    Qmsg_send(msg);
+}
+
+int32
+SendFinishInitMessage(destination_IP ip)
+{
+    Qmsg_init(MESSAGE_FINISH_INIT, struct _finish_init_msg, msg);
+    
+    msg.ip = ip.v4.ip;
+    
+    print_finish_init_msg(&msg, 0);
+    
+    Qmsg_send(msg);
+}
+
+int32
+SendReadyPlaybackMessage()
+{
+    Qmsg_init(MESSAGE_READY_PLAYBACK, struct _ready_playback_msg, msg);
+    
+    print_ready_playback_msg(&msg, 0);
     
     Qmsg_send(msg);
 }
@@ -433,6 +483,8 @@ int32
 SendDisconnectMessage()
 {
     Qmsg_init(MESSAGE_DISCONNECT, struct _disconnect_msg, msg);
+    
+    print_disconnect_msg(&msg, 0);
     
     Qmsg_send(msg);
 }

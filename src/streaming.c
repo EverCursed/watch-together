@@ -7,7 +7,6 @@ TODO(Val):
  - Send control message
  - Receive packet
  - Receive control message
- 
 */
 #include "streaming.h"
 
@@ -26,32 +25,17 @@ TODO(Val):
 
 static char* address_prefix  = "tcp";
 static char* output_format   = "mpegts";
-static char* connection_ip   = "127.0.0.1";
+static char* connection_ip   = "192.168.0.102";
 static int32 video_port      = 16336;
-static char* file_address    = "";
-static char* parameters      = "listen";
-//static int32 audio_port = "16336";
-//static int32 subtitle_port = "16338";
+//static char* client_parameters      = "";
+static char* host_parameters      = "?listen";
 
 int32
 Streaming_Client_Initialize(decoder_info *decoder)
 {
-    //avformat_network_init();
-    /*
-    decoder->format_context = avformat_alloc_context();
-    if(!decoder->format_context->pb)
-    {
-        char address[256];
-        Streaming_GetFileName(address, connection_ip, video_port, parameters);
-        if(avio_open(&decoder->format_context->pb, address, AVIO_FLAG_READ_WRITE) < 0)
-        {
-            RETURN(UNKNOWN_ERROR);
-        }
-        
-        
-    }
-    */
-    RETURN(NOT_YET_IMPLEMENTED);
+    avformat_network_init();
+    
+        RETURN(UNKNOWN_ERROR);
 }
 
 not_used static AVStream *
@@ -99,17 +83,19 @@ copy_stream_to_output(AVFormatContext *output_fmt_context, AVStream *input_strea
 }
 
 int32
-Streaming_Host_Initialize(decoder_info *decoder, open_file_info *file)
+Streaming_Host_Initialize(decoder_info *decoder, open_file_info *file, char *my_ip)
 {
     avformat_network_init();
+    
     
     int ret = 0;
     char video_address[256];
     //char audio_address[256];
     //char subtitle_address[256];
-    Streaming_GetFileName(video_address, connection_ip, video_port, parameters);
+    Streaming_GetFileName(video_address, my_ip, video_port, host_parameters);
     
     avformat_alloc_output_context2(&decoder->output_context, NULL, output_format, video_address); //address);
+    
     if(!decoder->output_context)
         RETURN(UNKNOWN_ERROR);
     
@@ -124,7 +110,7 @@ Streaming_Host_Initialize(decoder_info *decoder, open_file_info *file)
     if (!(decoder->output_context->oformat->flags & AVFMT_NOFILE)) {
         ret = avio_open(&decoder->output_context->pb, video_address, AVIO_FLAG_WRITE);
         if (ret < 0) {
-            dbg_error("Could not open output file '%s'", video_address);
+            dbg_error("Could not open output file '%s'\n", video_address);
             RETURN(UNKNOWN_ERROR);
         }
     }
@@ -208,11 +194,11 @@ Streaming_Client_Connect(char* address)
 int32
 Streaming_GetFileName(char *buffer, char *address, int32 video_port, char *parameters)
 {
-    if(parameters)
-        sprintf(buffer, "%s://%s:%d/%s?%s", address_prefix, address, video_port, file_address, parameters);
-    else
-        sprintf(buffer, "%s://%s:%d/%s", address_prefix, address, video_port, file_address);
-    
+    sprintf(buffer, "%s://%s:%d%s",
+            address_prefix,
+            address,
+            video_port,
+            parameters ? parameters : "");
     
     RETURN(SUCCESS);
 }
@@ -264,10 +250,6 @@ Streaming_Host_SendPacket(decoder_info *decoder, AVPacket *packet)
         //pkt->pts = decoder->frames_sent;
         //pkt->dts = decoder->frames_sent;
         decoder->frames_sent++;
-    }
-    else if(packet->duration == -9223372036854775808)
-    {
-        dbg_error("Here's that weird packet.\n");
     }
     
     pkt->pts = av_rescale_q_rnd(pkt->pts, input_stream->time_base, output_stream->time_base, AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX);
