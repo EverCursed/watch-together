@@ -64,14 +64,18 @@ typedef struct _message_type {
     int32 type;
 } net_message;
 
-#define msg_header union { net_message msg; int32 type; }
+#define MSG_HEADER \
+union { \
+net_message msg; \
+int32 type; \
+}
 
 struct align(4) _request_init_msg {
-    msg_header;
+    MSG_HEADER;
 };
 
 struct align(4) _init_msg {
-    msg_header;
+    MSG_HEADER;
     int32 flags;
     real64 start_time;
     real64 file_duration;
@@ -79,41 +83,42 @@ struct align(4) _init_msg {
 };
 
 struct align(4) _finish_init_msg {
-    msg_header;
+    MSG_HEADER;
     uint32 ip;
 };
 
 struct align(4) _ready_playback_msg {
-    msg_header;
+    MSG_HEADER;
 };
 
 struct align(4) _request_port_msg {
-    msg_header;
+    MSG_HEADER;
     uint32 ip;
 };
 
 struct align(4) _request_info_msg {
-    msg_header;
+    MSG_HEADER;
 };
 
 struct align(4) _pause_msg {
-    msg_header;
+    MSG_HEADER;
     real64 time;
 };
 
 struct align(4) _play_msg {
-    msg_header;
+    MSG_HEADER;
 };
 
 struct align(4) _seek_msg {
-    msg_header;
+    MSG_HEADER;
     real64 time;
 };
 
 struct align(4) _disconnect_msg {
-    msg_header;
+    MSG_HEADER;
 };
 
+#undef MSG_HEADER
 
 not_used static void
 print_request_init_msg(struct _request_init_msg *msg, bool32 received)

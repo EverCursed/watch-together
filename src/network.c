@@ -39,12 +39,12 @@ static void *recv_buffer = NULL;
 static int32 recv_buffer_used = 0;
 static int32 recv_buffer_size = 0;
 
-#define Qmsg_init(msg_type, struct_type, var) \
+#define INIT_MSG_VARIABLES(msg_type, struct_type, var) \
 struct_type var; \
 var.type = msg_type; \
 do { } while(0)
 
-#define Qmsg_send(var) \
+#define SEND_MSG_TO_QUEUE(var) \
 if(QueueControlMessage(&var, sizeof(var))) \
 RETURN(UNKNOWN_ERROR); \
 else \
@@ -53,7 +53,7 @@ do { } while(0)
 
 //*(type *)ptr = *(type *)src; 
 
-#define copy_msg(type, ptr, src) \
+#define COPY_MSG(type, ptr, src) \
 do { \
     ptr = custom_malloc(sizeof(type)); \
     memcpy(ptr, src, sizeof(type)); \
@@ -264,52 +264,52 @@ GetNextMessage()
     {
         case MESSAGE_INIT:
         {
-            copy_msg(struct _init_msg, new_msg, msg);
+            COPY_MSG(struct _init_msg, new_msg, msg);
             print_init_msg((struct _init_msg *)msg, 1);
         } break;
         case MESSAGE_REQUEST_INIT:
         {
-            copy_msg(struct _request_init_msg, new_msg, msg);
+            COPY_MSG(struct _request_init_msg, new_msg, msg);
             print_request_init_msg((struct _request_init_msg *)msg, 1);
         } break;
         //case MESSAGE_REQUEST_PORT:
         //{
-            //copy_msg(struct _request_port_msg, new_msg, msg);
+            //COPY_MSG(struct _request_port_msg, new_msg, msg);
             //print_request_port_msg((struct _request_port_msg *)msg, 1);
         //} break;
         case MESSAGE_FINISH_INIT:
         {
-            copy_msg(struct _finish_init_msg, new_msg, msg);
+            COPY_MSG(struct _finish_init_msg, new_msg, msg);
             print_finish_init_msg((struct _finish_init_msg *)&msg, 1);
         } break;
         case MESSAGE_READY_PLAYBACK:
         {
-            copy_msg(struct _ready_playback_msg, new_msg, msg);
+            COPY_MSG(struct _ready_playback_msg, new_msg, msg);
             print_ready_playback_msg((struct _ready_playback_msg *)&msg, 1);
         }
         case MESSAGE_INFO:
         {
-            copy_msg(struct _request_info_msg, new_msg, msg);
+            COPY_MSG(struct _request_info_msg, new_msg, msg);
             
         } break;
         case MESSAGE_PAUSE:
         {
-            copy_msg(struct _pause_msg, new_msg, msg);
+            COPY_MSG(struct _pause_msg, new_msg, msg);
             print_pause_msg((struct _pause_msg *)msg, 1);
         } break;
         case MESSAGE_PLAY:
         {
-            copy_msg(struct _play_msg, new_msg, msg);
+            COPY_MSG(struct _play_msg, new_msg, msg);
             print_play_msg((struct _play_msg *)msg, 1);
         } break;
         case MESSAGE_SEEK:
         {
-            copy_msg(struct _seek_msg, new_msg, msg);
+            COPY_MSG(struct _seek_msg, new_msg, msg);
             print_seek_msg((struct _seek_msg *)msg, 1);
         } break;
         case MESSAGE_DISCONNECT:
         {
-            copy_msg(struct _disconnect_msg, new_msg, msg);
+            COPY_MSG(struct _disconnect_msg, new_msg, msg);
             print_disconnect_msg((struct _disconnect_msg *)msg, 1);
         } break;
     }
@@ -394,11 +394,11 @@ GetPartnerIPInt(uint32 *buffer)
 int32
 SendInitRequestMessage()
 {
-    Qmsg_init(MESSAGE_REQUEST_INIT, struct _request_init_msg, msg);
+    INIT_MSG_VARIABLES(MESSAGE_REQUEST_INIT, struct _request_init_msg, msg);
     
     print_request_init_msg(&msg, 0);
     
-    Qmsg_send(msg);
+    SEND_MSG_TO_QUEUE(msg);
 }
 
 int32
@@ -406,7 +406,7 @@ SendInitMessage(real64 start_timestamp,
                 real64 file_duration,
                 int32 flags)
 {
-    Qmsg_init(MESSAGE_INIT, struct _init_msg, msg);
+    INIT_MSG_VARIABLES(MESSAGE_INIT, struct _init_msg, msg);
     
     msg.flags = flags;
     msg.start_time = start_timestamp;
@@ -414,79 +414,79 @@ SendInitMessage(real64 start_timestamp,
     
     print_init_msg(&msg, 0);
     
-    Qmsg_send(msg);
+    SEND_MSG_TO_QUEUE(msg);
 }
 
 int32
 SendFinishInitMessage(destination_IP ip)
 {
-    Qmsg_init(MESSAGE_FINISH_INIT, struct _finish_init_msg, msg);
+    INIT_MSG_VARIABLES(MESSAGE_FINISH_INIT, struct _finish_init_msg, msg);
     
     msg.ip = ip.v4.ip;
     
     print_finish_init_msg(&msg, 0);
     
-    Qmsg_send(msg);
+    SEND_MSG_TO_QUEUE(msg);
 }
 
 int32
 SendReadyPlaybackMessage()
 {
-    Qmsg_init(MESSAGE_READY_PLAYBACK, struct _ready_playback_msg, msg);
+    INIT_MSG_VARIABLES(MESSAGE_READY_PLAYBACK, struct _ready_playback_msg, msg);
     
     print_ready_playback_msg(&msg, 0);
     
-    Qmsg_send(msg);
+    SEND_MSG_TO_QUEUE(msg);
 }
 
 int32
 SendRequestPortMessage()
 {
-    Qmsg_init(MESSAGE_REQUEST_PORT, struct _request_port_msg, msg);
+    INIT_MSG_VARIABLES(MESSAGE_REQUEST_PORT, struct _request_port_msg, msg);
     
-    Qmsg_send(msg);
+    SEND_MSG_TO_QUEUE(msg);
 }
 
 int32
 SendPlayMessage()
 {
-    Qmsg_init(MESSAGE_PLAY, struct _play_msg, msg);
+    INIT_MSG_VARIABLES(MESSAGE_PLAY, struct _play_msg, msg);
     
     print_play_msg(&msg, 0);
     
-    Qmsg_send(msg);
+    SEND_MSG_TO_QUEUE(msg);
 }
 
 int32
 SendPauseMessage()
 {
-    Qmsg_init(MESSAGE_PAUSE, struct _pause_msg, msg);
+    INIT_MSG_VARIABLES(MESSAGE_PAUSE, struct _pause_msg, msg);
     
     print_pause_msg(&msg, 0);
     
-    Qmsg_send(msg);
+    SEND_MSG_TO_QUEUE(msg);
 }
 
 int32
 SendSeekMessage(real64 timestamp)
 {
-    Qmsg_init(MESSAGE_SEEK, struct _seek_msg, msg);
+    INIT_MSG_VARIABLES(MESSAGE_SEEK, struct _seek_msg, msg);
     
     msg.time = timestamp;
     
     print_seek_msg(&msg, 0);
     
-    Qmsg_send(msg);
+    SEND_MSG_TO_QUEUE(msg);
 }
 
 int32
 SendDisconnectMessage()
 {
-    Qmsg_init(MESSAGE_DISCONNECT, struct _disconnect_msg, msg);
+    INIT_MSG_VARIABLES(MESSAGE_DISCONNECT, struct _disconnect_msg, msg);
     
     print_disconnect_msg(&msg, 0);
     
-    Qmsg_send(msg);
+    SEND_MSG_TO_QUEUE(msg);
 }
 
 int32

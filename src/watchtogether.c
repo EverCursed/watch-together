@@ -542,7 +542,7 @@ ProcessPlayback(program_data *pdata)
     RETURN(SUCCESS);
 }
 
-#define setup_msg_processing(type, var, message) \
+#define SETUP_MSG_PROCESSING(type, var, message) \
 type *var = (type *)message;
 
 static int32
@@ -580,7 +580,7 @@ ProcessNetwork(program_data *pdata)
                 {
                     // NOTE(Val): Server responds to the init request by sending the required information  
                     
-                    setup_msg_processing(struct _request_init_msg, msg, msg_r)
+                    SETUP_MSG_PROCESSING(struct _request_init_msg, msg, msg_r)
                     
                     destination_IP ip = {};
                     GetPartnerIPInt(&ip.v4.ip);
@@ -595,7 +595,7 @@ ProcessNetwork(program_data *pdata)
                 {
                     // NOTE(Val): Client replies by sending the server its own IP address
                     
-                    setup_msg_processing(struct _init_msg, msg, msg_r)
+                    SETUP_MSG_PROCESSING(struct _init_msg, msg, msg_r)
                     
                     //Streaming_GetFileName(pdata->file.filename, pdata->server_address, msg_p->port, NULL);
                     
@@ -607,7 +607,7 @@ ProcessNetwork(program_data *pdata)
                 {
                     // NOTE(Val): Server receives its own IP as visible to the client and creates an output file at that IP
                     
-                    setup_msg_processing(struct _finish_init_msg, msg, msg_r);
+                    SETUP_MSG_PROCESSING(struct _finish_init_msg, msg, msg_r);
                     
                     destination_IP ip = {};
                     ip.v4.ip = msg->ip;
@@ -625,7 +625,7 @@ ProcessNetwork(program_data *pdata)
                 {
                     // NOTE(Val): Since file is ready, the client opens the file on server's address
                     
-                    setup_msg_processing(struct _ready_playback_msg, msg, msg_r);
+                    SETUP_MSG_PROCESSING(struct _ready_playback_msg, msg, msg_r);
                     
                     
                     Streaming_GetFileName(pdata->file.filename, pdata->server_address, Streaming_Get_Port(), NULL);
@@ -637,35 +637,35 @@ ProcessNetwork(program_data *pdata)
                 
                 case MESSAGE_REQUEST_PORT:
                 {
-                    setup_msg_processing(struct _request_port_msg, msg, msg_r);
+                    SETUP_MSG_PROCESSING(struct _request_port_msg, msg, msg_r);
                     
                 } break;
                 case MESSAGE_INFO:
                 {
-                    setup_msg_processing(struct _request_info_msg, msg, msg_r);
+                    SETUP_MSG_PROCESSING(struct _request_info_msg, msg, msg_r);
                     
                 } break;
                 case MESSAGE_PAUSE:
                 {
-                    setup_msg_processing(struct _pause_msg, msg, msg_r)
+                    SETUP_MSG_PROCESSING(struct _pause_msg, msg, msg_r)
                         
                     LocalTogglePlayback(pdata);
                 } break;
                 case MESSAGE_PLAY:
                 {
-                    setup_msg_processing(struct _play_msg, msg, msg_r)
+                    SETUP_MSG_PROCESSING(struct _play_msg, msg, msg_r)
                         
                         LocalTogglePlayback(pdata);
                 } break;
                 case MESSAGE_SEEK:
                 {
-                    setup_msg_processing(struct _seek_msg, msg, msg_r)
+                    SETUP_MSG_PROCESSING(struct _seek_msg, msg, msg_r)
                         
                         
                 } break;
                 case MESSAGE_DISCONNECT:
                 {
-                    setup_msg_processing(struct _disconnect_msg, msg, msg_r)
+                    SETUP_MSG_PROCESSING(struct _disconnect_msg, msg, msg_r)
                         
                         
                 } break;
@@ -694,7 +694,7 @@ ProcessNetwork(program_data *pdata)
     RETURN(SUCCESS);
 }
 
-#undef setup_msg_processing
+#undef SETUP_MSG_PROCESSING
 
 int32
 InputLoopThread(void *arg)
