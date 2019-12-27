@@ -565,10 +565,20 @@ MediaThreadStart(void *arg)
     //encoder_info *encoder = &pdata->encoder;
     playback_data *playback = &pdata->playback;
     
-    //if(pdata->is_host)
-        //Streaming_Host_Initialize(decoder, file);
+    if(pdata->is_host)
+    {
+        char address[16];
+        IPToStr(address, pdata->address_storage);
+        
+        Streaming_Host_Initialize(decoder, file, address);
+        
+        PlatformConditionWait(&decoder->start_streaming);
+    }
+    
     //if(pdata->is_partner)
         //Streaming_Client_Initialize(decoder);
+    
+    
     
     int ret = 0;
     
@@ -581,10 +591,8 @@ MediaThreadStart(void *arg)
         //{
         
         StartTimer("Waiting");
-        //if(!WaitingForPlaybackStart(pdata))
-        //PlatformConditionWait(&decoder->condition);
         //else
-        PlatformSleep(0.016);
+        //PlatformSleep(0.016);
         EndTimer();
         
         while(!avframe_queue_full(&pdata->video.queue) &&
@@ -619,6 +627,9 @@ MediaThreadStart(void *arg)
             start_notified = 1;
             pdata->start_playback = 1;
         }
+        
+        
+        PlatformConditionWait(&decoder->condition);
         
         //StartTimer("RefillPackets()");
         //if(!decoder->file_fully_loaded)

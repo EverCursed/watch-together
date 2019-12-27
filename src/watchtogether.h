@@ -245,6 +245,7 @@ typedef struct _program_data {
     bool32 is_partner;
     
     char* server_address;
+    destination_IP address_storage;
 } program_data;
 
 int32 

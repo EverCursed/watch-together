@@ -252,6 +252,7 @@ FileOpen_StartThread(program_data *pdata)
     AllocateBuffers(pdata);
     
     pdata->decoder.condition = PlatformCreateConditionVar();
+    pdata->decoder.start_streaming = PlatformCreateConditionVar();
     
     pdata->threads.media_thread =
         PlatformCreateThread(MediaThreadStart, pdata, "media");
@@ -609,17 +610,13 @@ ProcessNetwork(program_data *pdata)
                     
                     SETUP_MSG_PROCESSING(struct _finish_init_msg, msg, msg_r);
                     
-                    destination_IP ip = {};
-                    ip.v4.ip = msg->ip;
-                    
-                    char server_address[16];
-                    IPToStr(server_address, ip);
-                    
-                    Streaming_Host_Initialize(&pdata->decoder, &pdata->file, server_address);
+                    pdata->address_storage.v4.ip = msg->ip;;
+                    //Streaming_Host_Initialize(&pdata->decoder, &pdata->file, server_address);
                     
                     FileOpen_StartThread(pdata);
                     
                     SendReadyPlaybackMessage();
+                    PlatformConditionSignal(&pdata->decoder.start_streaming);
                 } break;
                 case MESSAGE_READY_PLAYBACK:
                 {
