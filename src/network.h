@@ -5,6 +5,8 @@
 #include "defines.h"
 #include "attributes.h"
 
+#define MESSAGE_DATA_ALIGNMENT 8
+
 typedef union _IPv4 {
     struct {
         uint8 a;
@@ -57,7 +59,6 @@ IPToStr(char* buffer, destination_IP ip)
     }
 }
 
-
 // ------------------- messages ----------------------
 
 typedef struct _message_type {
@@ -70,11 +71,11 @@ net_message msg; \
 int32 type; \
 }
 
-struct align(4) _request_init_msg {
+struct align(MESSAGE_DATA_ALIGNMENT) _request_init_msg {
     MSG_HEADER;
 };
 
-struct align(4) _init_msg {
+struct align(MESSAGE_DATA_ALIGNMENT) _init_msg {
     MSG_HEADER;
     int32 flags;
     real64 start_time;
@@ -82,39 +83,47 @@ struct align(4) _init_msg {
     uint16 port;
 };
 
-struct align(4) _finish_init_msg {
+struct align(MESSAGE_DATA_ALIGNMENT) _finish_init_msg {
     MSG_HEADER;
     uint32 ip;
 };
 
-struct align(4) _ready_playback_msg {
+struct align(MESSAGE_DATA_ALIGNMENT) _ready_playback_msg {
     MSG_HEADER;
 };
 
-struct align(4) _request_port_msg {
+struct align(MESSAGE_DATA_ALIGNMENT) _request_port_msg {
     MSG_HEADER;
     uint32 ip;
 };
 
-struct align(4) _request_info_msg {
+struct align(MESSAGE_DATA_ALIGNMENT) _request_info_msg {
     MSG_HEADER;
 };
 
-struct align(4) _pause_msg {
+struct align(MESSAGE_DATA_ALIGNMENT) _pause_msg {
+    MSG_HEADER;
+     real64 time;
+};
+
+struct align(MESSAGE_DATA_ALIGNMENT) _play_msg {
+    MSG_HEADER;
+};
+
+struct align(MESSAGE_DATA_ALIGNMENT) _seek_msg {
     MSG_HEADER;
     real64 time;
 };
 
-struct align(4) _play_msg {
+struct align(MESSAGE_DATA_ALIGNMENT) _disconnect_msg {
     MSG_HEADER;
 };
 
-struct align(4) _seek_msg {
+struct align(MESSAGE_DATA_ALIGNMENT) _probe_rtt {
     MSG_HEADER;
-    real64 time;
 };
 
-struct align(4) _disconnect_msg {
+struct align(MESSAGE_DATA_ALIGNMENT) _reply_rtt {
     MSG_HEADER;
 };
 

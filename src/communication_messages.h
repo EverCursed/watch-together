@@ -18,6 +18,9 @@ enum NetworkMessageID {
  MESSAGE_SEEK,
  MESSAGE_DISCONNECT,
     
+    MESSAGE_PROBE_RTT,
+    MESSAGE_REPLY_RTT,
+    
     // TODO(Val): Future messages that will be added
     REQUEST_SUBTITLES,
     REQUEST_CANCEL_SUBTITLES,

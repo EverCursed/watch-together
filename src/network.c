@@ -60,6 +60,17 @@ do { \
     recv_buffer_used += sizeof(type); \
 } while(0)
 
+#define GENERATE_SEND_MESSAGE_FUNCTION(func_msg_type, struct_type, msg_val, print_func) \
+int32 \
+Send##func_msg_type##Message() \
+{ \
+INIT_MSG_VARIABLES(msg_val, struct_type, msg); \
+\
+print_func(&msg, 0); \
+\
+SEND_MSG_TO_QUEUE(msg);\
+}
+
 static void
 reset_message_buffer()
 {
@@ -392,16 +403,6 @@ GetPartnerIPInt(uint32 *buffer)
 }
 
 int32
-SendInitRequestMessage()
-{
-    INIT_MSG_VARIABLES(MESSAGE_REQUEST_INIT, struct _request_init_msg, msg);
-    
-    print_request_init_msg(&msg, 0);
-    
-    SEND_MSG_TO_QUEUE(msg);
-}
-
-int32
 SendInitMessage(real64 start_timestamp,
                 real64 file_duration,
                 int32 flags)
@@ -430,39 +431,9 @@ SendFinishInitMessage(destination_IP ip)
 }
 
 int32
-SendReadyPlaybackMessage()
-{
-    INIT_MSG_VARIABLES(MESSAGE_READY_PLAYBACK, struct _ready_playback_msg, msg);
-    
-    print_ready_playback_msg(&msg, 0);
-    
-    SEND_MSG_TO_QUEUE(msg);
-}
-
-int32
 SendRequestPortMessage()
 {
     INIT_MSG_VARIABLES(MESSAGE_REQUEST_PORT, struct _request_port_msg, msg);
-    
-    SEND_MSG_TO_QUEUE(msg);
-}
-
-int32
-SendPlayMessage()
-{
-    INIT_MSG_VARIABLES(MESSAGE_PLAY, struct _play_msg, msg);
-    
-    print_play_msg(&msg, 0);
-    
-    SEND_MSG_TO_QUEUE(msg);
-}
-
-int32
-SendPauseMessage()
-{
-    INIT_MSG_VARIABLES(MESSAGE_PAUSE, struct _pause_msg, msg);
-    
-    print_pause_msg(&msg, 0);
     
     SEND_MSG_TO_QUEUE(msg);
 }
@@ -479,15 +450,30 @@ SendSeekMessage(real64 timestamp)
     SEND_MSG_TO_QUEUE(msg);
 }
 
-int32
-SendDisconnectMessage()
-{
-    INIT_MSG_VARIABLES(MESSAGE_DISCONNECT, struct _disconnect_msg, msg);
-    
-    print_disconnect_msg(&msg, 0);
-    
-    SEND_MSG_TO_QUEUE(msg);
-}
+GENERATE_SEND_MESSAGE_FUNCTION(InitRequest,
+                               struct _request_init_msg,
+                               MESSAGE_REQUEST_INIT,
+                               print_request_init_msg)
+
+GENERATE_SEND_MESSAGE_FUNCTION(ReadyPlayback,
+                               struct _ready_playback_msg,
+                               MESSAGE_READY_PLAYBACK,
+                               print_ready_playback_msg)
+
+GENERATE_SEND_MESSAGE_FUNCTION(Play,
+                               struct _play_msg,
+                               MESSAGE_PLAY,
+                               print_play_msg)
+
+GENERATE_SEND_MESSAGE_FUNCTION(Pause,
+                               struct _pause_msg,
+                               MESSAGE_PAUSE,
+                               print_pause_msg)
+
+GENERATE_SEND_MESSAGE_FUNCTION(Disconnect,
+                               struct _disconnect_msg,
+                               MESSAGE_DISCONNECT,
+                               print_disconnect_msg)
 
 int32
 CloseConnection()
