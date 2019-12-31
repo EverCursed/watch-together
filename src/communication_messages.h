@@ -21,7 +21,7 @@ enum NetworkMessageID {
     MESSAGE_PROBE_RTT,
     MESSAGE_REPLY_RTT,
     
-    // TODO(Val): Future messages that will be added
+    // NOTE(Val): Future messages that will be added
     REQUEST_SUBTITLES,
     REQUEST_CANCEL_SUBTITLES,
 REQUEST_AUDIO_CHANGE,

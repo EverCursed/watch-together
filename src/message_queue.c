@@ -1,5 +1,4 @@
-//#include "message_queue.h"
-#include "watchtogether.h"
+#include "message_queue.h"
 
 // TODO(Val): Add way to close queue? Although I don't know when we would want to stop getting input
 
@@ -61,16 +60,4 @@ ClearMessages(message_queue *q)
     q->n = 0;
     q->start = 0;
     q->end = 0;
-}
-
-bool32
-MessagesEmpty(message_queue *q)
-{
-    return (q->n == 0);
-}
-
-bool32
-MessagesFull(message_queue *q)
-{
-    return (q->n == q->max);
 }

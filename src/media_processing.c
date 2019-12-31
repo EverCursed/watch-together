@@ -436,7 +436,7 @@ MediaClose(open_file_info *file, decoder_info *decoder, encoder_info *encoder, o
     decoder->audio_codec = NULL;
     decoder->video_codec = NULL;
     
-    close_avpacket_queue(decoder->queue);
+    close_avpacket_queue(&decoder->queue);
     
     RETURN(SUCCESS);
 }

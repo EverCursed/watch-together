@@ -1,13 +1,3 @@
-/*
-TODO(Val): 
- - Initialize stream context
- - Close stream context
- - Check connection
-- Send packet
- - Send control message
- - Receive packet
- - Receive control message
-*/
 #include "streaming.h"
 
 #include <libavutil/mathematics.h>
@@ -25,7 +15,6 @@ TODO(Val):
 
 static char* address_prefix  = "tcp";
 static char* output_format   = "mpegts";
-static char* connection_ip   = "192.168.0.102";
 static int32 video_port      = 16336;
 //static char* client_parameters      = "";
 static char* host_parameters      = "?listen";

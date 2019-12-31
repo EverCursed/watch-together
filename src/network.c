@@ -363,7 +363,6 @@ ReceiveControlMessages()
     }
     else if(ret < 0)
     {
-        // TODO(Val): This is an error and need to handle it
         dbg_error("ReceiveControlMesssages(): SDLNet_CheckSockets() error.\n");
         
         EndTimer();

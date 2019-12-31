@@ -7,12 +7,9 @@ This holds a queue of AVPacket structs. This is a buffer for
 */
 
 #include <libavcodec/avcodec.h>
-//#include "packet_queue.h"
 #include "common/custom_malloc.h"
 
 #include "watchtogether.h"
-
-// TODO(Val): Think about how the packets should be free'd.
 
 avpacket_queue*
 init_avpacket_queue(int32 n)
@@ -83,37 +80,6 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
     }
 }
 
-/*
-static int32
-dequeue_next(avpacket_queue *queue, AVPacket **packet)
-{
-    if(queue->n == 0)
-    {
-        dbg_warn("Packet queue empty.\n");
-        return -1;
-    }
-    
-    if(!SDL_LockMutex(queue->mutex))
-    {
-        *packet = queue->array[queue->next];
-        queue->n--;
-        queue->next = (queue->next + 1) % queue->maxn;
-        
-        //dbg_info("Dequeueing packet.\n");
-        //dbg_packet((*packet));
-        
-        SDL_UnlockMutex(queue->mutex);
-        return 0;
-    }
-    else
-    {
-        dbg_error("Couldn't lock mutex. dequeue_packed() failed.\n");
-        return -1;
-    }
-}
-*/
-// TODO(Val): Should we make another reference? Will need to unref manually then.
-
 int32
 peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)
 {
@@ -134,12 +100,6 @@ peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)
 int32
 clear_avpacket_queue(avpacket_queue *queue)
 {
-    /*
-    for(int i = queue->next; i < queue->end; i = (i+1) % queue->maxn)
-    {
-        av_packet_unref(queue->buffer + i*AVPACKET_SIZE);
-    }
-    */
     PlatformLockMutex(&queue->mutex);
     
     queue->n = 0;
@@ -149,16 +109,16 @@ clear_avpacket_queue(avpacket_queue *queue)
     RETURN(SUCCESS);
 }
 
-// TODO(Val): Make this take a reference to a pointer and set it to NULL afterwards
 int32
-close_avpacket_queue(avpacket_queue *queue)
+close_avpacket_queue(avpacket_queue **queue)
 {
-    clear_avpacket_queue(queue);
+    clear_avpacket_queue(*queue);
     
-    if(queue->array)
-        free(queue->array);
+    if((*queue)->array)
+        free((*queue)->array);
     
-    free(queue);
+    free(*queue);
+    *queue = NULL;
     
     RETURN(SUCCESS);
 }

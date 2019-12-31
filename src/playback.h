@@ -59,12 +59,6 @@ get_future_playback_time(playback_data *playback)
 static inline bool32
 should_display(playback_data *playback, real64 video_ts)
 {
-    real64 t = get_next_playback_time(playback);
-    dbg_info("should_display:\n"
-             "\tvideo_timestamp: %lf\n"
-             "\tnext timestamp:  %lf\n",
-             video_ts,
-             t);
     return (video_ts < get_next_playback_time(playback));
 }
 

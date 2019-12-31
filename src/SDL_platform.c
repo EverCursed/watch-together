@@ -25,10 +25,7 @@ __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
 //#include "watchtogether.c"
 
 /* TODO(Val): A list of things that still must be done 
- --- Provide TCP/UDP support
  --- Touchscreen support
- --- Write an allocator to handle all allocations instead of 
- ---     malloc/av_malloc
  */
 
 global SDL_AudioDeviceID AudioID = -1;
@@ -69,31 +66,6 @@ PlatformQueueAudio(AVFrame *frame)
     RETURN(SUCCESS);
 }
 
-/*
-static void
-AudioCallback(void*  userdata,
-              Uint8* stream,
-              int    len)
-{
-    output_audio *audio = &pdata->audio;
-    if(audio->is_ready)
-    {
-        dbg_success("AudioCallback was successful\n");
-        
-    }
-    else
-    {
-        // TODO(Val): Pull the proper format
-        //SDL_MixAudioFormat(stream, data,
-        //pdata->audio_format,
-        //len,
-        //SDL_MIX_MAXVOLUME);
-        
-        dbg_error("Something happened to audio\n");
-        memset(stream, silence, len); 
-    }
-}
-*/
 int32
 PlatformInitAudio(open_file_info *file)
 {
@@ -137,8 +109,6 @@ PlatformInitAudio(open_file_info *file)
     // NOTE(Val): Sending a number of samples to the audio device
     // prevents you from immediately closing the app until the
     // entire buffer is played. Therefore this is small.
-    // TODO(Val): Test to see what the smallest value we can set 
-    // to and how that would affect performance.
     DesiredAudioSpec.samples = 4096;
     //DesiredAudioSpec.callback = AudioCallback;
     //DesiredAudioSpec.userdata = pdata;
@@ -823,12 +793,6 @@ int main(int argc, char *argv[])
     
     assert(!(pdata->is_host && pdata->is_partner));
     
-    /*
-    if(argc > 1)
-        pdata->file.filename = (char *)*(argv+1);
-    else
-        pdata->file.filename = TESTING_FILE;
-    */
     SDL_DisplayMode display_info;
     // TODO(Val): For now this just picks 0th monitor. Make this better.
     SDL_GetCurrentDisplayMode(0, &display_info);
@@ -838,21 +802,12 @@ int main(int argc, char *argv[])
     
     MainThread(pdata);
     
-    //FinishTiming;
-    //ProcessInput(pdata);
-    
-    // TODO(Val): Close everything properly here
-    //PlatformWaitThread(pdata->threads.main_thread, NULL);
-    
     dbg_info("Cleaning up.\n");
     
     SDL_DestroyTexture(video_texture);
     SDL_DestroyTexture(ui_texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
-    
-    //free(pdata);
-    // TODO(Val): Are these necessary? 
     
     SDL_CloseAudioDevice(AudioID);
     

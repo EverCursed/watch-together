@@ -29,7 +29,7 @@ int32 enqueue_packet(avpacket_queue *queue, AVPacket *packet);
 int32 dequeue_packet(avpacket_queue *queue, AVPacket **packet);
 int32 peek_packet(avpacket_queue *queue, AVPacket **packet, int nth);
 int32 clear_avpacket_queue(avpacket_queue *queue);
-int32 close_avpacket_queue(avpacket_queue *queue);
+int32 close_avpacket_queue(avpacket_queue **queue);
 
 void print_packets(avpacket_queue *queue);
 

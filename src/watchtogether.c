@@ -570,6 +570,11 @@ ProcessNetwork(program_data *pdata)
             pdata->connected = 0;
             dbg_success("Disconnected\n");
         }
+        else if(ret == UNKNOWN_ERROR)
+        {
+            EndTimer();
+            RETURN(UNKNOWN_ERROR);
+        }
         
         net_message *msg_r; 
         while((msg_r = GetNextMessage()))
