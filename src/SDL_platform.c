@@ -2,8 +2,19 @@
 #include <string.h>
 #include <time.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_net.h>
+#include <assert.h>
+#include <libavutil/frame.h>
 
 #include "watchtogether.h"
+#include "utils/timing.h"
+#include "utils.h"
+
+#if 0
+#ifdef _WIN32
+__declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
+#endif
+#endif
 
 //#include "defines.h"
 //#include "wt_version.h"
@@ -14,132 +25,55 @@
 //#include "watchtogether.c"
 
 /* TODO(Val): A list of things that still must be done 
- --- Provide TCP/UDP support
  --- Touchscreen support
- --- Write an allocator to handle all allocations instead of 
- ---     malloc/av_malloc
  */
 
 global SDL_AudioDeviceID AudioID = -1;
 global bool32 audio_initialized = 0;
 global SDL_Window *window = NULL;
 global SDL_Renderer *renderer = NULL;
-global SDL_Texture *background_texture;
-global SDL_Texture *ui_texture;
+//global SDL_Texture *background_texture;
+//global SDL_Texture *ui_texture;
+global SDL_Texture *final_texture = NULL;
+global SDL_Texture *video_texture = NULL;
+global SDL_Texture *ui_texture = NULL;
 
 global program_data *pdata;
 
 #define TESTING_FILE "data/video_test/video.mp4"
 
-static void
-blit_frame(program_data *pdata)
-{
-    output_video *video = &pdata->video;
-    
-    if(pdata->video.type == VIDEO_YUV)
-    {
-        int ret = SDL_UpdateYUVTexture(background_texture, NULL,
-                                       video->video_frame, video->pitch,
-                                       video->video_frame_sup1, video->pitch_sup1,
-                                       video->video_frame_sup2, video->pitch_sup2);
-        
-        if(ret < 0)
-        {
-            dbg_error("SDL_UpdateYUVTexture failed.\n");
-            goto error;
-        }
-    }
-    else if(pdata->video.type == VIDEO_RGB)
-    {
-        int ret = SDL_UpdateTexture(background_texture, NULL, video->video_frame, video->pitch);
-        //free(video->video_frame);
-        
-        if(ret < 0)
-            goto error;
-    }
-    else
-    {
-        dbg_error("Video output frame not initialized?");
-    }
-    
-    return;
-    
-    error:
-    dbg_error("%s\n", SDL_GetError());
-    return;
-}
-
-/*
-static void 
-Deb_ResizePixelBuffer(SDL_Renderer *renderer)
-{
-    int width, height;
-    
-    SDL_GetRendererOutputSize(renderer,
-                              &width,
-                              &height);
-                              
-    texture_height = height;
-    texture_width = width;
-    
-    dbg_print("Renderer width: %d,\theight: %d\n", width, height);
-    
-    if(background_texture)
-        SDL_DestroyTexture(background_texture);
-        
-    //SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
-    
-}
-*/ 
-
 int32
-PlatformQueueAudio(output_audio *audio)
+PlatformQueueAudio(AVFrame *frame)
 {
+    //output_audio *audio = &pdata->audio;
+    int32 size = frame->nb_samples * frame->channels * av_get_bytes_per_sample(frame->format);
+    dbg_info("Audio frame:\n"
+             "\tframe->data[0]: %p\n"
+             "\tsize:           %d\n",
+             frame->data[0],
+             size);
+    
     int ret = SDL_QueueAudio(AudioID,
-                             audio->buffer,
-                             audio->size);
+                             frame->data[0],
+                             size);
     
     if(ret < 0)
     {
         dbg_error("%s\n", SDL_GetError());
-        return -1;
+        RETURN(UNKNOWN_ERROR);
     }
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
-/*
-static void
-AudioCallback(void*  userdata,
-              Uint8* stream,
-              int    len)
+int32
+PlatformInitAudio(open_file_info *file)
 {
     output_audio *audio = &pdata->audio;
-    if(audio->is_ready)
-    {
-        dbg_success("AudioCallback was successful\n");
-        
-    }
-    else
-    {
-        // TODO(Val): Pull the proper format
-        //SDL_MixAudioFormat(stream, data,
-        //pdata->audio_format,
-        //len,
-        //SDL_MIX_MAXVOLUME);
-        
-        dbg_error("Something happened to audio\n");
-        memset(stream, silence, len); 
-    }
-}
-*/
-void 
-PlatformInitAudio(program_data *pdata)
-{
     //dbg_info("PlatformInitAudio called.\n");
     
-    open_file_info *file = &pdata->file;
-    output_audio *output = &pdata->audio;
+    //open_file_info *file = &pdata->file;
+    //output_audio *output = &pdata->audio;
     
     SDL_AudioSpec DesiredAudioSpec = {};
     SDL_AudioSpec ReceivedAudioSpec = {};
@@ -167,7 +101,7 @@ PlatformInitAudio(program_data *pdata)
     else
     {
         dbg_error("An unhandled audio format was passed.\n");
-        return;
+        RETURN(UNKNOWN_FORMAT);
     }
     
     DesiredAudioSpec.channels = file->channels;
@@ -175,8 +109,6 @@ PlatformInitAudio(program_data *pdata)
     // NOTE(Val): Sending a number of samples to the audio device
     // prevents you from immediately closing the app until the
     // entire buffer is played. Therefore this is small.
-    // TODO(Val): Test to see what the smallest value we can set 
-    // to and how that would affect performance.
     DesiredAudioSpec.samples = 4096;
     //DesiredAudioSpec.callback = AudioCallback;
     //DesiredAudioSpec.userdata = pdata;
@@ -192,22 +124,30 @@ PlatformInitAudio(program_data *pdata)
     {
         audio_initialized = 1;
         
-        output->sample_rate = ReceivedAudioSpec.freq;
-        output->channels = ReceivedAudioSpec.channels;
+        audio->sample_rate = ReceivedAudioSpec.freq;
+        audio->channels = ReceivedAudioSpec.channels;
         
         // TODO(Val): This doesnt check what audio device params we received.
-        output->bytes_per_sample = bytes_per_sample;
-        output->sample_format = file->sample_format;
+        audio->bytes_per_sample = bytes_per_sample;
+        audio->sample_format = file->sample_format;
         
         pdata->audio_format = ReceivedAudioSpec.format;
         
         //SDL_PauseAudioDevice(AudioID, 0);
     }
+    else
+    {
+        dbg_error("SDL_OpenAudioDevice() failed.\n");
+        
+        RETURN(UNKNOWN_ERROR);
+    }
     //printf("%s\n", SDL_GetError());
+    
+    RETURN(SUCCESS);
 }
 
 void
-PlatformCloseAudio(program_data *pdata)
+PlatformCloseAudio()
 {
     SDL_CloseAudioDevice(AudioID);
 }
@@ -217,14 +157,14 @@ PlatformPauseAudio(bool32 b)
 {
     SDL_PauseAudioDevice(AudioID, b);
 }
-
+/*
 void
 PlatformSleep(real64 s)
 {
     int st = s < 0 ? 0 : s * 1000.0;
     SDL_Delay(st);
 }
-
+*/
 /// Platform create thread
 thread_info
 PlatformCreateThread(int32 (*f)(void *), void *data, char* name)
@@ -258,47 +198,87 @@ PlatformCreateConditionVar()
 int32
 PlatformConditionWait(cond_info *c)
 {
-    /*
-    SDL_LockMutex(c->mutex);
-    while(!c->test)
-    {
-        SDL_CondWait(c->cond, c->mutex);
-        PlatformSleep(0.001);
-    }
-    c->test = 0;
-    SDL_UnlockMutex(c->mutex);
-    */
+    if(SDL_LockMutex(c->mutex))
+        RETURN(UNKNOWN_ERROR);
     
     while(!c->test && pdata->running)
     {
-        PlatformSleep(0.001);
+        SDL_CondWait(c->cond, c->mutex);
     }
     c->test = 0;
-    return 0;
+    SDL_UnlockMutex(c->mutex);
+    
+    
+    //while(!c->test && pdata->running)
+    //{
+    //PlatformSleep(0.001);
+    //}
+    //c->test = 0;
+    RETURN(SUCCESS);
 }
 
 int32
 PlatformConditionSignal(cond_info *c)
 {
-    /*
-    SDL_LockMutex(c->mutex);
+    if(SDL_LockMutex(c->mutex))
+        RETURN(UNKNOWN_ERROR);
+    
     c->test = 1;
     SDL_CondSignal(c->cond);
     SDL_UnlockMutex(c->mutex);
-    */
-    c->test = 1;
-    return 0;
+    
+    //c->test = 1;
+    RETURN(SUCCESS);
 }
 
-bool32
+int32
 PlatformConditionDestroy(cond_info *c)
 {
     SDL_DestroyMutex(c->mutex);
     SDL_DestroyCond(c->cond);
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
+
+platform_mutex
+PlatformCreateMutex()
+{
+    platform_mutex m = {};
+    m.mutex = SDL_CreateMutex();
+    if(!m.mutex)
+        SDL_PrintError();
+    return m;
+}
+
+int32
+PlatformLockMutex(platform_mutex *m)
+{
+    if(!SDL_LockMutex(m->mutex))
+        RETURN(SUCCESS);
+    else
+    {
+        dbg_error("%s\n", SDL_GetError());
+        RETURN(UNKNOWN_ERROR);
+    }
+}
+
+int32
+PlatformUnlockMutex(platform_mutex *m)
+{
+    if(!SDL_UnlockMutex(m->mutex))
+        RETURN(SUCCESS);
+    else
+        RETURN(UNKNOWN_ERROR);
+}
+
+void
+PlatformDestroyMutex(platform_mutex *m)
+{
+    SDL_DestroyMutex(m->mutex);
+}
+
+/*
 real64
 PlatformGetTime()
 {
@@ -306,71 +286,117 @@ PlatformGetTime()
     dbg_info("PlatformGetTime(): %lf\n", ticks/1000.0);
     return ticks/1000.0;
 }
-
+*/
 int32
-PlatformUpdateFrame(program_data *pdata)
+PlatformUpdateVideoFrame(AVFrame *frame)
 {
-    int ret;
+    StartTimer("PlatformUpdateVideoFrame()");
     
-    blit_frame(pdata);
+    int ret = 0;
     
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
-    SDL_RenderClear(renderer);
+    StartTimer("SDL_UpdateTexture()");
     
-    void* pixels;
-    int pitch; 
+    ret = SDL_UpdateTexture(video_texture,
+                            NULL,
+                            frame->data[0],
+                            frame->linesize[0]);
+    SDL_Test(ret);
+    EndTimer();
     
-    SDL_LockTexture(background_texture, NULL, &pixels, &pitch);
-    ret = SDL_RenderCopy(renderer, background_texture, NULL, NULL);
-    if(ret)
+    /*
+StartTimer("memcpy");
+for(int i = 0; i < video->height; i++)
+{
+memcpy(data + i*pitch, video->video_frame + i*video->pitch, video->pitch);
+}
+EndTimer();
+*/
+    
+    EndTimer();
+    /*
+    if(pdata->video.type == VIDEO_YUV)
     {
-        dbg_error("%s\n", SDL_GetError());
+        int ret = SDL_UpdateYUVTexture(background_texture, NULL,
+                                       video->video_frame, video->pitch,
+                                       video->video_frame_sup1, video->pitch_sup1,
+                                       video->video_frame_sup2, video->pitch_sup2);
+                                       
+        if(ret < 0)
+        {
+            dbg_error("SDL_UpdateYUVTexture failed.\n");
+            dbg_error("%s\n", SDL_GetError());
+            RETURN(UNKNOWN_ERROR);
+        }
     }
-    SDL_UnlockTexture(background_texture);
-    
-    // Render the UI on top of video frame
-    //SDL_RenderCopy(renderer, ui_texture, NULL, NULL);
-    
-    return 0;
+    else if(pdata->video.type == VIDEO_RGB)
+    {
+        int ret = SDL_UpdateTexture(background_texture, NULL, video->video_frame, video->pitch);
+        //free(video->video_frame);
+        
+        if(ret < 0)
+        {
+            dbg_error("SDL_UpdateTexture failed.\n");
+            dbg_error("%s\n", SDL_GetError());
+            RETURN(UNKNOWN_ERROR);
+        }
+    }
+    else
+    {
+        dbg_error("Video output frame not initialized?");
+        RETURN(UNKNOWN_FORMAT);
+    }
+    */
+    RETURN(SUCCESS);
 }
 
 int32
-PlatformFlipBuffers(program_data *pdata)
+PlatformRender()
 {
+    StartTimer("PlatformUpdateFrame");
+    
+    int ret = 0;
+    
+    StartTimer("SDL_RenderClear()");
+    ret = SDL_RenderClear(renderer);
+    SDL_Test(ret);
+    EndTimer();
+    
+    StartTimer("SDL_RenderCopy(video_texture)");
+    if(video_texture)
+        ret = SDL_RenderCopy(renderer,
+                             video_texture,
+                             NULL,
+                             NULL);
+    SDL_Test(ret);
+    EndTimer();
+    
+    //StartTimer("SDL_RenderCopy(ui_texture)");
+    //ret = SDL_RenderCopy(renderer,
+    //ui_texture,
+    //NULL,
+    //NULL);
+    //EndTimer();
+    
+    EndTimer();
+    RETURN(SUCCESS);
+}
+
+int32
+PlatformFlipBuffers()
+{
+    StartTimer("PlatformFlipBuffers()");
     SDL_RenderPresent(renderer);
+    EndTimer();
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
 void
-PlatformInitVideo(program_data *pdata)
-{
-    if(pdata->video.type == VIDEO_RGB)
-    {
-        background_texture = SDL_CreateTexture(renderer, 
-                                               SDL_PIXELFORMAT_BGRA32,
-                                               SDL_TEXTUREACCESS_STREAMING,
-                                               pdata->file.width,
-                                               pdata->file.height);
-    }
-    else if(pdata->file.video_format == VIDEO_YUV)
-    {
-        background_texture = SDL_CreateTexture(renderer, 
-                                               SDL_PIXELFORMAT_IYUV,
-                                               SDL_TEXTUREACCESS_STREAMING,
-                                               pdata->file.width,
-                                               pdata->file.height);
-    }
-    
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
-    SDL_SetTextureBlendMode(background_texture, SDL_BLENDMODE_NONE);
-}
-
-void
-PlatformToggleFullscreen(program_data *pdata)
+PlatformToggleFullscreen()
 {
     dbg_success("TOGGLING FULLSCREEN\n");
-    SDL_SetWindowFullscreen(window, pdata->is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+    int ret = SDL_SetWindowFullscreen(window, pdata->is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+    SDL_Test(ret);
     pdata->is_fullscreen = !pdata->is_fullscreen;
 }
 
@@ -440,54 +466,86 @@ int resize_filter(void *userdata,
 }
 #endif
 
-static int
-ResizeScreen(program_data *pdata, int x, int y)
+int32
+PlatformResizeClientArea(open_file_info *file, int x, int y)
 {
+    StartTimer("ResizeScreen()");
+    int ret = 0;
+    
+    if(!x || !y)
+    {
+        int32 win_width, win_height;
+        SDL_GetWindowSize(window, &win_width, &win_height);
+        if(!x)
+            x = win_width;
+        if(!y)
+            y = win_height;
+    }
+    
     int new_width = x;
     int new_height = y;
     
     SDL_Rect rect = {};
     
-    real32 width_ratio = (real32)new_width/pdata->file.width;
-    real32 height_ratio = (real32)new_height/pdata->file.height;
+    real32 width_ratio = (real32)new_width/file->width;
+    real32 height_ratio = (real32)new_height/file->height;
     
-    real32 ratio = (real32)pdata->file.width / (real32)pdata->file.height;
+    real32 ratio = (real32)file->width / (real32)file->height;
     real32 new_ratio = (real32)new_width / (real32)new_height;
     
     if(new_ratio >= ratio)
     {
         rect.h = new_height;
-        rect.w = (real32)pdata->file.width * height_ratio;
+        rect.w = (real32)file->width * height_ratio;
     }
     else
     {
         rect.w = new_width;
-        rect.h = (real32)pdata->file.height * width_ratio;
+        rect.h = (real32)file->height * width_ratio;
     }
     
     rect.x = (new_width - rect.w)/2;
     rect.y = (new_height - rect.h)/2;
     
-    SDL_RenderSetViewport(renderer,
-                          &rect);
-    SDL_RenderPresent(renderer);
+    ret = SDL_RenderSetViewport(renderer,
+                                &rect);
+    SDL_Test(ret);
     
-    return 0;
+    EndTimer();
+    
+    RETURN(SUCCESS);
 }
 
-int
-PlatformGetInput(program_data *pdata)
+void
+PlatformInitVideo(open_file_info *file)
 {
+    video_texture = SDL_CreateTexture(renderer,
+                                      SDL_PIXELFORMAT_BGRA32,
+                                      SDL_TEXTUREACCESS_STREAMING,
+                                      file->width,
+                                      file->height);
+    
+    if(!video_texture) SDL_PrintError();
+    
+    PlatformResizeClientArea(file, 0, 0);
+}
+
+int32
+PlatformGetInput()
+{
+    StartTimer("PlatformGetInput()");
+    
     input_struct *input = &pdata->input;
     
     SDL_Event event = {0};
     
-    //while(pdata->running && SDL_PollEvent(&event))
-    //SDL_PumpEvents();
+    StartTimer("Event loop");
+    StartTimer("SDL_WaitEventTimeout()");
     while(pdata->running &&
           input->keyboard.n < MAX_KEYS-1 &&
           SDL_PollEvent(&event))
     {
+        EndTimer();
         //dbg_info("Event received.\n");
         switch(event.type)
         {
@@ -495,17 +553,18 @@ PlatformGetInput(program_data *pdata)
             {
                 dbg_error("SDL_QUIT\n");
                 pdata->running = 0;
-                return 0;
+                RETURN(SUCCESS);
             } break;
             case SDL_WINDOWEVENT:
             {
                 switch(event.window.event)
                 {
+                    case SDL_WINDOWEVENT_SIZE_CHANGED:
                     case SDL_WINDOWEVENT_RESIZED:
                     {
                         dbg_error("SDL_WINDOWEVENT_RESIZED fired.\n");
                         
-                        ResizeScreen(pdata, event.window.data1, event.window.data2);
+                        PlatformResizeClientArea(&pdata->file, event.window.data1, event.window.data2);
                         /*
                         int width = pdata->vq_data.video_queue_width;
                         int height = pdata->vq_data.video_queue_height;
@@ -538,7 +597,15 @@ PlatformGetInput(program_data *pdata)
                 bool32 alt_down = event.key.keysym.mod & KMOD_ALT;
                 bool32 pressed = event.key.state == SDL_PRESSED ? 1 : 0;
                 
-                add_key(input, event.key.keysym.sym, shift_down, ctrl_down, alt_down, pressed);
+                if(event.key.keysym.sym == KB_F4 && alt_down)
+                {
+                    PlatformToggleFullscreen(pdata);
+                    //PlatformFlipBuffers(pdata);
+                }
+                else
+                {
+                    add_key(input, event.key.keysym.sym, shift_down, ctrl_down, alt_down, pressed);
+                }
             } break;
             case SDL_MOUSEMOTION:
             {
@@ -572,21 +639,78 @@ PlatformGetInput(program_data *pdata)
                 }
             } break;
         }
+        
+        StartTimer("SDL_WaitEventTimeout()");
     }
+    EndTimer();
     
-    return 0;
+    EndTimer();
+    EndTimer();
+    RETURN(SUCCESS);
+}
+
+int64
+PlatformGetThreadID()
+{
+    return SDL_ThreadID();
+}
+
+static int32
+InitializeTextures()
+{
+    int32 width;
+    int32 height;
+    
+    SDL_GetWindowSize(window,
+                      &width,
+                      &height);
+    
+    ui_texture = SDL_CreateTexture(renderer,
+                                   SDL_PIXELFORMAT_BGRA32,
+                                   SDL_TEXTUREACCESS_STREAMING,
+                                   width,
+                                   height);
+    
+    SDL_SetTextureBlendMode(ui_texture,
+                            SDL_BLENDMODE_BLEND);
+    
+    pdata->client.output_width = width;
+    pdata->client.output_height = height;
+    pdata->client.bytes_per_pixel = 4;
+    
+    RETURN(SUCCESS);
 }
 
 #ifdef _WIN32
 #undef main         // workaround on windows where main is redefined by SDL
 #endif
 
-int main(int argc, const char** argv)
+int main(int argc, char *argv[])
 {
+    int ret = 0;
     // initialize all the necessary SDL stuff
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0){
-        return 1;
+    if(argc == 1)
+    {
+        printf("usage: %s -i input_file [-s] [-p ip]\n "
+               "\t-s:    use this machine as a streaming server\n"
+               "\t-p ip: use this machine as a partner and connect to the server on the provided ip\n",
+               argv[0]);
+        return 0;
     }
+    
+    SDL_SetMainReady();
+    
+    if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0)
+    {
+        RETURN(FAILED_TO_INIT);
+    }
+    
+    if(SDLNet_Init() != 0)
+    {
+        RETURN(FAILED_TO_INIT);
+    }
+    
+    //SDL_SetHint("SDL_HINT_WINDOWS_ENABLE_MESSAGELOOP", "0");
     
     SDL_version ver, ver2;
     SDL_VERSION(&ver);
@@ -606,33 +730,68 @@ int main(int argc, const char** argv)
     SDL_SetEventFilter(resize_filter, NULL);
 #endif
     
-    SDL_CreateWindowAndRenderer(1024,
-                                576,
-                                SDL_WINDOW_RESIZABLE,
-                                &window,
-                                &renderer);
+    // TODO(Val): Check if this actually gives us the proper client area
+    ret = SDL_CreateWindowAndRenderer(1280,
+                                      720,
+                                      0,//SDL_WINDOW_RESIZABLE,
+                                      &window,
+                                      &renderer);
+    SDL_Test(ret);
     
-    
-    if(window == NULL || renderer == NULL)
+    if(window == NULL)
     {
         dbg_error("Creating window failed!\n");
         SDL_Quit();
         return -1;
     }
-    SDL_SetWindowTitle(window, WT_WINDOW_TITLE);
+    
+    SDL_SetWindowTitle(window,
+                       WT_WINDOW_TITLE);
+    
     SDL_ShowWindow(window);
-    
-    //SDL_PauseAudioDevice(AudioID, 0); /* start audio playing. */
-    
-    //texture = Deb_ResizePixelBuffer(window, renderer);
     
     pdata = calloc(sizeof(program_data), 1);
     pdata->running = 1;
     
-    if(argc > 1)
-        pdata->file.filename = (char *)*(argv+1);
-    else
-        pdata->file.filename = TESTING_FILE;
+    if(InitializeTextures())
+        RETURN(UNKNOWN_ERROR);
+    
+    int argi = 1;
+    while(argi < argc)
+    {
+        if(!strcmp(argv[argi], "-i"))
+        {
+            strcpy(pdata->file.filename, (char *)argv[++argi]);
+        }
+        else if(!strcmp(argv[argi], "-s") || !strcmp(argv[argi], "--server"))
+        {
+            if(!pdata->is_partner)
+            {
+                pdata->is_host = 1;
+            }
+            else
+            {
+                // TODO(Val): Warning 
+            }
+        }
+        else if(!strcmp(argv[argi], "-p") || !strcmp(argv[argi], "--partner"))
+        {
+            if(!pdata->is_host)
+            {
+                //pdata->file.filename = (char *)argv[++argi];
+                pdata->server_address = (char *)argv[++argi];
+                pdata->is_partner = 1;
+            }
+            else
+            {
+                // TODO(Val): Warning
+            }
+        }
+        
+        argi++;
+    }
+    
+    assert(!(pdata->is_host && pdata->is_partner));
     
     SDL_DisplayMode display_info;
     // TODO(Val): For now this just picks 0th monitor. Make this better.
@@ -641,23 +800,14 @@ int main(int argc, const char** argv)
     pdata->hardware.monitor_width = display_info.w;
     pdata->hardware.monitor_height = display_info.h;
     
-    
     MainThread(pdata);
-    
-    //ProcessInput(pdata);
-    
-    // TODO(Val): Close everything properly here
-    //PlatformWaitThread(pdata->threads.main_thread, NULL);
     
     dbg_info("Cleaning up.\n");
     
-    SDL_DestroyWindow(window);
-    SDL_DestroyRenderer(renderer);
-    
-    //free(pdata);
-    // TODO(Val): Are these necessary? 
-    SDL_DestroyTexture(background_texture);
+    SDL_DestroyTexture(video_texture);
     SDL_DestroyTexture(ui_texture);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
     
     SDL_CloseAudioDevice(AudioID);
     

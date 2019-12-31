@@ -1,28 +1,29 @@
 #ifndef WT
 #define WT
 
-//#include "audio_queue.h"
-//#include "video_queue.h"
-//#include "decoding.h"
 #include <libavutil/rational.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 
 #include "wt_version.h"
-#include "SDL_platform.h"
+#include "platform.h"
 #include "playback.h"
 #include "message_queue.h"
 #include "packet_queue.h"
 #include "decoding.h"
+#include "encoding.h"
 #include "kbkeys.h"
-#include "audio.h"
-#include "video.h"
-#include "utils.h"
-#include "decoding.h"
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
+// must be above video, audio, and subtitles
+#include "avframe_pts_ordered_queue.h"
+#include "video.h"
+#include "audio.h"
+
+#include "utils.h"
+#include "media_processing.h"
+#include "network.h"
+#include "file_data.h"
+#include "attributes.h"
 
 #define KNRM  "\x1B[0m"
 #define KRED  "\x1B[31m"
@@ -33,16 +34,19 @@
 #define KCYN  "\x1B[36m"
 #define KWHT  "\x1B[37m"
 
+// -----------------------------------------------
+
 struct _platform_data;
 struct _thread_info;
 struct _cond_info;
 
-
 typedef struct _threads_info_all {
-    struct _thread_info main_thread;
-    struct _thread_info decoder_thread;
-    struct _thread_info blt_thread;
-    struct _thread_info audio_thread;
+    struct _thread_info media_thread;
+    //struct _thread_info main_thread;
+    //struct _thread_info decoder_thread;
+    //struct _thread_info blt_thread;
+    //struct _thread_info audio_thread;
+    //struct _thread_info input_thread;
 } threads_info_all;
 
 typedef struct _socket_info {
@@ -60,6 +64,7 @@ typedef struct _socket_info {
 } socket_info;
 
 typedef struct _decoder_info decoder_info;
+typedef struct _encoder_info encoder_info;
 
 typedef struct _key_event {
     uint32 key;
@@ -122,84 +127,39 @@ typedef struct _client_info {
     uint32 bytes_per_pixel;
     bool32 fullscreen;
     
+    real64 start_time;
     real64 refresh_target;
     real64 current_frame_time;
     real64 next_refresh_time;
 } client_info;
 
-typedef struct _output_audio output_audio;
+static inline void
+Client_UpdateTime(client_info *client)
+{
+    client->current_frame_time = client->next_refresh_time;
+    client->next_refresh_time += client->refresh_target;
+}
+
+static inline void
+Client_SetRefreshTime(client_info *client, real64 target_time)
+{
+    client->refresh_target = target_time;
+    
+    dbg_info("Client refresh target time set to %lfs.\n", client->refresh_target);
+}
+
 
 #define VIDEO_RGB 1
 #define VIDEO_YUV 2
 
-typedef struct _ouput_video output_video;
+typedef struct _output_audio output_audio;
+typedef struct _output_video output_video;
 
 typedef struct _open_file_info open_file_info;
 
-typedef struct _avpacket_queue {
-    //AVPacket *buffer;
-    AVPacket **array;
-    SDL_mutex *mutex;
-    int32 maxn;  // max number of packets
-    int32 n;     // total number of packets
-    int32 next;  // the packet that will be dequeued/peeked next
-    int32 end;   // the where the next packet will be enqueued
-} avpacket_queue;
+typedef struct _avpacket_queue avpacket_queue;
 
 #define NUM_FRAMES 30
-
-typedef struct _video_queue_data {
-    uint32 vq_width;
-    uint32 vq_height;
-    uint32 vq_format;
-    uint32 bpp;
-    
-    void* vq_buffer;
-    uint32 vq_size;
-    uint32 vq_maxframes;
-    uint32 vq_nframes;
-    uint32 vq_frame_size;
-    uint32 vq_start;
-    uint32 vq_end;
-    uint32 vq_pitch;
-    
-    uint32 vq_Y_width;
-    uint32 vq_U_width;
-    uint32 vq_V_width;
-    
-    uint32 vq_Y_height;
-    uint32 vq_U_height;
-    uint32 vq_V_height;
-    
-    uint32 vq_Y_pitch;
-    uint32 vq_U_pitch;
-    uint32 vq_V_pitch;
-    
-    uint32 vq_Y_frame_size;
-    uint32 vq_U_frame_size;
-    uint32 vq_V_frame_size;
-    
-    uint32 vq_Y_size;
-    uint32 vq_U_size;
-    uint32 vq_V_size;
-    
-    void *vq_Y_buffer;
-    void *vq_U_buffer;
-    void *vq_V_buffer;
-    
-    uint32 vq_timestamps[NUM_FRAMES];
-} video_queue_data;
-
-typedef struct _audio_queue_data {
-    void* audio_queue_buffer;
-    uint32 frequency;
-    uint32 channels;
-    uint32 bytes_per_sample;
-    uint32 audio_queue_size;
-    uint32 audio_queue_used_space;
-    uint32 audio_queue_start;
-    uint32 audio_queue_end;
-} audio_queue_data;
 
 typedef struct _playback_data playback_data;
 typedef struct _message_queue message_queue;
@@ -211,19 +171,17 @@ typedef struct _program_data {
     output_video video;
     open_file_info file;
     threads_info_all threads;
-    audio_queue_data aq_data;
-    video_queue_data vq_data;
     decoder_info decoder;
+    encoder_info encoder;
     playback_data playback;
     hardware_info hardware;
     message_queue messages;
     
-    // TODO(Val): Will we need multiple packet queues?
-    avpacket_queue *pq_main;
-    avpacket_queue *pq_playback;
-    avpacket_queue *pq_stream;
-    avpacket_queue *pq_video;
-    avpacket_queue *pq_audio;
+    //avpacket_queue *pq_main;
+    //avpacket_queue *pq_playback;
+    //avpacket_queue *pq_stream;
+    //avpacket_queue *pq_video;
+    //avpacket_queue *pq_audio;
     
     // TODO(Val): remove this or make it more organized. 
     real32 volume;
@@ -231,12 +189,19 @@ typedef struct _program_data {
     uint32 tick;
     
     bool32 is_fullscreen;
+    bool32 connected;
     
-    volatile bool32 running;
-    volatile bool32 playing;
-    volatile bool32 paused;
-    volatile bool32 start_playback;
-    volatile bool32 playback_finished;
+    bool32 running;
+    bool32 playing;
+    bool32 paused;
+    bool32 start_playback;
+    bool32 playback_finished;
+    
+    bool32 is_host;
+    bool32 is_partner;
+    
+    char* server_address;
+    destination_IP address_storage;
 } program_data;
 
 int32 
@@ -245,6 +210,14 @@ MainThread(program_data *);
 int32
 MainLoop(program_data  *);
 
-#include "platform.h"
+not_used static bool32 WaitingForPlaybackStart(program_data *pdata)
+{
+    return (pdata->is_host || pdata->is_partner) ? !pdata->connected : 0;
+}
+
+not_used static bool32 Connected(program_data *pdata)
+{
+    return pdata->connected;
+}
 
 #endif

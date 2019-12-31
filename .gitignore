@@ -1,8 +1,11 @@
 bin/*
 *.obj
 */Thumbs.db
-data/*test
-include
+*.o
+
+data
 lib
 backup*
-*.o
+debug
+*.4coder
+*.zip

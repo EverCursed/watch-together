@@ -18,4 +18,8 @@ typedef struct _cond_info {
     bool32 test;
 } cond_info;
 
+typedef struct _platform_mutex {
+    SDL_mutex *mutex;
+} platform_mutex;
+
 #endif

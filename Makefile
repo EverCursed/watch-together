@@ -3,29 +3,40 @@ CC:=gcc
 OUTPUT_DIR:=bin
 OUTPUT_FILE:=$(OUTPUT_DIR)/$(APPNAME)
 
-src := $(wildcard src/*.c)
-obj := $(src:.c=.o)
-#inc := $(wildcard src/*.h)
+LIB_DIR := -Lbin
+LIB_FLAGS := $(LIB_DIR) -lSDL2 -lSDL2_net -lavcodec -lavutil -lavformat -lswscale
 
-LIB_DIR := -L/usr/local/lib
-INCLUDE_DIR := -I/usr/local/include
+src := $(wildcard ./src/*.c) $(wildcard ./src/*/*.c)
+obj = $(src:.c=.o)
+inc := $(wildcard src/*.h) $(wildcard ./src/*/*.h)
+
+ifeq ($(OS),Windows_NT)
+	RM := del
+#	INCLUDE_DIR := -ID:\TDM-GCC-64\include
+	LIB_FLAGS += -lKernel32
+else
+	src := $(wildcard src/*.c)
+	obj := $(src:.c=.o)
+
+	INCLUDE_DIR := -I/usr/local/include
+	LIB_FLAGS += -lXv -lX11 -lXext
+endif
 
 DBGFLAGS := -DDEBUG -fno-omit-frame-pointer
-LIB_FLAGS := $(LIB_DIR) -lSDL2 -lavcodec -lavutil -lavformat -lswscale -lXv -lX11 -lXext
-#`pkg-config --cflags --libs libavcodec libavutil libavformat libswscale` #-l:libavformat.so.58 -lm -lz -l:libavcodec.so -pthread -l:libswscale.so -l:libavutil.so -l:libswresample.so 
-CFLAGS := -Wall $(INCLUDE_DIR) -O3 -no-pie
+CFLAGS := -Wall $(INCLUDE_DIR) -ggdb -O3
 
-all: clean watchtogether
+watchtogether: $(obj) $(inc)
+	$(CC) -MD -MF $(CFLAGS) $(obj) -o $(OUTPUT_FILE) $(LIB_FLAGS)
 
-watchtogether: $(obj)
-	$(CC) $(CFLAGS) $^ -o $(OUTPUT_FILE) $(LIB_FLAGS)
-
-%.o: %.c
+%.o: %.c $(inc)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 .PHONY:
 debug: CFLAGS+= $(DBGFLAGS)
 debug: watchtogether
 
+errors: CFLAGS+= -DERRORS_ONLY
+errors: watchtogether
+
 clean:
-	$(RM) $(obj)
+	$(DELETE_COMMAND)

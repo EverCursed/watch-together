@@ -5,15 +5,22 @@
 
 #define MSG_QUEUE_SIZE 16
 
-#define MSG_NO_MORE_MESSAGES   0
-#define MSG_START_PLAYBACK     1
-#define MSG_STOP_PLAYBACK      2
-#define MSG_PAUSE              3
-#define MSG_SEEK               4
-#define MSG_CONNECT            5
-#define MSG_WINDOW_RESIZED     6
-#define MSG_CLOSE              7
-#define MSG_TOGGLE_FULLSCREEN  8
+#define MSG_NO_MORE_MESSAGES    0
+#define MSG_START_PLAYBACK      1
+#define MSG_STOP_PLAYBACK       2
+#define MSG_PAUSE               3
+#define MSG_SEEK                4
+#define MSG_CONNECT             5
+#define MSG_WINDOW_RESIZED      6
+#define MSG_CLOSE               7
+#define MSG_TOGGLE_FULLSCREEN   8
+#define MSG_VOLUME_CHANGE       9
+#define MSG_FILE_OPEN          10
+#define MSG_FILE_CLOSE         11
+#define MSG_START_SERVER       12
+#define MSG_CONNECT_TO_SERVER  13
+#define MSG_DISCONNECT         14
+#define MSG_START_CLIENT       15
 
 typedef struct _arg {
     union {
@@ -28,13 +35,7 @@ static arg NO_ARG = { .s = 0 };
 
 typedef struct _message {
     int32 msg;
-    
-    arg arg1;
-    arg arg2;
-    arg arg3;
-    arg arg4;
-    arg arg5;
-    
+    arg args[5];
     real64 time;
 } message;
 
@@ -54,11 +55,21 @@ typedef struct _message_queue {
 #define AddMessage4(q,m,a,b,c,d,t) AddMessage(q, m, a, b, c, d, NO_ARG, t)
 #define AddMessage5(q,m,a,b,c,d,e,t) AddMessage(q, m, a, b, c, d, e, t)
 
+static inline bool32
+MessagesEmpty(message_queue *q)
+{
+    return (q->n == 0);
+}
+
+static inline bool32
+MessagesFull(message_queue *q)
+{
+    return (q->n >= q->max);
+}
+
 void InitMessageQueue(message_queue *q);
 void AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, real64 time);
-int32 GetMessage(message_queue *q, message *m);
+int32 GetApplicationMessage(message_queue *q, message *m);
 void ClearMessages(message_queue *q);
-bool32 MessagesEmpty(message_queue *q);
-bool32 MessagesFull(message_queue *q);
 
 #endif

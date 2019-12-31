@@ -1,25 +1,34 @@
 #ifndef WT_PLATFORM
 #define WT_PLATFORM
 
-//#include "watchtogether.h"
+#include <libavutil/frame.h>
+#include "SDL_Platform.h"
+#include "file_data.h"
 
-real64
-PlatformGetTime();
+typedef struct _platform_data platform_data;
+typedef struct _thread_info thread_info;
+typedef struct _cond_info cond_info;
+typedef struct _platform_mutex platform_mutex;
+typedef struct _output_audio output_audio;
+typedef struct _output_video output_video;
 
 int32
-PlatformFlipBuffers(program_data *);
+PlatformFlipBuffers();
 
 int
-PlatformGetInput(program_data *);
+PlatformGetInput();
 
 void
 PlatformPauseAudio(bool32);
 
 int32
-PlatformUpdateFrame(program_data *);
+PlatformUpdateVideoFrame(AVFrame *frame);
 
-void
-PlatformSleep(real64);
+int32
+PlatformRender();
+
+
+// Threads 
 
 thread_info
 PlatformCreateThread(int32 (*f)(void *), void *, char *);
@@ -39,19 +48,39 @@ PlatformConditionSignal(cond_info *);
 bool32
 PlatformConditionDestroy(cond_info *);
 
-void
-PlatformInitAudio(program_data *);
-
-void
-PlatformCloseAudio(program_data *);
-
-void
-PlatformInitVideo(program_data *);
-
-void
-PlatformToggleFullscreen(program_data *);
+platform_mutex
+PlatformCreateMutex();
 
 int32
-PlatformQueueAudio(output_audio *);
+PlatformLockMutex(platform_mutex *);
+
+int32
+PlatformUnlockMutex(platform_mutex *);
+
+void
+PlatformDestroyMutex(platform_mutex *);
+
+int32
+PlatformInitAudio(open_file_info *);
+
+void
+PlatformCloseAudio();
+
+void
+PlatformInitVideo(open_file_info *);
+
+void
+PlatformToggleFullscreen();
+
+int32
+PlatformResizeClientArea(open_file_info *, int32, int32);
+
+int32
+PlatformQueueAudio();
+
+int64
+PlatformGetThreadID();
+
+
 
 #endif

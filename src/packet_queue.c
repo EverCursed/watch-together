@@ -7,23 +7,22 @@ This holds a queue of AVPacket structs. This is a buffer for
 */
 
 #include <libavcodec/avcodec.h>
-//#include "packet_queue.h"
-#include "watchtogether.h"
+#include "common/custom_malloc.h"
 
-// TODO(Val): Think about how the packets should be free'd.
+#include "watchtogether.h"
 
 avpacket_queue*
 init_avpacket_queue(int32 n)
 {
-    avpacket_queue *queue = malloc(sizeof(avpacket_queue));
-    queue->array = malloc(sizeof(AVPacket *)*n);
+    avpacket_queue *queue = custom_malloc(sizeof(avpacket_queue));
+    queue->array = custom_malloc(sizeof(AVPacket *)*n);
     
     queue->n = 0;
     queue->maxn = n;
     queue->next = 0;
     queue->end = 0;
     
-    queue->mutex = SDL_CreateMutex();
+    queue->mutex = PlatformCreateMutex();
     
     return queue;
 }
@@ -34,16 +33,23 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
     if(queue->n == queue->maxn)
     {
         dbg_warn("Packet queue full.\n");
-        return -1;
+        RETURN(CONTAINER_FULL);
     }
     //dbg_info("Enqueueing packet.\n");
     //dbg_packet(packet);
-    
-    queue->array[queue->end] = packet;
-    queue->n++;
-    queue->end = (queue->end + 1) % queue->maxn;
-    
-    return 0;
+    if(success(PlatformLockMutex(&queue->mutex)))
+    {
+        queue->array[queue->end] = packet;
+        queue->n++;
+        queue->end = (queue->end + 1) % queue->maxn;
+        
+        PlatformUnlockMutex(&queue->mutex);
+        RETURN(SUCCESS);
+    }
+    else
+    {
+        RETURN(UNKNOWN_ERROR);
+    }
 }
 
 int32
@@ -52,10 +58,10 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
     if(queue->n == 0)
     {
         dbg_warn("Packet queue empty.\n");
-        return -1;
+        RETURN(NOT_ENOUGH_DATA);
     }
     
-    if(!SDL_LockMutex(queue->mutex))
+    if(success(PlatformLockMutex(&queue->mutex)))
     {
         *packet = queue->array[queue->next];
         queue->n--;
@@ -64,121 +70,73 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
         //dbg_info("Dequeueing packet.\n");
         //dbg_packet((*packet));
         
-        SDL_UnlockMutex(queue->mutex);
-        return 0;
+        PlatformUnlockMutex(&queue->mutex);
+        RETURN(SUCCESS);
     }
     else
     {
         dbg_error("Couldn't lock mutex. dequeue_packed() failed.\n");
-        return -1;
+        RETURN(UNKNOWN_ERROR);
     }
 }
-
-/*
-static int32
-dequeue_next(avpacket_queue *queue, AVPacket **packet)
-{
-    if(queue->n == 0)
-    {
-        dbg_warn("Packet queue empty.\n");
-        return -1;
-    }
-    
-    if(!SDL_LockMutex(queue->mutex))
-    {
-        *packet = queue->array[queue->next];
-        queue->n--;
-        queue->next = (queue->next + 1) % queue->maxn;
-        
-        //dbg_info("Dequeueing packet.\n");
-        //dbg_packet((*packet));
-        
-        SDL_UnlockMutex(queue->mutex);
-        return 0;
-    }
-    else
-    {
-        dbg_error("Couldn't lock mutex. dequeue_packed() failed.\n");
-        return -1;
-    }
-}
-*/
-// TODO(Val): Should we make another reference? Will need to unref manually then.
 
 int32
 peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)
 {
     // check if nth packet is queued up
-    if(!(queue->n > nth))
+    if(queue->n < nth+1)
     {
-        dbg_info("Peek packet: There is no packet in this location.\n");
-        return -1;
+        dbg_print("packet queue: %d\n", queue->n);
+        RETURN(WRONG_ARGS);
     }
     
     int index_t = (queue->next + nth) % queue->maxn;
     
     *packet = queue->array[index_t];
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
 int32
 clear_avpacket_queue(avpacket_queue *queue)
 {
-    /*
-    for(int i = queue->next; i < queue->end; i = (i+1) % queue->maxn)
-    {
-        av_packet_unref(queue->buffer + i*AVPACKET_SIZE);
-    }
-    */
+    PlatformLockMutex(&queue->mutex);
     
     queue->n = 0;
     queue->next = 0;
     queue->end = 0;
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
-// TODO(Val): Make this take a reference to a pointer and set it to NULL afterwards
 int32
-close_avpacket_queue(avpacket_queue *queue)
+close_avpacket_queue(avpacket_queue **queue)
 {
-    clear_avpacket_queue(queue);
+    clear_avpacket_queue(*queue);
     
-    if(queue->array)
-        free(queue->array);
-    //free(queue->buffer);
+    if((*queue)->array)
+        free((*queue)->array);
     
-    free(queue);
+    free(*queue);
+    *queue = NULL;
     
-    return 0;
+    RETURN(SUCCESS);
 }
 
-/*
 void
-print_packets(avpacket_queue *queue, program_data *pdata)
+print_packets(avpacket_queue *queue)
 {
     int32 i = queue->next;
     while(i != queue->end)
     {
         AVPacket *packet = queue->array[i];
         
-        dbg_packet(packet);
-        dbg_info("-----------------------------\n");
+        dbg_info("Packet %d: pts - %ld\n"
+                 "           dts - %ld\n",
+                 i,
+                 (long int)packet->pts,
+                 (long int)packet->dts);
         
         i = (i + 1) % queue->maxn;
     }
-}
-*/
-
-bool32
-pq_is_full(avpacket_queue *queue)
-{
-    return (queue->n == queue->maxn);
-}
-
-bool32
-pq_is_empty(avpacket_queue *queue)
-{
-    return (queue->n == 0);
 }
