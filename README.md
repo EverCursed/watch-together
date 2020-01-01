@@ -6,7 +6,7 @@ WatchTogether is an application to watch videos together with a friend. Simply o
 
 Currently, the application is only for Win64. 
 
-[Windows 64-bit](https://github.com/EverCursed/watch-together/releases/tag/0.0.1)
+[Windows 64-bit](https://github.com/EverCursed/watch-together/releases/tag/v0.0.1)
 
 ## Usage
 
