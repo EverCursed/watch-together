@@ -36,7 +36,6 @@ The main runtime module that handles most of the application functionality.
 static void
 LocalTogglePlayback(program_data *pdata)
 {
-#if 0
     if(!pdata->paused)
     {
         pdata->playback.pause_started = *pdata->playback.current_frame_time;
@@ -46,8 +45,7 @@ LocalTogglePlayback(program_data *pdata)
         real64 time = *pdata->playback.current_frame_time;
         pdata->playback.aggregated_pause_time += (time - pdata->playback.pause_started);
     }
-    #endif
-
+    
     pdata->paused = !pdata->paused;
     PlatformPauseAudio(pdata->paused);
 }

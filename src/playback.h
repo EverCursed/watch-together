@@ -6,8 +6,8 @@ https://github.com/EverCursed
 
 */
 
-#ifndef PLAYBACK
-#define PLAYBACK
+#ifndef PLAYBACK_H
+#define PLAYBACK_H
 
 #include "defines.h"
 #include "debug.h"
@@ -84,4 +84,5 @@ enough_audio(playback_data *playback)
 {
     return (playback->audio_total_queued >= get_next_playback_time(playback));
 }
-#endif 
+
+#endif // PLAYBACK_H
