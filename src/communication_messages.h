@@ -1,3 +1,11 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+All network communication messages that the application can send/receive.
+*/
+
 #ifndef COMMUNICATION_MESSAGES_H
 #define COMMUNICATION_MESSAGES_H
 

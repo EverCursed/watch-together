@@ -1,3 +1,11 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+A wrapping for malloc to more easily detect buffer overflows.
+*/
+
 #include <stdlib.h>
 #include "../debug.h"
 

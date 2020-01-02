@@ -1,3 +1,11 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+This is a queue that stores AVFrames by their timestamp. 
+*/
+
 #include "avframe_pts_ordered_queue.h"
 #include "platform.h"
 #include "errors.h"

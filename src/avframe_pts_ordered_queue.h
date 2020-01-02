@@ -1,3 +1,11 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+Timestamp queue header.
+*/
+
 #ifndef AVFRAME_QUEUE_PTS_ORDERED
 #define AVFRAME_QUEUE_PTS_ORDERED
 
@@ -35,7 +43,6 @@ avframe_queue_empty(avframe_queue *queue)
 warn_unused static inline real64
 avframe_queue_next_pts(avframe_queue *queue)
 {
-    //dbg_info("avframe_queue_next_pts: %lf\n", queue->pts[0]);
     return queue->pts[0];
 }
 

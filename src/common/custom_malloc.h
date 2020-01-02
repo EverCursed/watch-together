@@ -1,3 +1,11 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+Malloc wrapper header.
+*/
+
 #ifndef CUSTOM_MALLOC_H
 #define CUSTOM_MALLOC_H
 

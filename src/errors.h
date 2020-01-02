@@ -1,7 +1,13 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+Function debug return macros.
+*/
+
 #ifndef ERRORS_H
 #define ERRORS_H
-
-typedef int err_code;
 
 #define SUCCESS              ( 0)
 #define CONNECTED            ( 1)

@@ -1,3 +1,11 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+Compiler attributes. GCC only for now.
+*/
+
 #ifndef ATTRIBUTES_H
 #define ATTRIBUTES_H
 

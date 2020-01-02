@@ -1,3 +1,11 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+Header for open file information.
+*/
+
 #ifndef FILE_DATA_H
 #define FILE_DATA_H
 

@@ -1,3 +1,11 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+The main decoding module. This is where packets are processed.
+*/
+
 #include <libswscale/version.h>
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>

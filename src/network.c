@@ -1,3 +1,11 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+
+*/
+
 #include <SDL2/SDL_net.h>
 
 #include "network.h"

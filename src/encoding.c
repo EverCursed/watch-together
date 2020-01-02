@@ -1,3 +1,11 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+Encoding module. Currently unused.
+*/
+
 #include <libavcodec/avcodec.h>
 #include <libavutil/opt.h>
 #include <libavformat/avformat.h>

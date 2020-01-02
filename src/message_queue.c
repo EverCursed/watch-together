@@ -1,3 +1,11 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+
+*/
+
 #include "message_queue.h"
 
 // TODO(Val): Add way to close queue? Although I don't know when we would want to stop getting input

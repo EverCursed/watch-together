@@ -1,3 +1,11 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+Audio module header.
+*/
+
 #ifndef AUDIO_H
 #define AUDIO_H
 

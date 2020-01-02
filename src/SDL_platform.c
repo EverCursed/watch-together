@@ -1,3 +1,11 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <time.h>

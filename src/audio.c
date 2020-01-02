@@ -1,5 +1,12 @@
-//#include "audio.h"
-#include "watchtogether.h"
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+Audio module.
+*/
+
+#include "audio.h"
 
  void
 PrepareAudioOutput(output_audio *audio)

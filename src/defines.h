@@ -1,3 +1,9 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+*/
+
 #ifndef WT_DEFINES_H
 #define WT_DEFINES_H
 

@@ -1,3 +1,12 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+Decoding header. For now it also holds information needing to stream
+to a different client. 
+*/
+
 #ifndef DECODING
 #define DECODING
 

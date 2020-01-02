@@ -1,4 +1,12 @@
 /*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+
+*/
+
+/*
 
 This holds a queue of AVPacket structs. This is a buffer for 
      - 1) decoding for video playback

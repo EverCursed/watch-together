@@ -1,3 +1,11 @@
+/*
+This file is part of WatchTogether.
+Copyright (C) 2019-2020 Valentine Yelizarov
+https://github.com/EverCursed
+
+Directly map SDL keycodes to the application keycodes. 
+*/
+
 #ifndef WT_KBKEYS
 #define WT_KBKEYS
 
