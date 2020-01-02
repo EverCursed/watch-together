@@ -50,7 +50,7 @@ global program_data *pdata;
 
 #define TESTING_FILE "data/video_test/video.mp4"
 
-int32
+static int32
 PlatformQueueAudio(AVFrame *frame)
 {
     //output_audio *audio = &pdata->audio;
@@ -74,7 +74,7 @@ PlatformQueueAudio(AVFrame *frame)
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 PlatformInitAudio(open_file_info *file)
 {
     output_audio *audio = &pdata->audio;
@@ -154,27 +154,21 @@ PlatformInitAudio(open_file_info *file)
     RETURN(SUCCESS);
 }
 
-void
+static void
 PlatformCloseAudio()
 {
     SDL_CloseAudioDevice(AudioID);
 }
 
-void
+static void
 PlatformPauseAudio(bool32 b)
 {
     SDL_PauseAudioDevice(AudioID, b);
 }
-/*
-void
-PlatformSleep(real64 s)
-{
-    int st = s < 0 ? 0 : s * 1000.0;
-    SDL_Delay(st);
-}
-*/
+
+
 /// Platform create thread
-thread_info
+static thread_info
 PlatformCreateThread(int32 (*f)(void *), void *data, char* name)
 {
     thread_info info = {};
@@ -187,13 +181,13 @@ PlatformCreateThread(int32 (*f)(void *), void *data, char* name)
     return info;
 }
 
-void
+static void
 PlatformWaitThread(thread_info thread, int32 *ret)
 {
     SDL_WaitThread(thread.thread, ret);
 }
 
-cond_info
+static cond_info
 PlatformCreateConditionVar()
 {
     cond_info c = {};
@@ -203,7 +197,7 @@ PlatformCreateConditionVar()
     return c;
 }
 
-int32
+static int32
 PlatformConditionWait(cond_info *c)
 {
     if(SDL_LockMutex(c->mutex))
@@ -225,7 +219,7 @@ PlatformConditionWait(cond_info *c)
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 PlatformConditionSignal(cond_info *c)
 {
     if(SDL_LockMutex(c->mutex))
@@ -239,7 +233,7 @@ PlatformConditionSignal(cond_info *c)
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 PlatformConditionDestroy(cond_info *c)
 {
     SDL_DestroyMutex(c->mutex);
@@ -248,8 +242,7 @@ PlatformConditionDestroy(cond_info *c)
     RETURN(SUCCESS);
 }
 
-
-platform_mutex
+static platform_mutex
 PlatformCreateMutex()
 {
     platform_mutex m = {};
@@ -259,7 +252,7 @@ PlatformCreateMutex()
     return m;
 }
 
-int32
+static int32
 PlatformLockMutex(platform_mutex *m)
 {
     if(!SDL_LockMutex(m->mutex))
@@ -271,7 +264,7 @@ PlatformLockMutex(platform_mutex *m)
     }
 }
 
-int32
+static int32
 PlatformUnlockMutex(platform_mutex *m)
 {
     if(!SDL_UnlockMutex(m->mutex))
@@ -280,22 +273,13 @@ PlatformUnlockMutex(platform_mutex *m)
         RETURN(UNKNOWN_ERROR);
 }
 
-void
+static void
 PlatformDestroyMutex(platform_mutex *m)
 {
     SDL_DestroyMutex(m->mutex);
 }
 
-/*
-real64
-PlatformGetTime()
-{
-    real64 ticks = (real64)SDL_GetTicks();
-    dbg_info("PlatformGetTime(): %lf\n", ticks/1000.0);
-    return ticks/1000.0;
-}
-*/
-int32
+static int32
 PlatformUpdateVideoFrame(AVFrame *frame)
 {
     StartTimer("PlatformUpdateVideoFrame()");
@@ -357,7 +341,7 @@ EndTimer();
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 PlatformRender()
 {
     StartTimer("PlatformUpdateFrame");
@@ -389,7 +373,7 @@ PlatformRender()
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 PlatformFlipBuffers()
 {
     StartTimer("PlatformFlipBuffers()");
@@ -399,7 +383,7 @@ PlatformFlipBuffers()
     RETURN(SUCCESS);
 }
 
-void
+static void
 PlatformToggleFullscreen()
 {
     dbg_success("TOGGLING FULLSCREEN\n");
@@ -428,7 +412,7 @@ static inline void add_key(input_struct *input,
 }
 
 #ifdef _WIN32
-int resize_filter(void *userdata,
+static int resize_filter(void *userdata,
                   SDL_Event *event)
 {
     /*
@@ -474,7 +458,7 @@ int resize_filter(void *userdata,
 }
 #endif
 
-int32
+static int32
 PlatformResizeClientArea(open_file_info *file, int x, int y)
 {
     StartTimer("ResizeScreen()");
@@ -524,7 +508,7 @@ PlatformResizeClientArea(open_file_info *file, int x, int y)
     RETURN(SUCCESS);
 }
 
-void
+static void
 PlatformInitVideo(open_file_info *file)
 {
     video_texture = SDL_CreateTexture(renderer,
@@ -538,7 +522,7 @@ PlatformInitVideo(open_file_info *file)
     PlatformResizeClientArea(file, 0, 0);
 }
 
-int32
+static int32
 PlatformGetInput()
 {
     StartTimer("PlatformGetInput()");
@@ -657,7 +641,7 @@ PlatformGetInput()
     RETURN(SUCCESS);
 }
 
-int64
+static int64
 PlatformGetThreadID()
 {
     return SDL_ThreadID();
@@ -745,7 +729,7 @@ int main(int argc, char *argv[])
                                       &window,
                                       &renderer);
     SDL_Test(ret);
-    
+     
     if(window == NULL)
     {
         dbg_error("Creating window failed!\n");

@@ -53,11 +53,11 @@ struct _timing_data {
 #include "windows.h"
 #endif
 
-void InitializeTimingSystem(char* name);
-void StartTimer(char* name_c);
-void EndTimer();
-void FinishTiming();
-
+static void InitializeTimingSystem(char* name);
+static void StartTimer(char* name_c);
+static void EndTimer();
+static void FinishTiming();
+ 
 #else
 
 // DEBUG is not defined, remove all timing information

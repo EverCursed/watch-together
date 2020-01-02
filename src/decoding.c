@@ -61,7 +61,7 @@ do {\
     }\
 } while(0)
 
-int32
+static int32
 DecodePacket(AVFrame **frame, AVPacket *pkt, AVCodecContext *codec_context)
 {
     StartTimer("DecodePacket()");

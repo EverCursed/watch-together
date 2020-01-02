@@ -34,16 +34,16 @@ typedef struct _playback_data {
     real64 *current_frame_time;
 } playback_data;
 
-int32
+static int32
 increment_video_times(playback_data *playback, real64 video_time_base);
 
-int32
+static int32
 increment_audio_times(playback_data *playback, real64 duration);
 
-bool32
+static bool32
 should_skip(playback_data *playback, real64 video_ts);
 
-int32
+static int32
 start_playback(playback_data *p, real64 time);
 
 static inline real64

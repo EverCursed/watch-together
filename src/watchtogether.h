@@ -211,12 +211,9 @@ typedef struct _program_data {
     char* server_address;
     destination_IP address_storage;
 } program_data;
-
-int32 
-MainThread(program_data *);
-
-int32
-MainLoop(program_data  *);
+ 
+static int32 MainThread(program_data *);
+static int32 MainLoop(program_data  *);
 
 not_used static bool32 WaitingForPlaybackStart(program_data *pdata)
 {

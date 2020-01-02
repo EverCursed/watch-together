@@ -8,7 +8,7 @@ Audio module.
 
 #include "audio.h"
 
- void
+static void
 PrepareAudioOutput(output_audio *audio)
 {
     audio->duration = 0.0;

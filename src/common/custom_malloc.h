@@ -17,6 +17,13 @@ Malloc wrapper header.
 #define custom_realloc(ptr, size) c_realloc(ptr, size)
 #define custom_free(ptr) c_free(ptr)
 
+// NOTE(Val): DO NOT USE THESE DIRECTLY
+static void* c_malloc(size_t size, char *file, int line);
+static void* c_realloc(void *ptr, size_t size);
+static void assert_memory_bounds();
+static void c_free(void *ptr);
+// ------------------------------------
+ 
 #else // DEBUG
 
 #define custom_malloc(size) malloc(size)
@@ -24,12 +31,5 @@ Malloc wrapper header.
 #define custom_free(ptr) free(ptr)
 
 #endif
-
-// NOTE(Val): DO NOT USE THESE DIRECTLY
-void* c_malloc(int32, char *, int);
-void* c_realloc(void *, int);
-void assert_memory_bounds();
-void c_free(void *);
-// ------------------------------------
 
 #endif

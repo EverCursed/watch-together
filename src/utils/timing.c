@@ -42,12 +42,13 @@ GetHighPrecisionTime(real64 *ptr)
 #endif
 }
 
-void
+static void
 StartTimer(char* name_c)
 {
     if(__dbgtimdat.n == __dbgtimdat.max_marks)
     {
-        __dbgtimdat.inst = custom_realloc(__dbgtimdat.inst, sizeof(timing_instance)*(__dbgtimdat.max_marks + MAX_EVENTS));
+        __dbgtimdat.inst =
+            custom_realloc(__dbgtimdat.inst, sizeof(timing_instance)*(__dbgtimdat.max_marks + MAX_EVENTS));
         __dbgtimdat.max_marks += MAX_EVENTS;
     }
     
@@ -57,7 +58,7 @@ StartTimer(char* name_c)
     
 }
 
-void
+static void
 EndTimer()
 {
     if(__dbgtimdat.n == __dbgtimdat.max_marks)
@@ -102,7 +103,7 @@ DumpTimingFrame()
     __dbgtimdat.dump_length += n;
 }
 
-void
+static void
 InitializeTimingSystem(char *name)
 {
     InitPlatformTimingData(); 
@@ -116,7 +117,7 @@ InitializeTimingSystem(char *name)
     __dbgtimdat.max_marks = MAX_EVENTS;
 }
 
-void
+static void
 FinishTiming()
 {
     DumpTimingFrame();
@@ -128,3 +129,4 @@ FinishTiming()
     free(__dbgtimdat.inst);
     free(__dbgtimdat.dump);
 }
+ 

@@ -126,7 +126,7 @@ process_audio_frame(AVFrame **frame, output_audio *audio, decoder_info *decoder)
 global struct SwsContext* modifContext = NULL;
 
 // TODO(Val): Handle all allocation failures
-int32
+static int32
 process_video_frame(AVFrame **frame, output_video *video, decoder_info *decoder)
 {
     StartTimer("process_video_frame");
@@ -232,7 +232,7 @@ ProcessPacket(AVFrame **frame, int32 *type, AVPacket *packet, decoder_info *deco
 #define PACKET_BUFFER 30
 
 // TODO(Val): Need to change this so if anything fails during opening, everything is deallocated appropriately
-int32
+static int32
 MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder, output_audio *audio, output_video *video)
 {
     dbg_print("avformat version: %d - %d\n", LIBAVFORMAT_VERSION_INT, avformat_version());
@@ -429,7 +429,7 @@ MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder, ou
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 MediaClose(open_file_info *file, decoder_info *decoder, encoder_info *encoder, output_audio *audio, output_video *video)
 {
     // TODO(Val): Should we also stop running the current file?
@@ -562,7 +562,7 @@ RefillPackets(decoder_info *decoder, bool32 is_host)
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 MediaThreadStart(void *arg)
 {
     InitializeTimingSystem("media");

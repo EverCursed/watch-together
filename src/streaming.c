@@ -27,7 +27,7 @@ static int32 video_port      = 16336;
 //static char* client_parameters      = "";
 static char* host_parameters      = "?listen";
 
-int32
+static int32
 Streaming_Client_Initialize(decoder_info *decoder)
 {
     avformat_network_init();
@@ -79,7 +79,7 @@ copy_stream_to_output(AVFormatContext *output_fmt_context, AVStream *input_strea
     return out_stream->index;
 }
 
-int32
+static int32
 Streaming_Host_Initialize(decoder_info *decoder, open_file_info *file, char *my_ip)
 {
     avformat_network_init();
@@ -122,13 +122,13 @@ Streaming_Host_Initialize(decoder_info *decoder, open_file_info *file, char *my_
     RETURN(SUCCESS);
 }
 
-bool32
+static bool32
 Streaming_Host_Is_Initialized(decoder_info *decoder)
 {
     return !!decoder->output_context;
 }
 
-int32
+static int32
 Streaming_Host_Accept(decoder_info *decoder)
 {
     //if(Streaming_Host_Is_Initialized(decoder))
@@ -139,7 +139,7 @@ Streaming_Host_Accept(decoder_info *decoder)
     return (NOT_YET_IMPLEMENTED);
 }
 
-int32
+static int32
 Streaming_Host_Close(decoder_info *decoder)
 {
     //av_write_trailer(output_fmt_context);
@@ -151,19 +151,19 @@ Streaming_Host_Close(decoder_info *decoder)
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 Streaming_Accept_Client()
 {
     RETURN(UNKNOWN_ERROR);
 }
 
-int32
+static int32
 Streaming_Client_Close()
 {
     RETURN(UNKNOWN_ERROR);
 }
 
-int32
+static int32
 Streaming_Client_Connect(char* address)
 {
     /*
@@ -188,7 +188,7 @@ Streaming_Client_Connect(char* address)
     RETURN(NOT_YET_IMPLEMENTED);
 }
 
-int32
+static int32
 Streaming_GetFileName(char *buffer, char *address, int32 video_port, char *parameters)
 {
     sprintf(buffer, "%s://%s:%d%s",
@@ -200,25 +200,25 @@ Streaming_GetFileName(char *buffer, char *address, int32 video_port, char *param
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 Streaming_Get_Port()
 {
     return video_port;
 }
 
-int32
+static int32
 Streaming_Client_Disconnect()
 {
     RETURN(NOT_YET_IMPLEMENTED);
 }
 
-int32
+static int32
 Streaming_Client_GetPacket()
 {
     RETURN(NOT_YET_IMPLEMENTED);
 }
 
-int32
+static int32
 Streaming_Host_SendPacket(decoder_info *decoder, AVPacket *packet)
 {
     int ret = 0;
@@ -267,14 +267,15 @@ Streaming_Host_SendPacket(decoder_info *decoder, AVPacket *packet)
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 Streaming_GetControlPacket()
 {
     RETURN(NOT_YET_IMPLEMENTED);
 }
 
-int32
+static int32
 Streaming_SendControlPacket()
 {
     RETURN(NOT_YET_IMPLEMENTED);
 }
+ 

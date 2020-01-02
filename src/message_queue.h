@@ -75,9 +75,9 @@ MessagesFull(message_queue *q)
     return (q->n >= q->max);
 }
 
-void InitMessageQueue(message_queue *q);
-void AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, real64 time);
-int32 GetApplicationMessage(message_queue *q, message *m);
-void ClearMessages(message_queue *q);
+static void InitMessageQueue(message_queue *q);
+static void AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, real64 time);
+static int32 GetApplicationMessage(message_queue *q, message *m);
+static void ClearMessages(message_queue *q);
 
 #endif

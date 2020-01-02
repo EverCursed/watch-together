@@ -16,7 +16,7 @@ https://github.com/EverCursed
 
 static int64 init_time = 0;
 
-real64
+static real64
 PlatformGetTime()
 {
     //StartTimer("PlatformGetTime()");
@@ -28,7 +28,7 @@ PlatformGetTime()
     return ret;
 }
 
-int32
+static int32
 PlatformSleep(real64 seconds)
 {
     if(seconds < 0.0)
@@ -39,7 +39,7 @@ PlatformSleep(real64 seconds)
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 WaitUntil(real64 time, real64 permissible_buffer)
 {
     real64 time_goal = time - permissible_buffer;

@@ -28,7 +28,6 @@ typedef struct _output_audio {
     real64 duration;
 } output_audio;
 
-void
-PrepareAudioOutput(output_audio *);
+static void PrepareAudioOutput(output_audio *);
 
 #endif

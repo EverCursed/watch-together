@@ -218,26 +218,26 @@ print_disconnect_msg(struct _disconnect_msg *msg, bool32 received)
              "\tMESSAGE_DISCONNECT\n",
              received ? "Receiving" : "Sending");
 }
-
-int32 StartServer();
-int32 StartClient();
-int32 CloseServer();
-int32 AcceptConnection();
-int32 ConnectToIP(const char *);
-int32 SendControlMessages();
-net_message *GetNextMessage();
-int32 ReceiveControlMessages();
-int32 SendInitRequestMessage();
-int32 SendInitMessage(real64, real64, int32);
-int32 SendFinishInitMessage(destination_IP);
-int32 SendReadyPlaybackMessage();
-int32 SendRequestPortMessage();
-int32 SendPlayMessage();
-int32 SendPauseMessage();
-int32 SendSeekMessage(real64);
-int32 SendDisconnectMessage();
-int32 CloseConnection();
-void GetPartnerIPStr(char **buffer);
-void GetPartnerIPInt(uint32 *buffer);
+ 
+static int32 StartServer();
+static int32 StartClient();
+static int32 CloseServer();
+static int32 AcceptConnection();
+static int32 ConnectToIP(const char *);
+static int32 SendControlMessages();
+static net_message *GetNextMessage();
+static int32 ReceiveControlMessages();
+static int32 SendInitRequestMessage();
+static int32 SendInitMessage(real64, real64, int32);
+static int32 SendFinishInitMessage(destination_IP);
+static int32 SendReadyPlaybackMessage();
+static int32 SendRequestPortMessage();
+static int32 SendPlayMessage();
+static int32 SendPauseMessage();
+static int32 SendSeekMessage(real64);
+static int32 SendDisconnectMessage();
+static int32 CloseConnection();
+static void GetPartnerIPStr(char **buffer);
+static void GetPartnerIPInt(uint32 *buffer);
 
 #endif

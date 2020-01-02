@@ -54,4 +54,4 @@ do {\
 
 #endif
 
-#endif
+#endif // ERRORS_H

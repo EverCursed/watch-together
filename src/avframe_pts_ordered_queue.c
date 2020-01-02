@@ -10,7 +10,7 @@ This is a queue that stores AVFrames by their timestamp.
 #include "platform.h"
 #include "errors.h"
 
-int32
+static int32
 avframe_queue_init(avframe_queue *queue, int32 flags)
 {
     queue->mutex = PlatformCreateMutex();
@@ -21,7 +21,7 @@ avframe_queue_init(avframe_queue *queue, int32 flags)
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 avframe_queue_deinit(avframe_queue *queue)
 {
     PlatformDestroyMutex(&queue->mutex);
@@ -31,7 +31,7 @@ avframe_queue_deinit(avframe_queue *queue)
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 avframe_queue_enqueue(avframe_queue *queue, AVFrame *frame, real64 pts)
 {
     if(avframe_queue_initialized(queue))
@@ -80,7 +80,7 @@ avframe_queue_enqueue(avframe_queue *queue, AVFrame *frame, real64 pts)
 }
 
 // TODO(Val): This should also check if we don't provide a pointer to pts
-int32
+static int32
 avframe_queue_dequeue(avframe_queue *queue, AVFrame **frame, real64 *pts)
 {
     if(avframe_queue_initialized(queue))
@@ -127,13 +127,13 @@ avframe_queue_dequeue(avframe_queue *queue, AVFrame **frame, real64 *pts)
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 avframe_queue_remove(avframe_queue *queue, real64 pts)
 {
     RETURN(NOT_YET_IMPLEMENTED);
 }
 
-int32
+static int32
 avframe_queue_clear(avframe_queue *queue)
 {
     RETURN(NOT_YET_IMPLEMENTED);

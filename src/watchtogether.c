@@ -5,22 +5,27 @@ https://github.com/EverCursed
 
 The main runtime module that handles most of the application functionality.
 */
-
-#include "common/custom_malloc.h"
+ 
 #include "attributes.h"
-
 #include "watchtogether.h"
-#include "message_queue.h"
-#include "audio.h"
-#include "utils/timing.h"
-#include "network.h"
-#include "media_processing.h"
-#include "time.h"
-#include "avframe_pts_ordered_queue.h"
-#include "attributes.h"
-#include "streaming.h"
 
-//#include <time.h>
+#include "common/custom_malloc.c"
+
+#include "message_queue.c"
+#include "audio.c"
+#include "video.c"
+#include "utils/timing.c"
+#include "network.c"
+#include "media_processing.c"
+#include "time.c"
+#include "avframe_pts_ordered_queue.c"
+#include "streaming.c"
+#include "decoding.c"
+//#include "encoding.c"
+#include "packet_queue.c"
+#include "playback.c"
+#include "platform.c"
+
 // TODO(Val): NAT-T implementation, see how it works
 // TODO(Val): Encryption
 
@@ -706,7 +711,7 @@ ProcessNetwork(program_data *pdata)
 
 #undef SETUP_MSG_PROCESSING
 
-int32
+static int32
 InputLoopThread(void *arg)
 {
     InitializeTimingSystem("input");
@@ -744,7 +749,7 @@ StartPlayback(program_data *pdata)
     EndTimer();
 }
 
-int32
+static int32
 MainLoopThread(void *arg)
 {
     InitializeTimingSystem("main");
@@ -869,7 +874,7 @@ InitializePointers(program_data *pdata)
     pdata->playback.refresh_target = &pdata->client.refresh_target;
 }
 
-int32
+static int32
 MainThread(program_data *pdata)
 {
     // NOTE(Val): Initialize things here that will last the entire runtime of the application

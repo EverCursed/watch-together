@@ -52,22 +52,22 @@ avframe_queue_initialized(avframe_queue *queue)
     return (queue->max == 0);
 }
 
-int32
+static int32
 avframe_queue_init(avframe_queue *queue, int32 flags);
 
-int32
+static int32
 avframe_queue_deinit(avframe_queue *queue);
 
-warn_unused int32
+warn_unused static int32
 avframe_queue_dequeue(avframe_queue *queue, AVFrame **frame, real64 *pts);
 
-warn_unused int32
+warn_unused static int32
 avframe_queue_enqueue(avframe_queue *queue, AVFrame *frame, real64 pts);
 
-warn_unused int32
+warn_unused static int32
 avframe_queue_remove(avframe_queue *queue, real64 pts);
 
-warn_unused int32
+warn_unused static int32
 avframe_queue_clear(avframe_queue *queue);
 
 #endif // AVFRAME_QUEUE_PTS_ORDERED

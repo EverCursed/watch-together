@@ -69,7 +69,7 @@ do { \
 } while(0)
 
 #define GENERATE_SEND_MESSAGE_FUNCTION(func_msg_type, struct_type, msg_val, print_func) \
-int32 \
+static int32 \
 Send##func_msg_type##Message() \
 { \
 INIT_MSG_VARIABLES(msg_val, struct_type, msg); \
@@ -78,7 +78,7 @@ print_func(&msg, 0); \
 \
 SEND_MSG_TO_QUEUE(msg);\
 }
-
+ 
 static void
 reset_message_buffer()
 {
@@ -108,7 +108,7 @@ terminate_buffers()
     custom_free(temp_buffer);
 }
 
-int32
+static int32
 StartServer()
 {
     // this client is hosting the media file
@@ -131,7 +131,7 @@ StartServer()
         RETURN(NO_MEMORY);
 }
 
-int32
+static int32
 StartClient()
 {
     socket_set = SDLNet_AllocSocketSet(1);
@@ -143,7 +143,7 @@ StartClient()
         RETURN(NO_MEMORY);
 }
 
-int32
+static int32
 CloseServer()
 {
     if(server)
@@ -165,7 +165,7 @@ CloseServer()
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 CloseClient()
 {
     if(partner)
@@ -183,7 +183,7 @@ CloseClient()
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 AcceptConnection()
 {
     if((partner  = SDLNet_TCP_Accept(server)))
@@ -195,7 +195,7 @@ AcceptConnection()
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 ConnectToIP(const char *ip)
 {
     for(int i = 0; i < ArrayCount(message_ports) && partner==NULL; i++)
@@ -224,7 +224,7 @@ QueueControlMessage(void *buffer, int32 size)
     RETURN(SUCCESS);
 }
 
-int32
+static int32
 SendControlMessages()
 {
     if(temp_buffer_used == 0)
@@ -270,7 +270,7 @@ SendControlMessages()
 /**
 Message must be freed after using
 */
-net_message *
+static net_message *
 GetNextMessage()
 {
     if(recv_buffer_size == 0)
@@ -339,7 +339,7 @@ GetNextMessage()
     return new_msg;
 }
 
-int32
+static int32
 ReceiveControlMessages()
 {
     StartTimer("ReceiveControlMessages()");
@@ -382,7 +382,7 @@ ReceiveControlMessages()
     RETURN(SUCCESS);
 }
 
-void
+static void
 GetPartnerIPStr(char **buffer)
 {
     if(*buffer)
@@ -401,7 +401,7 @@ GetPartnerIPStr(char **buffer)
     IPToStr(*buffer, ip);
 }
 
-void
+static void
 GetPartnerIPInt(uint32 *buffer)
 {
     IPaddress *temp_ip = SDLNet_TCP_GetPeerAddress(partner);
@@ -409,7 +409,7 @@ GetPartnerIPInt(uint32 *buffer)
     *buffer = temp_ip->host;//SDLNet_Read32(&temp_ip->host);
 }
 
-int32
+static int32
 SendInitMessage(real64 start_timestamp,
                 real64 file_duration,
                 int32 flags)
@@ -425,7 +425,7 @@ SendInitMessage(real64 start_timestamp,
     SEND_MSG_TO_QUEUE(msg);
 }
 
-int32
+static int32
 SendFinishInitMessage(destination_IP ip)
 {
     INIT_MSG_VARIABLES(MESSAGE_FINISH_INIT, struct _finish_init_msg, msg);
@@ -437,7 +437,7 @@ SendFinishInitMessage(destination_IP ip)
     SEND_MSG_TO_QUEUE(msg);
 }
 
-int32
+static int32
 SendRequestPortMessage()
 {
     INIT_MSG_VARIABLES(MESSAGE_REQUEST_PORT, struct _request_port_msg, msg);
@@ -445,7 +445,7 @@ SendRequestPortMessage()
     SEND_MSG_TO_QUEUE(msg);
 }
 
-int32
+static int32
 SendSeekMessage(real64 timestamp)
 {
     INIT_MSG_VARIABLES(MESSAGE_SEEK, struct _seek_msg, msg);
@@ -482,7 +482,7 @@ GENERATE_SEND_MESSAGE_FUNCTION(Disconnect,
                                MESSAGE_DISCONNECT,
                                print_disconnect_msg)
 
-int32
+static int32
 CloseConnection()
 {
     SDLNet_TCP_Close(partner);
