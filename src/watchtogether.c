@@ -576,12 +576,8 @@ ProcessNetwork(program_data *pdata)
     {
         int ret = ReceiveControlMessages();
         if(ret == DISCONNECTED)
-        {
-            CloseConnection();
-            pdata->connected = 0;
-            dbg_success("Disconnected\n");
-        }
-        else if(ret == UNKNOWN_ERROR)
+            goto Disconnected;
+            else if(ret == UNKNOWN_ERROR)
         {
             EndTimer();
             RETURN(UNKNOWN_ERROR);
@@ -695,16 +691,22 @@ ProcessNetwork(program_data *pdata)
         
         ret = SendControlMessages();
         if(ret == DISCONNECTED)
-        {
-            CloseConnection();
-            pdata->connected = 0;
-            dbg_success("Disconnected\n");
-        }
+            goto Disconnected;
     }
     
     EndTimer();
     
     RETURN(SUCCESS);
+    
+    Disconnected:
+    
+    CloseConnection();
+    pdata->connected = 0;
+    pdata->is_partner = 0;
+    pdata->is_host = 0;
+    dbg_success("Disconnected\n");
+    
+    RETURN(DISCONNECTED);
 }
 
 #undef SETUP_MSG_PROCESSING
