@@ -28,8 +28,8 @@ typedef struct _output_video {
     bool32 is_ready;
     real64 pts;
 } output_video;
- 
-static int32
+
+internal int32
 ClearVideoOutput(output_video *video);
 
 #endif

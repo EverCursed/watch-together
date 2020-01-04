@@ -63,21 +63,21 @@ typedef struct _message_queue {
 #define AddMessage4(q,m,a,b,c,d,t) AddMessage(q, m, a, b, c, d, NO_ARG, t)
 #define AddMessage5(q,m,a,b,c,d,e,t) AddMessage(q, m, a, b, c, d, e, t)
 
-static inline bool32
+internal inline bool32
 MessagesEmpty(message_queue *q)
 {
     return (q->n == 0);
 }
 
-static inline bool32
+internal inline bool32
 MessagesFull(message_queue *q)
 {
     return (q->n >= q->max);
 }
 
-static void InitMessageQueue(message_queue *q);
-static void AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, real64 time);
-static int32 GetApplicationMessage(message_queue *q, message *m);
-static void ClearMessages(message_queue *q);
+internal void InitMessageQueue(message_queue *q);
+internal void AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, real64 time);
+internal int32 GetApplicationMessage(message_queue *q, message *m);
+internal void ClearMessages(message_queue *q);
 
 #endif

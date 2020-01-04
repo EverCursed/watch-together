@@ -11,8 +11,8 @@ https://github.com/EverCursed
 
 #include "defines.h"
 
-static real64 PlatformGetTime();
-static int32 PlatformSleep(real64);
-static int32 WaitUntil(real64 time, real64 permissible_buffer);
+internal real64 PlatformGetTime();
+internal int32 PlatformSleep(real64);
+internal int32 WaitUntil(real64 time, real64 permissible_buffer);
 
 #endif // TIME_H

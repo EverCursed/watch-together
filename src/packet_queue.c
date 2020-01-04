@@ -19,7 +19,7 @@ This holds a queue of AVPacket structs. This is a buffer for
 
 #include "watchtogether.h"
 
-static avpacket_queue*
+internal avpacket_queue*
 init_avpacket_queue(int32 n)
 {
     avpacket_queue *queue = custom_malloc(sizeof(avpacket_queue));
@@ -35,7 +35,7 @@ init_avpacket_queue(int32 n)
     return queue;
 }
 
-static int32
+internal int32
 enqueue_packet(avpacket_queue *queue, AVPacket *packet)
 {
     if(queue->n == queue->maxn)
@@ -60,7 +60,7 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
     }
 }
 
-static int32
+internal int32
 dequeue_packet(avpacket_queue *queue, AVPacket **packet)
 {
     if(queue->n == 0)
@@ -88,7 +88,7 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
     }
 }
 
-static int32
+internal int32
 peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)
 {
     // check if nth packet is queued up
@@ -105,7 +105,7 @@ peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 clear_avpacket_queue(avpacket_queue *queue)
 {
     PlatformLockMutex(&queue->mutex);
@@ -117,7 +117,7 @@ clear_avpacket_queue(avpacket_queue *queue)
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 close_avpacket_queue(avpacket_queue **queue)
 {
     clear_avpacket_queue(*queue);
@@ -131,7 +131,7 @@ close_avpacket_queue(avpacket_queue **queue)
     RETURN(SUCCESS);
 }
 
-static void
+internal void
 print_packets(avpacket_queue *queue)
 {
     int32 i = queue->next;

@@ -14,9 +14,9 @@ https://github.com/EverCursed
 #define USEC (MSEC*1000.0)
 #define NSEC (USEC*1000.0)
 
-static int64 init_time = 0;
+_Thread_local int64 init_time = 0;
 
-static real64
+internal real64
 PlatformGetTime()
 {
     //StartTimer("PlatformGetTime()");
@@ -28,7 +28,7 @@ PlatformGetTime()
     return ret;
 }
 
-static int32
+internal int32
 PlatformSleep(real64 seconds)
 {
     if(seconds < 0.0)
@@ -39,7 +39,7 @@ PlatformSleep(real64 seconds)
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 WaitUntil(real64 time, real64 permissible_buffer)
 {
     real64 time_goal = time - permissible_buffer;

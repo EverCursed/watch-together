@@ -18,10 +18,10 @@ Malloc wrapper header.
 #define custom_free(ptr) c_free(ptr)
 
 // NOTE(Val): DO NOT USE THESE DIRECTLY
-static void* c_malloc(size_t size, char *file, int line);
-static void* c_realloc(void *ptr, size_t size);
-static void assert_memory_bounds();
-static void c_free(void *ptr);
+internal void* c_malloc(size_t size, char *file, int line);
+internal void* c_realloc(void *ptr, size_t size);
+internal void assert_memory_bounds();
+internal void c_free(void *ptr);
 // ------------------------------------
  
 #else // DEBUG

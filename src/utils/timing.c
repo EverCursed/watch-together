@@ -24,7 +24,7 @@ _Thread_local struct _timing_data __dbgtimdat = {};
 #undef FinishTiming
 
 
-static void
+internal void
 InitPlatformTimingData()
 {
 #if defined( _WIN32)
@@ -32,7 +32,7 @@ InitPlatformTimingData()
 #endif
 }
 
-static void
+internal void
 GetHighPrecisionTime(real64 *ptr)
 {
 #if defined( _WIN32)
@@ -42,7 +42,7 @@ GetHighPrecisionTime(real64 *ptr)
 #endif
 }
 
-static void
+internal void
 StartTimer(char* name_c)
 {
     if(__dbgtimdat.n == __dbgtimdat.max_marks)
@@ -58,7 +58,7 @@ StartTimer(char* name_c)
     
 }
 
-static void
+internal void
 EndTimer()
 {
     if(__dbgtimdat.n == __dbgtimdat.max_marks)
@@ -71,7 +71,7 @@ EndTimer()
     __dbgtimdat.n++;
 }
 
-static void
+internal void
 DumpTimingFrame()
 {
     int32 n = 0; 
@@ -103,7 +103,7 @@ DumpTimingFrame()
     __dbgtimdat.dump_length += n;
 }
 
-static void
+internal void
 InitializeTimingSystem(char *name)
 {
     InitPlatformTimingData(); 
@@ -117,7 +117,7 @@ InitializeTimingSystem(char *name)
     __dbgtimdat.max_marks = MAX_EVENTS;
 }
 
-static void
+internal void
 FinishTiming()
 {
     DumpTimingFrame();

@@ -141,14 +141,14 @@ typedef struct _client_info {
     real64 next_refresh_time;
 } client_info;
 
-static inline void
+internal inline void
 Client_UpdateTime(client_info *client)
 {
     client->current_frame_time = client->next_refresh_time;
     client->next_refresh_time += client->refresh_target;
 }
 
-static inline void
+internal inline void
 Client_SetRefreshTime(client_info *client, real64 target_time)
 {
     client->refresh_target = target_time;
@@ -212,15 +212,15 @@ typedef struct _program_data {
     destination_IP address_storage;
 } program_data;
  
-static int32 MainThread(program_data *);
-static int32 MainLoop(program_data  *);
+internal int32 MainThread(program_data *);
+internal int32 MainLoop(program_data  *);
 
-not_used static bool32 WaitingForPlaybackStart(program_data *pdata)
+not_used internal bool32 WaitingForPlaybackStart(program_data *pdata)
 {
     return (pdata->is_host || pdata->is_partner) ? !pdata->connected : 0;
 }
 
-not_used static bool32 Connected(program_data *pdata)
+not_used internal bool32 Connected(program_data *pdata)
 {
     return pdata->connected;
 }

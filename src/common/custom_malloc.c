@@ -21,7 +21,7 @@ static int lines[MAX_ALLOCS];
 static char* canary = "END";
 static const int canary_size = 4;
 
-static void *
+internal void *
 c_malloc(size_t size, char *file, int line)
 {
     void* mem = malloc(size + canary_size);
@@ -43,7 +43,7 @@ c_malloc(size_t size, char *file, int line)
     return NULL;
 }
 
-static void *
+internal void *
 c_realloc(void *ptr, size_t size)
 {
     for(int i = 0; i < MAX_ALLOCS; i++)
@@ -64,7 +64,7 @@ c_realloc(void *ptr, size_t size)
     return NULL;
 }
  
-static void
+internal void
 assert_memory_bounds()
 {
     for(int i = 0; i < MAX_ALLOCS; i++)
@@ -77,7 +77,7 @@ assert_memory_bounds()
     }
 }
 
-static void
+internal void
 c_free(void *mem)
 {
     for(int i = 0; i < MAX_ALLOCS; i++)

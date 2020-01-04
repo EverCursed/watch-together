@@ -15,29 +15,29 @@ https://github.com/EverCursed
 #include "network.h"
 #include "file_data.h"
 
-static int32
+internal int32
 Streaming_Host_SendPacket(decoder_info *, AVPacket *);
 
-static int32
+internal int32
 Streaming_Host_Initialize(decoder_info *, open_file_info *, char *);
 
-static int32
+internal int32
 Streaming_Client_Initialize(decoder_info *);
 
-static int32
+internal int32
 Streaming_Host_Close(decoder_info *);
  
-static int32
+internal int32
 StreamPackets();
 
-static int32
+internal int32
 Streaming_Get_Port();
 
 
 
 //void Streaming_Send_Header();
 
-static int32
+internal int32
 Streaming_GetFileName(char *buffer, char *address, int32 video_port, char *parameters);
 
 

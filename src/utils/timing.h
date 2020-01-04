@@ -53,10 +53,10 @@ struct _timing_data {
 #include "windows.h"
 #endif
 
-static void InitializeTimingSystem(char* name);
-static void StartTimer(char* name_c);
-static void EndTimer();
-static void FinishTiming();
+internal void InitializeTimingSystem(char* name);
+internal void StartTimer(char* name_c);
+internal void EndTimer();
+internal void FinishTiming();
  
 #else
 

@@ -10,7 +10,11 @@ https://github.com/EverCursed
 #include <stdint.h>
 #include "errors.h"
 
-//#define internal        static
+#ifdef internal
+#undef internal
+#endif
+
+#define internal        static
 #define local_persist   static
 #define global          static
 

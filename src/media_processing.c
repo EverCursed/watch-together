@@ -24,16 +24,16 @@ https://github.com/EverCursed
 #include "audio.h"
 #include "video.h"
 
-static inline int32 is_video(AVPacket *packet, decoder_info *decoder)
+internal inline int32 is_video(AVPacket *packet, decoder_info *decoder)
 { return (packet->stream_index == decoder->video_stream->index); }
 
-static inline int32 is_audio(AVPacket *packet, decoder_info *decoder)
+internal inline int32 is_audio(AVPacket *packet, decoder_info *decoder)
 { return (packet->stream_index == decoder->audio_stream->index); }
 
-static inline int32 is_subtitle(AVPacket *packet, decoder_info *decoder)
+internal inline int32 is_subtitle(AVPacket *packet, decoder_info *decoder)
 { return (packet->stream_index == decoder->subtitle_stream->index); }
 
-static int32
+internal int32
 LoadPacket(decoder_info *decoder, AVPacket **packet)
 {
     *packet = av_packet_alloc();
@@ -60,7 +60,7 @@ LoadPacket(decoder_info *decoder, AVPacket **packet)
     RETURN(SUCCESS);
 }
 
-static void
+internal void
 interleave_audio_frame(AVFrame *dst_frame, AVFrame *src_frame)
 {
     uint8 *data = dst_frame->data[0];
@@ -82,7 +82,7 @@ interleave_audio_frame(AVFrame *dst_frame, AVFrame *src_frame)
 }
 
 // TODO(Val): Check for failed allocations
-static int32
+internal int32
 process_audio_frame(AVFrame **frame, output_audio *audio, decoder_info *decoder)
 {
     StartTimer("process_audio_frame");
@@ -126,7 +126,7 @@ process_audio_frame(AVFrame **frame, output_audio *audio, decoder_info *decoder)
 global struct SwsContext* modifContext = NULL;
 
 // TODO(Val): Handle all allocation failures
-static int32
+internal int32
 process_video_frame(AVFrame **frame, output_video *video, decoder_info *decoder)
 {
     StartTimer("process_video_frame");
@@ -193,7 +193,7 @@ process_video_frame(AVFrame **frame, output_video *video, decoder_info *decoder)
 #define AUDIO    2
 #define SUBTITLE 3
 
-static int32
+internal int32
 ProcessPacket(AVFrame **frame, int32 *type, AVPacket *packet, decoder_info *decoder)
 {
     StartTimer("ProcessPacket()");
@@ -232,7 +232,7 @@ ProcessPacket(AVFrame **frame, int32 *type, AVPacket *packet, decoder_info *deco
 #define PACKET_BUFFER 30
 
 // TODO(Val): Need to change this so if anything fails during opening, everything is deallocated appropriately
-static int32
+internal int32
 MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder, output_audio *audio, output_video *video)
 {
     dbg_print("avformat version: %d - %d\n", LIBAVFORMAT_VERSION_INT, avformat_version());
@@ -429,7 +429,7 @@ MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder, ou
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 MediaClose(open_file_info *file, decoder_info *decoder, encoder_info *encoder, output_audio *audio, output_video *video)
 {
     // TODO(Val): Should we also stop running the current file?
@@ -449,7 +449,7 @@ MediaClose(open_file_info *file, decoder_info *decoder, encoder_info *encoder, o
     RETURN(SUCCESS);
 }
 
-static void
+internal void
 ProcessEverything(decoder_info *decoder, output_video *video, output_audio *audio)
 {
     StartTimer("ProcessEverything()");
@@ -514,7 +514,7 @@ ProcessEverything(decoder_info *decoder, output_video *video, output_audio *audi
     EndTimer();
 }
 
-not_used static bool32
+not_used internal bool32
 EnoughDurations(output_audio *audio, open_file_info *file, output_video *video, playback_data *playback)
 {
     StartTimer("EnoughDurations()");
@@ -545,7 +545,7 @@ EnoughDurations(output_audio *audio, open_file_info *file, output_video *video, 
     return audio_enough && video_enough;
 }
 
-static int32
+internal int32
 RefillPackets(decoder_info *decoder, bool32 is_host)
 {
     while(!pq_is_full(decoder->queue) && !decoder->file_fully_loaded)
@@ -562,7 +562,7 @@ RefillPackets(decoder_info *decoder, bool32 is_host)
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 MediaThreadStart(void *arg)
 {
     InitializeTimingSystem("media");

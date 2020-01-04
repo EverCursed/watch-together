@@ -20,7 +20,7 @@ https://github.com/EverCursed
 
 #define BYTES_ALIGNMENT 16
 
-static inline int round_up_align(int v)
+internal inline int round_up_align(int v)
 {
     return ((v + BYTES_ALIGNMENT -1) - (((v + BYTES_ALIGNMENT - 1) % BYTES_ALIGNMENT)));
 }

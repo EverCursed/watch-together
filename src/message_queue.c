@@ -10,7 +10,7 @@ https://github.com/EverCursed
 
 // TODO(Val): Add way to close queue? Although I don't know when we would want to stop getting input
 
-static void
+internal void
 InitMessageQueue(message_queue *q)
 {
     q->start = 0;
@@ -19,7 +19,7 @@ InitMessageQueue(message_queue *q)
     q->max = MSG_QUEUE_SIZE;
 }
 
-static void
+internal void
 AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, real64 time)
 {
     if(!MessagesFull(q))
@@ -41,7 +41,7 @@ AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, re
     }
 }
 
-static int32
+internal int32
 GetApplicationMessage(message_queue *q, message *m)
 {
     if(q->n > 0)
@@ -62,7 +62,7 @@ GetApplicationMessage(message_queue *q, message *m)
     }
 }
 
-static void
+internal void
 ClearMessages(message_queue *q)
 {
     q->n = 0;

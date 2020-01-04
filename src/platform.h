@@ -20,73 +20,73 @@ typedef struct _platform_mutex platform_mutex;
 typedef struct _output_audio output_audio;
 typedef struct _output_video output_video;
 
-static int32
+internal int32
 PlatformFlipBuffers();
 
-static int
+internal int
 PlatformGetInput();
 
-static void
+internal void
 PlatformPauseAudio(bool32);
 
-static int32
+internal int32
 PlatformUpdateVideoFrame(AVFrame *frame);
 
-static int32
+internal int32
 PlatformRender();
 
 
 // Threads 
 
-static thread_info
+internal thread_info
 PlatformCreateThread(int32 (*f)(void *), void *, char *);
 
-static void
+internal void
 PlatformWaitThread(thread_info, int32 *);
 
-static cond_info
+internal cond_info
 PlatformCreateConditionVar();
 
-static int32
+internal int32
 PlatformConditionWait(cond_info *);
 
-static int32
+internal int32
 PlatformConditionSignal(cond_info *);
 
-static bool32
+internal bool32
 PlatformConditionDestroy(cond_info *);
 
-static platform_mutex
+internal platform_mutex
 PlatformCreateMutex();
 
-static int32
+internal int32
 PlatformLockMutex(platform_mutex *);
 
-static int32
+internal int32
 PlatformUnlockMutex(platform_mutex *);
 
-static void
+internal void
 PlatformDestroyMutex(platform_mutex *);
 
-static int32
+internal int32
 PlatformInitAudio(open_file_info *);
 
-static void
+internal void
 PlatformCloseAudio();
 
-static void
+internal void
 PlatformInitVideo(open_file_info *);
 
-static void
+internal void
 PlatformToggleFullscreen();
 
-static int32
+internal int32
 PlatformResizeClientArea(open_file_info *, int32, int32);
 
-static int32
+internal int32
 PlatformQueueAudio();
 
-static int64
+internal int64
 PlatformGetThreadID();
 
 #endif

@@ -9,7 +9,7 @@ https://github.com/EverCursed
 #include "playback.h"
 //#include "watchtogether.h"
 
-static int32
+internal int32
 increment_video_times(playback_data *playback, real64 video_time_base)
 {
     playback->current_video_frame_time = playback->next_video_frame_time;
@@ -18,7 +18,7 @@ increment_video_times(playback_data *playback, real64 video_time_base)
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 increment_audio_times(playback_data *playback, real64 duration)
 {
     playback->audio_total_queued += duration;
@@ -26,7 +26,7 @@ increment_audio_times(playback_data *playback, real64 duration)
     RETURN(SUCCESS);
 }
 /*
-static void
+internal void
 update_playback_time(playback_data *playback)
 {
 dbg_print("update_playback_time:\n"
@@ -44,19 +44,19 @@ playback->playback_start;
 }
 */
 
-static real64
+internal real64
 get_next_frame_time(playback_data *p)
 {
     return *p->next_frame_time;
 }
 
-static bool32
+internal bool32
 should_skip(playback_data *playback, real64 video_ts)
 {
     return (get_next_playback_time(playback) > video_ts);
 }
 
-static int32
+internal int32
 start_playback(playback_data *p, real64 time)
 {
     p->playback_start = time + *p->refresh_target;

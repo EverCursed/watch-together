@@ -33,7 +33,7 @@ The main runtime module that handles most of the application functionality.
 
 #define PACKET_QUEUE_SIZE 60
 
-static void
+internal void
 LocalTogglePlayback(program_data *pdata)
 {
     if(!pdata->paused)
@@ -42,6 +42,7 @@ LocalTogglePlayback(program_data *pdata)
     }
     else
     {
+        
         real64 time = *pdata->playback.current_frame_time;
         pdata->playback.aggregated_pause_time += (time - pdata->playback.pause_started);
     }
@@ -50,7 +51,7 @@ LocalTogglePlayback(program_data *pdata)
     PlatformPauseAudio(pdata->paused);
 }
 
-static void
+internal void
 TogglePlayback(program_data *pdata)
 {
     if(pdata->connected)
@@ -63,7 +64,7 @@ TogglePlayback(program_data *pdata)
     LocalTogglePlayback(pdata);
 }
 
-static int32
+internal int32
 ProcessInput(program_data *pdata)
 {
     // Get input
@@ -139,7 +140,7 @@ ProcessInput(program_data *pdata)
     return 0;
 }
 
-static int32
+internal int32
 AllocateBuffers(program_data *pdata)
 {
     // NOTE(Val): Allocate audio buffer
@@ -167,7 +168,7 @@ AllocateBuffers(program_data *pdata)
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 DeallocateBuffers(program_data *pdata)
 {
     free(pdata->audio.buffer);
@@ -186,7 +187,7 @@ DeallocateBuffers(program_data *pdata)
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 InitializeApplication(program_data *pdata)
 {
     InitMessageQueue(&pdata->messages);
@@ -194,7 +195,7 @@ InitializeApplication(program_data *pdata)
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 InitQueues(program_data *pdata)
 {
 #if 0
@@ -217,7 +218,7 @@ InitQueues(program_data *pdata)
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 TerminateQueues(program_data *pdata)
 {
 #if 0
@@ -228,7 +229,7 @@ TerminateQueues(program_data *pdata)
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 FileOpen_LoadData(program_data *pdata)
 {
     int ret = MediaOpen(&pdata->file, &pdata->decoder, &pdata->encoder, &pdata->audio, &pdata->video);
@@ -257,7 +258,7 @@ FileOpen_LoadData(program_data *pdata)
     else
         RETURN(UNKNOWN_ERROR);
 }
-static int32
+internal int32
 FileOpen_StartThread(program_data *pdata)
 {
     AllocateBuffers(pdata);
@@ -275,7 +276,7 @@ FileOpen_StartThread(program_data *pdata)
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 FileOpen(program_data *pdata)
 {
     int32 ret = 0;
@@ -294,7 +295,7 @@ FileOpen(program_data *pdata)
     RETURN(SUCCESS);
 }
 
-static bool32
+internal bool32
 FileClose(program_data *pdata)
 {
     pdata->file.file_ready = 0;
@@ -316,7 +317,7 @@ FileClose(program_data *pdata)
     RETURN(SUCCESS);
 }
 
-static void
+internal void
 ProcessMessages(program_data *pdata)
 {
     StartTimer("ProcessMessages()");
@@ -430,7 +431,7 @@ ProcessMessages(program_data *pdata)
     EndTimer();
 }
 
-static void
+internal void
 ProcessAudio(program_data *pdata)
 {
     StartTimer("ProcessAudio()");
@@ -459,7 +460,7 @@ ProcessAudio(program_data *pdata)
     }
 }
 
-static void
+internal void
 ProcessVideo(program_data *pdata)
 {
     StartTimer("ProcessVideo()");
@@ -479,7 +480,7 @@ ProcessVideo(program_data *pdata)
     EndTimer();
 }
 
-not_used static void
+not_used internal void
 SkipVideoFrame(program_data *pdata)
 {
     //ClearVideoOutput(&pdata->video);
@@ -489,7 +490,7 @@ SkipVideoFrame(program_data *pdata)
     pdata->video.is_ready = 0;
 }
 
-static int32
+internal int32
 ProcessPlayback(program_data *pdata)
 {
     playback_data *playback = &pdata->playback;
@@ -519,6 +520,7 @@ ProcessPlayback(program_data *pdata)
     else
     {
         dbg_warn("Video was not ready.\n");
+        
     }
     
     if(pdata->file.has_audio && !avframe_queue_empty(&pdata->audio.queue))
@@ -557,7 +559,7 @@ ProcessPlayback(program_data *pdata)
 #define SETUP_MSG_PROCESSING(type, var, message) \
 type *var = (type *)message;
 
-static int32
+internal int32
 ProcessNetwork(program_data *pdata)
 {
     StartTimer("ProcessNetwork()");
@@ -711,7 +713,7 @@ ProcessNetwork(program_data *pdata)
 
 #undef SETUP_MSG_PROCESSING
 
-static int32
+internal int32
 InputLoopThread(void *arg)
 {
     InitializeTimingSystem("input");
@@ -730,7 +732,7 @@ InputLoopThread(void *arg)
     RETURN(SUCCESS);
 }
 
-static void
+internal void
 StartPlayback(program_data *pdata)
 {
     StartTimer("Starting Playback");
@@ -749,7 +751,7 @@ StartPlayback(program_data *pdata)
     EndTimer();
 }
 
-static int32
+internal int32
 MainLoopThread(void *arg)
 {
     InitializeTimingSystem("main");
@@ -866,7 +868,7 @@ MainLoopThread(void *arg)
     RETURN(SUCCESS);
 }
 
-static void inline
+internal void inline
 InitializePointers(program_data *pdata)
 {
     pdata->playback.current_frame_time = &pdata->client.current_frame_time;
@@ -874,7 +876,7 @@ InitializePointers(program_data *pdata)
     pdata->playback.refresh_target = &pdata->client.refresh_target;
 }
 
-static int32
+internal int32
 MainThread(program_data *pdata)
 {
     // NOTE(Val): Initialize things here that will last the entire runtime of the application

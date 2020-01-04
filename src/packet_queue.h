@@ -32,21 +32,21 @@ typedef struct _avpacket_queue {
     int32 end;   // the where the next packet will be enqueued
 } avpacket_queue;
 
-static avpacket_queue* init_avpacket_queue(int32 n);
-static int32 enqueue_packet(avpacket_queue *queue, AVPacket *packet);
-static int32 dequeue_packet(avpacket_queue *queue, AVPacket **packet);
-static int32 peek_packet(avpacket_queue *queue, AVPacket **packet, int nth);
-static int32 clear_avpacket_queue(avpacket_queue *queue);
-static int32 close_avpacket_queue(avpacket_queue **queue);
+internal avpacket_queue* init_avpacket_queue(int32 n);
+internal int32 enqueue_packet(avpacket_queue *queue, AVPacket *packet);
+internal int32 dequeue_packet(avpacket_queue *queue, AVPacket **packet);
+internal int32 peek_packet(avpacket_queue *queue, AVPacket **packet, int nth);
+internal int32 clear_avpacket_queue(avpacket_queue *queue);
+internal int32 close_avpacket_queue(avpacket_queue **queue);
 
-static void print_packets(avpacket_queue *queue);
+internal void print_packets(avpacket_queue *queue);
 
-static inline bool32 pq_is_full(avpacket_queue *queue)
+internal inline bool32 pq_is_full(avpacket_queue *queue)
 {
     return (queue->n == queue->maxn);
 }
 
-static inline bool32 pq_is_empty(avpacket_queue *queue)
+internal inline bool32 pq_is_empty(avpacket_queue *queue)
 {
     return (queue->n == 0);
 }

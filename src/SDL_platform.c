@@ -50,7 +50,7 @@ global program_data *pdata;
 
 #define TESTING_FILE "data/video_test/video.mp4"
 
-static int32
+internal int32
 PlatformQueueAudio(AVFrame *frame)
 {
     //output_audio *audio = &pdata->audio;
@@ -74,7 +74,7 @@ PlatformQueueAudio(AVFrame *frame)
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 PlatformInitAudio(open_file_info *file)
 {
     output_audio *audio = &pdata->audio;
@@ -154,13 +154,13 @@ PlatformInitAudio(open_file_info *file)
     RETURN(SUCCESS);
 }
 
-static void
+internal void
 PlatformCloseAudio()
 {
     SDL_CloseAudioDevice(AudioID);
 }
 
-static void
+internal void
 PlatformPauseAudio(bool32 b)
 {
     SDL_PauseAudioDevice(AudioID, b);
@@ -168,7 +168,7 @@ PlatformPauseAudio(bool32 b)
 
 
 /// Platform create thread
-static thread_info
+internal thread_info
 PlatformCreateThread(int32 (*f)(void *), void *data, char* name)
 {
     thread_info info = {};
@@ -181,13 +181,13 @@ PlatformCreateThread(int32 (*f)(void *), void *data, char* name)
     return info;
 }
 
-static void
+internal void
 PlatformWaitThread(thread_info thread, int32 *ret)
 {
     SDL_WaitThread(thread.thread, ret);
 }
 
-static cond_info
+internal cond_info
 PlatformCreateConditionVar()
 {
     cond_info c = {};
@@ -197,7 +197,7 @@ PlatformCreateConditionVar()
     return c;
 }
 
-static int32
+internal int32
 PlatformConditionWait(cond_info *c)
 {
     if(SDL_LockMutex(c->mutex))
@@ -219,7 +219,7 @@ PlatformConditionWait(cond_info *c)
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 PlatformConditionSignal(cond_info *c)
 {
     if(SDL_LockMutex(c->mutex))
@@ -233,7 +233,7 @@ PlatformConditionSignal(cond_info *c)
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 PlatformConditionDestroy(cond_info *c)
 {
     SDL_DestroyMutex(c->mutex);
@@ -242,7 +242,7 @@ PlatformConditionDestroy(cond_info *c)
     RETURN(SUCCESS);
 }
 
-static platform_mutex
+internal platform_mutex
 PlatformCreateMutex()
 {
     platform_mutex m = {};
@@ -252,7 +252,7 @@ PlatformCreateMutex()
     return m;
 }
 
-static int32
+internal int32
 PlatformLockMutex(platform_mutex *m)
 {
     if(!SDL_LockMutex(m->mutex))
@@ -264,7 +264,7 @@ PlatformLockMutex(platform_mutex *m)
     }
 }
 
-static int32
+internal int32
 PlatformUnlockMutex(platform_mutex *m)
 {
     if(!SDL_UnlockMutex(m->mutex))
@@ -273,13 +273,13 @@ PlatformUnlockMutex(platform_mutex *m)
         RETURN(UNKNOWN_ERROR);
 }
 
-static void
+internal void
 PlatformDestroyMutex(platform_mutex *m)
 {
     SDL_DestroyMutex(m->mutex);
 }
 
-static int32
+internal int32
 PlatformUpdateVideoFrame(AVFrame *frame)
 {
     StartTimer("PlatformUpdateVideoFrame()");
@@ -341,7 +341,7 @@ EndTimer();
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 PlatformRender()
 {
     StartTimer("PlatformUpdateFrame");
@@ -373,7 +373,7 @@ PlatformRender()
     RETURN(SUCCESS);
 }
 
-static int32
+internal int32
 PlatformFlipBuffers()
 {
     StartTimer("PlatformFlipBuffers()");
@@ -383,7 +383,7 @@ PlatformFlipBuffers()
     RETURN(SUCCESS);
 }
 
-static void
+internal void
 PlatformToggleFullscreen()
 {
     dbg_success("TOGGLING FULLSCREEN\n");
@@ -392,7 +392,7 @@ PlatformToggleFullscreen()
     pdata->is_fullscreen = !pdata->is_fullscreen;
 }
 
-static inline void add_key(input_struct *input,
+internal inline void add_key(input_struct *input,
                            uint32 key,
                            bool32 shift,
                            bool32 ctrl,
@@ -412,7 +412,7 @@ static inline void add_key(input_struct *input,
 }
 
 #ifdef _WIN32
-static int resize_filter(void *userdata,
+internal int resize_filter(void *userdata,
                   SDL_Event *event)
 {
     /*
@@ -458,7 +458,7 @@ static int resize_filter(void *userdata,
 }
 #endif
 
-static int32
+internal int32
 PlatformResizeClientArea(open_file_info *file, int x, int y)
 {
     StartTimer("ResizeScreen()");
@@ -508,7 +508,7 @@ PlatformResizeClientArea(open_file_info *file, int x, int y)
     RETURN(SUCCESS);
 }
 
-static void
+internal void
 PlatformInitVideo(open_file_info *file)
 {
     video_texture = SDL_CreateTexture(renderer,
@@ -522,7 +522,7 @@ PlatformInitVideo(open_file_info *file)
     PlatformResizeClientArea(file, 0, 0);
 }
 
-static int32
+internal int32
 PlatformGetInput()
 {
     StartTimer("PlatformGetInput()");
@@ -641,13 +641,13 @@ PlatformGetInput()
     RETURN(SUCCESS);
 }
 
-static int64
+internal int64
 PlatformGetThreadID()
 {
     return SDL_ThreadID();
 }
 
-static int32
+internal int32
 InitializeTextures()
 {
     int32 width;

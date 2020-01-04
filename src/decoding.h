@@ -68,7 +68,7 @@ typedef struct _decoder_info {
 } decoder_info;
 
 
-static int32 DecodingThreadStart(void *);
-static int32 DecodePacket(AVFrame **, AVPacket *, AVCodecContext *);
+internal int32 DecodingThreadStart(void *);
+internal int32 DecodePacket(AVFrame **, AVPacket *, AVCodecContext *);
 
 #endif

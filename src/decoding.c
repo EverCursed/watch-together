@@ -39,7 +39,7 @@ get_frame(avpacket_queue *queue, AVFrame **frame, AVCodecContext *dec_ctx)
 #define AUDIO_FRAME 1
 #define VIDEO_FRAME 2
 
-static inline void
+internal inline void
 copy_pixel_buffers(uint8 *dst,
                    int32 pitch_dst,
                    uint8 *src,
@@ -61,7 +61,7 @@ do {\
     }\
 } while(0)
 
-static int32
+internal int32
 DecodePacket(AVFrame **frame, AVPacket *pkt, AVCodecContext *codec_context)
 {
     StartTimer("DecodePacket()");

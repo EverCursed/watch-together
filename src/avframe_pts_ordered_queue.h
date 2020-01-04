@@ -28,46 +28,46 @@ typedef struct _avframe_queue {
     int32 flags;
 } avframe_queue;
 
-warn_unused static inline bool32
+warn_unused internal inline bool32
 avframe_queue_full(avframe_queue *queue) 
 {
     return (queue->n == queue->max);
 }
 
-warn_unused static inline bool32
+warn_unused internal inline bool32
 avframe_queue_empty(avframe_queue *queue)
 {
     return (queue->n == 0);
 }
 
-warn_unused static inline real64
+warn_unused internal inline real64
 avframe_queue_next_pts(avframe_queue *queue)
 {
     return queue->pts[0];
 }
 
-warn_unused static inline bool32
+warn_unused internal inline bool32
 avframe_queue_initialized(avframe_queue *queue)
 {
     return (queue->max == 0);
 }
 
-static int32
+internal int32
 avframe_queue_init(avframe_queue *queue, int32 flags);
 
-static int32
+internal int32
 avframe_queue_deinit(avframe_queue *queue);
 
-warn_unused static int32
+warn_unused internal int32
 avframe_queue_dequeue(avframe_queue *queue, AVFrame **frame, real64 *pts);
 
-warn_unused static int32
+warn_unused internal int32
 avframe_queue_enqueue(avframe_queue *queue, AVFrame *frame, real64 pts);
 
-warn_unused static int32
+warn_unused internal int32
 avframe_queue_remove(avframe_queue *queue, real64 pts);
 
-warn_unused static int32
+warn_unused internal int32
 avframe_queue_clear(avframe_queue *queue);
 
 #endif // AVFRAME_QUEUE_PTS_ORDERED

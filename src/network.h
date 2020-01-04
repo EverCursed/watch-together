@@ -48,7 +48,7 @@ typedef struct _destination_IP {
     bool32 is_ipv6;
 } destination_IP;
 
-not_used static void
+not_used internal void
 IPToStr(char* buffer, destination_IP ip)
 {
     if(ip.is_ipv6)
@@ -137,7 +137,7 @@ struct align(MESSAGE_DATA_ALIGNMENT) _reply_rtt {
 
 #undef MSG_HEADER
 
-not_used static void
+not_used internal void
 print_request_init_msg(struct _request_init_msg *msg, bool32 received)
 {
     dbg_info("%s:\n"
@@ -145,7 +145,7 @@ print_request_init_msg(struct _request_init_msg *msg, bool32 received)
              received ? "Receiving" : "Sending");
 }
 
-not_used static void
+not_used internal void
 print_init_msg(struct _init_msg *msg, bool32 received)
 {
     dbg_info("%s:\n"
@@ -159,7 +159,7 @@ print_init_msg(struct _init_msg *msg, bool32 received)
              msg->file_duration);
 }
 
-not_used static void
+not_used internal void
 print_ready_playback_msg(struct _ready_playback_msg *msg, bool32 received)
 {
     dbg_info("%s:\n"
@@ -167,7 +167,7 @@ print_ready_playback_msg(struct _ready_playback_msg *msg, bool32 received)
              received ? "Receiving" : "Sending");
 }
 
-not_used static void
+not_used internal void
 print_finish_init_msg(struct _finish_init_msg *msg, bool32 received)
 {
     destination_IP ip = {};
@@ -185,7 +185,7 @@ print_finish_init_msg(struct _finish_init_msg *msg, bool32 received)
              ip_buf);
 }
 
-not_used static void
+not_used internal void
 print_play_msg(struct _play_msg *msg, bool32 received)
 {
     dbg_info("%s:\n"
@@ -193,7 +193,7 @@ print_play_msg(struct _play_msg *msg, bool32 received)
              received ? "Receiving" : "Sending");
 }
 
-not_used static void
+not_used internal void
 print_pause_msg(struct _pause_msg *msg, bool32 received)
 {
     dbg_info("%s:\n"
@@ -201,7 +201,7 @@ print_pause_msg(struct _pause_msg *msg, bool32 received)
              received ? "Receiving" : "Sending");
 }
 
-not_used static void
+not_used internal void
 print_seek_msg(struct _seek_msg *msg, bool32 received)
 {
     dbg_info("%s:\n"
@@ -211,7 +211,7 @@ print_seek_msg(struct _seek_msg *msg, bool32 received)
              msg->time);
 }
 
-not_used static void
+not_used internal void
 print_disconnect_msg(struct _disconnect_msg *msg, bool32 received)
 {
     dbg_info("%s:\n"
@@ -219,25 +219,25 @@ print_disconnect_msg(struct _disconnect_msg *msg, bool32 received)
              received ? "Receiving" : "Sending");
 }
  
-static int32 StartServer();
-static int32 StartClient();
-static int32 CloseServer();
-static int32 AcceptConnection();
-static int32 ConnectToIP(const char *);
-static int32 SendControlMessages();
-static net_message *GetNextMessage();
-static int32 ReceiveControlMessages();
-static int32 SendInitRequestMessage();
-static int32 SendInitMessage(real64, real64, int32);
-static int32 SendFinishInitMessage(destination_IP);
-static int32 SendReadyPlaybackMessage();
-static int32 SendRequestPortMessage();
-static int32 SendPlayMessage();
-static int32 SendPauseMessage();
-static int32 SendSeekMessage(real64);
-static int32 SendDisconnectMessage();
-static int32 CloseConnection();
-static void GetPartnerIPStr(char **buffer);
-static void GetPartnerIPInt(uint32 *buffer);
+internal int32 StartServer();
+internal int32 StartClient();
+internal int32 CloseServer();
+internal int32 AcceptConnection();
+internal int32 ConnectToIP(const char *);
+internal int32 SendControlMessages();
+internal net_message *GetNextMessage();
+internal int32 ReceiveControlMessages();
+internal int32 SendInitRequestMessage();
+internal int32 SendInitMessage(real64, real64, int32);
+internal int32 SendFinishInitMessage(destination_IP);
+internal int32 SendReadyPlaybackMessage();
+internal int32 SendRequestPortMessage();
+internal int32 SendPlayMessage();
+internal int32 SendPauseMessage();
+internal int32 SendSeekMessage(real64);
+internal int32 SendDisconnectMessage();
+internal int32 CloseConnection();
+internal void GetPartnerIPStr(char **buffer);
+internal void GetPartnerIPInt(uint32 *buffer);
 
 #endif
