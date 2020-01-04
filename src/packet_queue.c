@@ -18,6 +18,13 @@ This holds a queue of AVPacket structs. This is a buffer for
 #include "common/custom_malloc.h"
 
 #include "watchtogether.h"
+#include "defines.h"
+
+internal inline b32
+avpq_check_initialized(avpacket_queue *queue)
+{
+    return (queue->maxn > 0);
+}
 
 internal avpacket_queue*
 init_avpacket_queue(int32 n)
@@ -38,6 +45,11 @@ init_avpacket_queue(int32 n)
 internal int32
 enqueue_packet(avpacket_queue *queue, AVPacket *packet)
 {
+    if(!avpq_check_initialized(queue))
+    {
+        RETURN(UNINITIALIZED);
+    }
+    
     if(queue->n == queue->maxn)
     {
         dbg_warn("Packet queue full.\n");
@@ -63,6 +75,11 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
 internal int32
 dequeue_packet(avpacket_queue *queue, AVPacket **packet)
 {
+    if(!avpq_check_initialized(queue))
+    {
+        RETURN(UNINITIALIZED);
+    }
+    
     if(queue->n == 0)
     {
         dbg_warn("Packet queue empty.\n");
@@ -92,6 +109,11 @@ internal int32
 peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)
 {
     // check if nth packet is queued up
+    if(!avpq_check_initialized(queue))
+    {
+        RETURN(UNINITIALIZED);
+    }
+    
     if(queue->n < nth+1)
     {
         dbg_print("packet queue: %d\n", queue->n);
