@@ -51,4 +51,9 @@ internal inline bool32 pq_is_empty(avpacket_queue *queue)
     return (queue->n == 0);
 }
 
+internal inline b32 pq_initialized(avpacket_queue *queue)
+{
+    return (queue->maxn > 0);
+}
+
 #endif

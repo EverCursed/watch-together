@@ -20,12 +20,6 @@ This holds a queue of AVPacket structs. This is a buffer for
 #include "watchtogether.h"
 #include "defines.h"
 
-internal inline b32
-avpq_check_initialized(avpacket_queue *queue)
-{
-    return (queue->maxn > 0);
-}
-
 internal avpacket_queue*
 init_avpacket_queue(int32 n)
 {
@@ -45,9 +39,9 @@ init_avpacket_queue(int32 n)
 internal int32
 enqueue_packet(avpacket_queue *queue, AVPacket *packet)
 {
-    if(!avpq_check_initialized(queue))
+    if(!pq_initialized(queue))
     {
-        RETURN(UNINITIALIZED);
+    RETURN(UNINITIALIZED);
     }
     
     if(queue->n == queue->maxn)
@@ -75,7 +69,7 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
 internal int32
 dequeue_packet(avpacket_queue *queue, AVPacket **packet)
 {
-    if(!avpq_check_initialized(queue))
+    if(!pq_initialized(queue))
     {
         RETURN(UNINITIALIZED);
     }
@@ -108,8 +102,8 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
 internal int32
 peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)
 {
-    // check if nth packet is queued up
-    if(!avpq_check_initialized(queue))
+     //check if nth packet is queued up
+    if(!pq_initialized(queue))
     {
         RETURN(UNINITIALIZED);
     }

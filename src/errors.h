@@ -30,6 +30,7 @@ Function debug return macros.
 #define CONTAINER_EMPTY      (-16)
 #define DISCONNECTED         (-17)
 #define UNKNOWN_STREAM       (-18)
+#define UNINITIALIZED        (-19)
 
 #define success(a) (a >= SUCCESS)
 #define fail(a) (a < SUCCESS)
