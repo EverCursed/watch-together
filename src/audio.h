@@ -24,18 +24,18 @@ typedef struct _output_audio {
     uint32 size;
     uint32 max_buffer_size;
     bool32 is_ready;
-    real64 pts;
-    real64 duration;
+    f64 pts;
+    f64 duration;
     
     int32 audio_format;
     
-    real32 volume;
+    f32 volume;
 } output_audio;
 
 
 internal void PrepareAudioOutput(output_audio *);
-internal r32 Volume(output_audio *audio);
-internal void SetVolume(output_audio *audio, r32 v);
-internal void IncreaseVolume(output_audio *audio, r32 v);
+internal f32 Volume(output_audio *audio);
+internal void SetVolume(output_audio *audio, f32 v);
+internal void IncreaseVolume(output_audio *audio, f32 v);
 
 #endif

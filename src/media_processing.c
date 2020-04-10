@@ -482,7 +482,7 @@ ProcessAllPacketsAndFillFrameBuffers(decoder_info *decoder, output_video *video,
         if(media_type == VIDEO)
         {
             process_video_frame(&frame, video, decoder);
-            real64 time = frame->pts * av_q2d(decoder->video_time_base);
+            f64 time = frame->pts * av_q2d(decoder->video_time_base);
             //dbg_info("Video frame pts: %lf\n", time);
             if(FQEnqueue(video->queue, frame, time))
             {
@@ -492,7 +492,7 @@ ProcessAllPacketsAndFillFrameBuffers(decoder_info *decoder, output_video *video,
         else if(media_type == AUDIO)
         {
             process_audio_frame(&frame, audio, decoder);
-            real64 time = frame->pts / av_q2d(decoder->audio_time_base);
+            f64 time = frame->pts / av_q2d(decoder->audio_time_base);
             //dbg_info("Audio frame pts: %lf\n", time);
             if(FQEnqueue(audio->queue, frame, time))
             {
@@ -519,11 +519,11 @@ EnoughDurations(output_audio *audio, open_file_info *file, output_video *video, 
 {
     StartTimer("EnoughDurations()");
     
-    real64 audio_time = audio->duration;
+    f64 audio_time = audio->duration;
     // TODO(Val): This will break the application if the framerate is larger than the monitor refresh rate.
-    real64 video_time = video->frame_duration;
-    real64 refresh_time = *playback->refresh_target;
-    real64 next_time = get_future_playback_time(playback);
+    f64 video_time = video->frame_duration;
+    f64 refresh_time = *playback->refresh_target;
+    f64 next_time = get_future_playback_time(playback);
     
     bool32 audio_enough =
         !file->has_audio ||

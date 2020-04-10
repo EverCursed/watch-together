@@ -86,8 +86,8 @@ struct align(MESSAGE_DATA_ALIGNMENT) _request_init_msg {
 struct align(MESSAGE_DATA_ALIGNMENT) _init_msg {
     MSG_HEADER;
     int32 flags;
-    real64 start_time;
-    real64 file_duration;
+    f64 start_time;
+    f64 file_duration;
     uint16 port;
 };
 
@@ -111,7 +111,7 @@ struct align(MESSAGE_DATA_ALIGNMENT) _request_info_msg {
 
 struct align(MESSAGE_DATA_ALIGNMENT) _pause_msg {
     MSG_HEADER;
-    real64 time;
+    f64 time;
 };
 
 struct align(MESSAGE_DATA_ALIGNMENT) _play_msg {
@@ -120,7 +120,7 @@ struct align(MESSAGE_DATA_ALIGNMENT) _play_msg {
 
 struct align(MESSAGE_DATA_ALIGNMENT) _seek_msg {
     MSG_HEADER;
-    real64 time;
+    f64 time;
 };
 
 struct align(MESSAGE_DATA_ALIGNMENT) _disconnect_msg {
@@ -228,13 +228,13 @@ internal int32 SendControlMessages();
 internal net_message *GetNextMessage();
 internal int32 ReceiveControlMessages();
 internal int32 SendInitRequestMessage();
-internal int32 SendInitMessage(real64, real64, int32);
+internal int32 SendInitMessage(f64, f64, int32);
 internal int32 SendFinishInitMessage(destination_IP);
 internal int32 SendReadyPlaybackMessage();
 internal int32 SendRequestPortMessage();
 internal int32 SendPlayMessage();
 internal int32 SendPauseMessage();
-internal int32 SendSeekMessage(real64);
+internal int32 SendSeekMessage(f64);
 internal int32 SendDisconnectMessage();
 internal int32 CloseConnection();
 internal void GetPartnerIPStr(char **buffer);

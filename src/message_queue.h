@@ -33,9 +33,9 @@ https://github.com/EverCursed
 
 typedef struct _arg {
     union {
-        int32 s;
-        uint32 u;
-        real32 f;
+        i32 s;
+        u32 u;
+        f32 f;
     };
 } arg;
 
@@ -45,7 +45,7 @@ static arg NO_ARG = { .s = 0 };
 typedef struct _message {
     int32 msg;
     arg args[5];
-    real64 time;
+    f64 time;
 } message;
 
 typedef struct _message_queue {
@@ -77,7 +77,7 @@ MessagesFull(message_queue *q)
 }
 
 internal void InitMessageQueue(message_queue *q);
-internal void AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, real64 time);
+internal void AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, f64 time);
 internal int32 GetApplicationMessage(message_queue *q, message *m);
 internal void ClearMessages(message_queue *q);
 

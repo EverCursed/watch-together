@@ -125,10 +125,10 @@ typedef struct _client_info {
     int32 bytes_per_pixel;
     bool32 fullscreen;
     
-    real64 start_time;
-    real64 refresh_target;
-    real64 current_frame_time;
-    real64 next_refresh_time;
+    f64 start_time;
+    f64 refresh_target;
+    f64 current_frame_time;
+    f64 next_refresh_time;
 } client_info;
 
 internal inline void
@@ -139,7 +139,7 @@ Client_UpdateTime(client_info *client)
 }
 
 internal inline void
-Client_SetRefreshTime(client_info *client, real64 target_time)
+Client_SetRefreshTime(client_info *client, f64 target_time)
 {
     client->refresh_target = target_time;
     

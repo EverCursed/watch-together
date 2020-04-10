@@ -58,7 +58,7 @@ typedef struct _decoder_info {
     
     const char *filename;
     
-    real64 avg_video_framerate;
+    f64 avg_video_framerate;
     cond_info condition;
     cond_info start_streaming;
     avpacket_queue *queue;

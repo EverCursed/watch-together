@@ -23,7 +23,7 @@ Timestamp queue header.
 
 typedef struct _avframe_queue {
     AVFrame **frames;
-    real64 *pts;
+    f64 *pts;
     platform_mutex mutex;
     int32 max;
     int32 n;
@@ -42,7 +42,7 @@ FQEmpty(avframe_queue *queue)
     return (queue->n == 0);
 }
 
-warn_unused internal inline real64
+warn_unused internal inline f64
 FQNextTimestamp(avframe_queue *queue)
 {
     return queue->n > 0 ? queue->pts[0] : FQ_NO_MORE_FRAMES;
@@ -61,13 +61,13 @@ internal void
 FQClose(avframe_queue **queue);
 
 warn_unused internal int32
-FQDequeue(avframe_queue *queue, AVFrame **frame, real64 *pts);
+FQDequeue(avframe_queue *queue, AVFrame **frame, f64 *pts);
 
 warn_unused internal int32
-FQEnqueue(avframe_queue *queue, AVFrame *frame, real64 pts);
+FQEnqueue(avframe_queue *queue, AVFrame *frame, f64 pts);
 
 warn_unused internal int32
-FQRemoveUpTo(avframe_queue *queue, real64 pts);
+FQRemoveUpTo(avframe_queue *queue, f64 pts);
 
 warn_unused internal int32
 FQClear(avframe_queue *queue);

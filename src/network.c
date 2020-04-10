@@ -410,8 +410,8 @@ GetPartnerIPInt()
 }
 
 internal int32
-SendInitMessage(real64 start_timestamp,
-                real64 file_duration,
+SendInitMessage(f64 start_timestamp,
+                f64 file_duration,
                 int32 flags)
 {
     INIT_MSG_VARIABLES(MESSAGE_INIT, struct _init_msg, msg);
@@ -446,7 +446,7 @@ SendRequestPortMessage()
 }
 
 internal int32
-SendSeekMessage(real64 timestamp)
+SendSeekMessage(f64 timestamp)
 {
     INIT_MSG_VARIABLES(MESSAGE_SEEK, struct _seek_msg, msg);
     

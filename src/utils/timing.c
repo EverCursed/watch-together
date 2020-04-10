@@ -33,19 +33,19 @@ InitPlatformTimingData()
 }
 
 internal void
-GetHighPrecisionTime(real64 *ptr)
+GetHighPrecisionTime(f64 *ptr)
 {
 #if defined( _WIN32)
     uint64 time;
     QueryPerformanceCounter((LARGE_INTEGER *)&time);
-    *ptr = ((real64)time / (real64)__dbgtimdat.dat.freq) - __dbgtimdat.start_time;
+    *ptr = ((f64)time / (f64)__dbgtimdat.dat.freq) - __dbgtimdat.start_time;
 #endif
 }
 
 internal void
 StartTimer(char* name_c)
 {
-    #ifdef DEBUG
+#ifdef DEBUG
     if(__dbgtimdat.n == __dbgtimdat.max_marks)
     {
         __dbgtimdat.inst =
@@ -58,13 +58,13 @@ StartTimer(char* name_c)
     __dbgtimdat.n++;
 #else
     return;
-    #endif
+#endif
 }
 
 internal void
 EndTimer()
 {
-    #ifdef DEBUG
+#ifdef DEBUG
     if(__dbgtimdat.n == __dbgtimdat.max_marks)
     {
         __dbgtimdat.inst = custom_realloc(__dbgtimdat.inst, sizeof(timing_instance)*(__dbgtimdat.max_marks + MAX_EVENTS));
@@ -75,13 +75,13 @@ EndTimer()
     __dbgtimdat.n++;
 #else
     return;
-    #endif
+#endif
 }
 
 internal void
 DumpTimingFrame()
 {
-    #ifdef DEBUG
+#ifdef DEBUG
     int32 n = 0; 
     struct _timing_queue queue = {};
     __dbgtimdat.dump = custom_malloc(__dbgtimdat.n * DEBUG_LINE_WIDTH);
@@ -100,7 +100,7 @@ DumpTimingFrame()
         else
         {
             queue.n--;
-            real64 time_passed = __dbgtimdat.inst[i].time - queue.q[queue.n].time;
+            f64 time_passed = __dbgtimdat.inst[i].time - queue.q[queue.n].time;
             for(int d = 0; d < queue.n; d++)
             {
                 n += sprintf((__dbgtimdat.dump + n), "\t");
@@ -111,13 +111,13 @@ DumpTimingFrame()
     __dbgtimdat.dump_length += n;
 #else
     return;
-    #endif
+#endif
 }
 
 internal void
 InitializeTimingSystem(char *name)
 {
-    #ifdef DEBUG
+#ifdef DEBUG
     InitPlatformTimingData(); 
     
     __dbgtimdat.inst = custom_malloc(sizeof(timing_instance) * MAX_EVENTS);
@@ -129,13 +129,13 @@ InitializeTimingSystem(char *name)
     __dbgtimdat.max_marks = MAX_EVENTS;
 #else
     return;
-    #endif
+#endif
 }
 
 internal void
 FinishTiming()
 {
-    #ifdef DEBUG
+#ifdef DEBUG
     DumpTimingFrame();
     char filename[256];
     sprintf(filename, "debug/%s-thread.txt", __dbgtimdat.thread_name);
@@ -146,6 +146,5 @@ FinishTiming()
     free(__dbgtimdat.dump);
 #else
     return;
-    #endif
+#endif
 }
- 

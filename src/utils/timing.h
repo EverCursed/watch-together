@@ -27,7 +27,7 @@ struct platform_timing_data {
 
 typedef struct _timing_instance {
     char   *name;
-    real64  time;
+    f64 time;
 } timing_instance;
 
 struct _timing_queue {
@@ -39,7 +39,7 @@ struct _timing_data {
     timing_instance *inst;
     char *dump;
     char *thread_name;
-    real64 start_time;
+    f64 start_time;
     int32 dump_length;
     int32 n;
     int32 max_marks;
@@ -57,7 +57,7 @@ internal void InitializeTimingSystem(char* name);
 internal void StartTimer(char* name_c);
 internal void EndTimer();
 internal void FinishTiming();
- 
+
 #else
 
 // DEBUG is not defined, remove all timing information

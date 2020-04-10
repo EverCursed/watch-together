@@ -17,8 +17,8 @@ typedef struct _open_file_info {
     uint32 width;
     uint32 height;
     uint32 video_format;
-    real32 fps;
-    real32 target_time;
+    f32 fps;
+    f32 target_time;
     
     uint32 sample_rate;
     uint32 bytes_per_sample;

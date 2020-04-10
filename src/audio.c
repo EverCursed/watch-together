@@ -15,22 +15,22 @@ PrepareAudioOutput(output_audio *audio)
     audio->size = 0;
 }
 
-internal r32
+internal f32
 Volume(output_audio *audio)
 {
     return audio->volume;
 }
 
 internal void
-SetVolume(output_audio *audio, r32 v)
+SetVolume(output_audio *audio, f32 v)
 {
     audio->volume = v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v);
 }
 
 internal void
-IncreaseVolume(output_audio *audio, r32 v)
+IncreaseVolume(output_audio *audio, f32 v)
 {
-    r32 new_vol = audio->volume + v;
+    f32 new_vol = audio->volume + v;
     
     SetVolume(audio, new_vol);
 }

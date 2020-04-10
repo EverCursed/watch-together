@@ -197,7 +197,8 @@ ProcessMouse(program_data *pdata)
         int y = mouse->y;
         int screen_x = pdata->client.output_width;
         int screen_y = pdata->client.output_height;
-        fptr function = MenuGetClickedButton(m, x, y, screen_x, screen_y);
+        
+        fptr function = MenuGetClickedButtonAction(m, x, y, screen_x, screen_y);
         
         if(function)
         {
@@ -291,7 +292,7 @@ InitializeApplication(program_data *pdata)
     InitMessageQueue(&pdata->messages);
     InitializePointers(pdata);
     
-    Client_SetRefreshTime(&pdata->client, 1.0 / (real64)pdata->hardware.monitor_refresh_rate);
+    Client_SetRefreshTime(&pdata->client, 1.0 / (f64)pdata->hardware.monitor_refresh_rate);
     
     InitializeMenus(pdata);
     if(!pdata->menu)
@@ -522,7 +523,7 @@ ProcessAudio(program_data *pdata)
     {
         PlatformQueueAudio(frame);
         
-        increment_audio_times(&pdata->playback, (real64)frame->nb_samples/(real64)frame->sample_rate);
+        increment_audio_times(&pdata->playback, (f64)frame->nb_samples/(f64)frame->sample_rate);
         //pdata->audio.requested_timestamp = get_future_playback_time(&pdata->playback);
         //PrepareAudioOutput(&pdata->audio);
         
@@ -884,8 +885,8 @@ MainLoopThread(void *arg)
         }
         //dbg_print("Loop time: %ld\n", playback->time_end - playback->time_start);
         
-        real64 time = PlatformGetTime();
-        //real64 sleep_time = (client->next_refresh_time - time - 0.002);
+        f64 time = PlatformGetTime();
+        //f64 sleep_time = (client->next_refresh_time - time - 0.002);
         //dbg_info("PlatformSleep(%lf)\n"
         //"\tnext_refresh_time: %lf\n"
         //"\tcurrent time: %lf\n",

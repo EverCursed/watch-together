@@ -18,13 +18,13 @@ u32 button_mouseover_color  = 0x80F7F7F7;
 u32 button_pressed_color    = 0x80C8C8C8;
 //u32 text_color              = 0x00FFFFFF;
 
-v4 button_color = { .x = 1.0f, .y = 1.0f, .z = 1.0f, .w = 1.0f };
+v4 button_color = { .F32 = { 1.0f, 1.0f, 1.0f, 1.0f } };
 SDL_Color text_color = { 255, 255, 255, 255 };
 
 //////////////////////// TEXT BOXES //////////////////////////////
 
 internal void
-CreateMenuTextBox(MenuScreen *s, r32 x, r32 y, r32 w, r32 h, r32 scale, char *text)
+CreateMenuTextBox(MenuScreen *s, f32 x, f32 y, f32 w, f32 h, f32 scale, char *text)
 {
     assert(s->text_blocks->ntexts < MAX_SCREEN_TEXT_BLOCK_COUNT);
     
@@ -33,12 +33,12 @@ CreateMenuTextBox(MenuScreen *s, r32 x, r32 y, r32 w, r32 h, r32 scale, char *te
     int vi = ntext/4;
     int ve = ntext%4;
     
-    s->text_blocks->x[vi].E[ve] = x;
-    s->text_blocks->y[vi].E[ve] = y;
-    s->text_blocks->w[vi].E[ve] = w;
-    s->text_blocks->h[vi].E[ve] = h;
+    s->text_blocks->dimensions[vi].x.F32[ve] = x; 
+    s->text_blocks->dimensions[vi].y.F32[ve] = y; 
+    s->text_blocks->dimensions[vi].z.F32[ve] = w; 
+    s->text_blocks->dimensions[vi].w.F32[ve] = h; 
     
-    s->text_blocks->s[vi].E[ve] = scale;
+    s->text_blocks->s[vi].F32[ve] = scale;
     
     assert(text != NULL);
     
@@ -51,16 +51,16 @@ CreateMenuTextBox(MenuScreen *s, r32 x, r32 y, r32 w, r32 h, r32 scale, char *te
     int w_texture, h_texture;
     SDL_QueryTexture(s->text_blocks->rendered_text[ntext],
                      NULL, NULL, &w_texture, &h_texture);
-    s->text_blocks->text_width[vi].E[ve] = (float)w_texture;
-    s->text_blocks->text_height[vi].E[ve] = (float)h_texture;
+    s->text_blocks->text_width[vi].F32[ve] = (float)w_texture;
+    s->text_blocks->text_height[vi].F32[ve] = (float)h_texture;
 }
 
 ///////////////////////// BUTTONS ////////////////////////////////
 
 internal i32
 CreateMenuButton(MenuScreen *s,
-                 r32 x, r32 y,
-                 r32 width, r32 height,
+                 f32 x, f32 y,
+                 f32 w, f32 h,
                  char *text,
                  void (*function)(void *))
 {
@@ -70,45 +70,20 @@ CreateMenuButton(MenuScreen *s,
     
     assert(buttons < MAX_SCREEN_BUTTON_COUNT);
     
-    s->buttons->x[vi].E[ve] = x;
-    s->buttons->y[vi].E[ve] = y;
-    s->buttons->w[vi].E[ve] = width;
-    s->buttons->h[vi].E[ve] = height;
+    s->buttons->dimensions[vi].x.F32[ve] = x; 
+    s->buttons->dimensions[vi].y.F32[ve] = y; 
+    s->buttons->dimensions[vi].z.F32[ve] = w; 
+    s->buttons->dimensions[vi].w.F32[ve] = h; 
     
     s->buttons->color[buttons] = button_color;
     s->buttons->action[buttons] = function;
     
-    if(text) CreateMenuTextBox(s, x, y, width, height, BUTTON_TEXT_HEIGHT_FRACTION, text);
+    if(text) CreateMenuTextBox(s, x, y, w, h, BUTTON_TEXT_HEIGHT_FRACTION, text);
     
     return buttons;
 }
 
-internal void
-DestroyMenuButton(MenuScreen *s, int button_index)
-{
-    int button_count = s->buttons->nbuttons--;
-    for(int i = button_index; i < button_count-1; i++)
-    {
-        // TODO(Val): maybe replace this with some kind of wide shift?
-        
-        int vi = i/4;
-        int ve = i%4;
-        int vi2 = (i+1)/4;
-        int ve2 = (i+1)%4;
-        
-        s->buttons->x[vi].E[ve] = s->buttons->x[vi2].E[ve2];
-        s->buttons->y[vi].E[ve] = s->buttons->y[vi2].E[ve2];
-        s->buttons->w[vi].E[ve] = s->buttons->w[vi2].E[ve2];
-        s->buttons->h[vi].E[ve] = s->buttons->h[vi2].E[ve2];
-        
-        s->buttons->color[i] = s->buttons->color[i+1];
-        s->buttons->action[i] = s->buttons->action[i+1];
-        s->buttons->rendered_text[i] = s->buttons->rendered_text[i+1];
-        
-        s->buttons->mouse_hovered[i] = s->buttons->mouse_hovered[i+1];
-        s->buttons->mouse_clicked[i] = s->buttons->mouse_clicked[i+1];
-    }
-}
+// TODO(Val): Allow menu modules to be dynamically removed?
 
 ///////////////////////// SCREENS ////////////////////////////////
 
@@ -239,29 +214,33 @@ RenderMenu(Menu *m, i32 output_width, i32 output_height)
         m->text_count = ntexts;
         m->text_rects = custom_malloc(sizeof(SDL_Rect)*rounded_ntexts);
         
-        v4 screen_x = v4_set1_ps((float)output_width);
-        v4 screen_y = v4_set1_ps((float)output_height);
+        v4 screen_x = v4_set1_ps((f32)output_width);
+        v4 screen_y = v4_set1_ps((f32)output_height);
+        
+        
         
         for(int i = 0; i < (nbuttons+3)/4; i+=1)
         {
             v4 x_fin, y_fin, w_fin, h_fin;
             
-            x_fin = v4_mul_ps(s->buttons->x[i], screen_x);
-            y_fin = v4_mul_ps(s->buttons->y[i], screen_y);
-            w_fin = v4_mul_ps(s->buttons->w[i], screen_x);
-            h_fin = v4_mul_ps(s->buttons->h[i], screen_y);
+            x_fin = v4_cvtps_epi32(v4_mul_ps(s->buttons->dimensions[i].x, screen_x));
+            y_fin = v4_cvtps_epi32(v4_mul_ps(s->buttons->dimensions[i].y, screen_y));
+            w_fin = v4_cvtps_epi32(v4_mul_ps(s->buttons->dimensions[i].z, screen_x));
+            h_fin = v4_cvtps_epi32(v4_mul_ps(s->buttons->dimensions[i].w, screen_y));
             
-            x_fin = v4_cvtps_epi32(x_fin);
-            y_fin = v4_cvtps_epi32(y_fin);
-            w_fin = v4_cvtps_epi32(w_fin);
-            h_fin = v4_cvtps_epi32(h_fin);
             
             for(int j = 0; j < 4; j++)
             {
-                m->rects[i*4 + j].x = x_fin.s.E[j];
-                m->rects[i*4 + j].y = y_fin.s.E[j];
-                m->rects[i*4 + j].w = w_fin.s.E[j];
-                m->rects[i*4 + j].h = h_fin.s.E[j];
+                m->rects[i*4 + j].x = x_fin.I32[j];
+                m->rects[i*4 + j].y = y_fin.I32[j];
+                m->rects[i*4 + j].w = w_fin.I32[j];
+                m->rects[i*4 + j].h = h_fin.I32[j];
+                
+                //dbg_error("rect = { %d, %d, %d, %d }\n",
+                //m->text_rects[i*4 + j].x,
+                //m->text_rects[i*4 + j].y,
+                //m->text_rects[i*4 + j].w,
+                //m->text_rects[i*4 + j].h);
             };
         }
         
@@ -272,10 +251,10 @@ RenderMenu(Menu *m, i32 output_width, i32 output_height)
             v4 x_bounding, y_bounding, w_bounding, h_bounding;
             v4 x_fin, y_fin, w_fin, h_fin;
             
-            x_bounding = v4_mul_ps(s->text_blocks->x[i], screen_x);
-            y_bounding = v4_mul_ps(s->text_blocks->y[i], screen_y);
-            w_bounding = v4_mul_ps(s->text_blocks->w[i], screen_x);
-            h_bounding = v4_mul_ps(s->text_blocks->h[i], screen_y);
+            x_bounding = v4_mul_ps(s->text_blocks->dimensions[i].x, screen_x);
+            y_bounding = v4_mul_ps(s->text_blocks->dimensions[i].y, screen_y);
+            w_bounding = v4_mul_ps(s->text_blocks->dimensions[i].z, screen_x);
+            h_bounding = v4_mul_ps(s->text_blocks->dimensions[i].w, screen_y);
             
             h_fin = v4_mul_ps(h_bounding, s->text_blocks->s[i]);
             w_fin = v4_mul_ps(v4_div_ps(h_fin, s->text_blocks->text_height[i]), s->text_blocks->text_width[i]);
@@ -290,10 +269,10 @@ RenderMenu(Menu *m, i32 output_width, i32 output_height)
             
             for(int j = 0; j < 4; j++)
             {
-                m->text_rects[i*4 + j].x = x_fin.s.E[j];
-                m->text_rects[i*4 + j].y = y_fin.s.E[j];
-                m->text_rects[i*4 + j].w = w_fin.s.E[j];
-                m->text_rects[i*4 + j].h = h_fin.s.E[j];
+                m->text_rects[i*4 + j].x = x_fin.I32[j];
+                m->text_rects[i*4 + j].y = y_fin.I32[j];
+                m->text_rects[i*4 + j].w = w_fin.I32[j];
+                m->text_rects[i*4 + j].h = h_fin.I32[j];
             };
         }
         
@@ -307,7 +286,7 @@ RenderMenu(Menu *m, i32 output_width, i32 output_height)
 ///////////////////////// MOUSE INPUT /////////////////////////////
 
 static fptr
-MenuGetClickedButton(Menu *m, i32 x, i32 y, i32 screen_x, i32 screen_y)
+MenuGetClickedButtonAction(Menu *m, i32 x, i32 y, i32 screen_x, i32 screen_y)
 {
     v4 mouse_x = v4_set1_ps((float)x/(float)screen_x);
     v4 mouse_y = v4_set1_ps((float)y/(float)screen_y);
@@ -320,11 +299,11 @@ MenuGetClickedButton(Menu *m, i32 x, i32 y, i32 screen_x, i32 screen_y)
     int nbuttons = (b->nbuttons+3)/4;
     for(int i = 0; i < nbuttons; i++)
     {
-        v4 x_right = v4_add_ps(b->x[i], b->w[i]);
-        v4 y_bottom = v4_add_ps(b->y[i], b->h[i]);
+        v4 x_right = v4_add_ps(b->dimensions[i].x, b->dimensions[i].z);
+        v4 y_bottom = v4_add_ps(b->dimensions[i].y, b->dimensions[i].w);
         
-        v4 x_res = v4_cmpge_ps(mouse_x, b->x[i]);
-        v4 y_res = v4_cmpge_ps(mouse_y, b->y[i]);
+        v4 x_res = v4_cmpge_ps(mouse_x, b->dimensions[i].x);
+        v4 y_res = v4_cmpge_ps(mouse_y, b->dimensions[i].y);
         
         v4 x_res2 = v4_cmple_ps(mouse_x, x_right);
         v4 y_res2 = v4_cmple_ps(mouse_y, y_bottom);
@@ -336,7 +315,7 @@ MenuGetClickedButton(Menu *m, i32 x, i32 y, i32 screen_x, i32 screen_y)
         
         for(int j = 0; j < 4; j++)
         {
-            if(res.E[j])
+            if(res.I32[j])
             {
                 return b->action[i*4 + j];
             }

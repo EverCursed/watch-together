@@ -16,16 +16,13 @@
 
 #define BUTTON_TEXT_HEIGHT_FRACTION 0.75f
 
+typedef i32 button_id;
 typedef void (*fptr)(void *);
 
 typedef struct MenuButtons {
     i32 nbuttons;
     
-    v4 x[MAX_SCREEN_BUTTON_COUNT/4];
-    v4 y[MAX_SCREEN_BUTTON_COUNT/4];
-    
-    v4 w[MAX_SCREEN_BUTTON_COUNT/4];
-    v4 h[MAX_SCREEN_BUTTON_COUNT/4];
+    v4x4 dimensions[MAX_SCREEN_BUTTON_COUNT/4];
     
     v4 color[MAX_SCREEN_BUTTON_COUNT];
     //char text[MAX_BUTTON_TEXT_LENGTH];
@@ -34,16 +31,13 @@ typedef struct MenuButtons {
     
     b32 mouse_hovered[MAX_SCREEN_BUTTON_COUNT];
     b32 mouse_clicked[MAX_SCREEN_BUTTON_COUNT];
+    b32 button_disabled[MAX_SCREEN_BUTTON_COUNT];
 } MenuButtons;
 
 typedef struct MenuTexts {
     i32 ntexts;
     
-    v4 x[MAX_SCREEN_TEXT_BLOCK_COUNT/4];
-    v4 y[MAX_SCREEN_TEXT_BLOCK_COUNT/4];
-    
-    v4 w[MAX_SCREEN_TEXT_BLOCK_COUNT/4];
-    v4 h[MAX_SCREEN_TEXT_BLOCK_COUNT/4];
+    v4x4 dimensions[MAX_SCREEN_TEXT_BLOCK_COUNT/4];
     
     v4 s[MAX_SCREEN_TEXT_BLOCK_COUNT/4];
     
@@ -91,18 +85,17 @@ internal MenuScreen* GetTopmostMenuScreen(Menu *m);
 internal void DestroyMenuScreen(MenuScreen *s);
 internal MenuScreen* CreateMenuScreen(Menu *m);
 internal void AddMenuScreenToMenu(Menu *m, MenuScreen *s);
-internal void DestroyMenuButton(MenuScreen *s, i32 button_index);
 internal i32 CreateMenuButton(MenuScreen *s,
-                              r32 x, r32 y,
-                              r32 width, r32 height,
+                              f32 x, f32 y,
+                              f32 width, f32 height,
                               char *text,
                               void (*function)(void *));
-internal void CreateMenuTextBox(MenuScreen *s, r32 x, r32 y, r32 w, r32 h, r32 scale, char *text);
+internal void CreateMenuTextBox(MenuScreen *s, f32 x, f32 y, f32 w, f32 h, f32 scale, char *text);
 internal void PushMenuScreen(Menu *m, MenuScreen *s);
 internal MenuScreen* PopMenuScreen(Menu *m);
 
 internal fptr
-MenuGetClickedButton(Menu *m, i32 x, i32 y, i32 screen_x, i32 screen_y);
+MenuGetClickedButtonAction(Menu *m, i32 x, i32 y, i32 screen_x, i32 screen_y);
 
 
 #endif //UI_H

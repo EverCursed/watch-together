@@ -18,7 +18,7 @@ typedef struct _output_video {
     void *video_frame;
     void *video_frame_sup1;
     void *video_frame_sup2;
-    real64 frame_duration;
+    f64 frame_duration;
     uint32 pitch;
     uint32 pitch_sup1;
     uint32 pitch_sup2;
@@ -26,7 +26,7 @@ typedef struct _output_video {
     uint32 height;
     int32 type;
     bool32 is_ready;
-    real64 pts;
+    f64 pts;
 } output_video;
 
 internal int32

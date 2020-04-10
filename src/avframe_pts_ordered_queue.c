@@ -19,7 +19,7 @@ FQInitialize(int32 flags)
     queue->frames = custom_malloc(FQ_MAX_FRAMES * sizeof(AVFrame *));
     if(!queue->frames) goto alloc_fail_inner;
     
-    queue->pts = custom_malloc(FQ_MAX_FRAMES * sizeof(real64));
+    queue->pts = custom_malloc(FQ_MAX_FRAMES * sizeof(f64));
     if(!queue->pts) goto alloc_fail_inner;
     
     queue->mutex = PlatformCreateMutex();
@@ -57,7 +57,7 @@ FQClose(avframe_queue **queue)
 }
 
 internal int32
-FQEnqueue(avframe_queue *queue, AVFrame *frame, real64 pts)
+FQEnqueue(avframe_queue *queue, AVFrame *frame, f64 pts)
 {
     if(FQInitialized(queue))
         RETURN(NOT_INITIALIZED);
@@ -66,7 +66,7 @@ FQEnqueue(avframe_queue *queue, AVFrame *frame, real64 pts)
     
     PlatformLockMutex(&queue->mutex);
     
-    real64 t;
+    f64 t;
     AVFrame *f;
     int i = queue->n;
     queue->frames[i] = frame;
@@ -94,7 +94,7 @@ FQEnqueue(avframe_queue *queue, AVFrame *frame, real64 pts)
 
 // TODO(Val): This should also check if we don't provide a pointer to pts
 internal int32
-FQDequeue(avframe_queue *queue, AVFrame **frame, real64 *pts)
+FQDequeue(avframe_queue *queue, AVFrame **frame, f64 *pts)
 {
     if(FQInitialized(queue))
         RETURN(NOT_INITIALIZED);
@@ -127,7 +127,7 @@ FQDequeue(avframe_queue *queue, AVFrame **frame, real64 *pts)
 }
 
 internal int32
-FQRemove(avframe_queue *queue, real64 pts)
+FQRemove(avframe_queue *queue, f64 pts)
 {
     RETURN(NOT_YET_IMPLEMENTED);
 }

@@ -22,6 +22,9 @@ https://github.com/EverCursed
 #define local_persist   static
 #define global          static
 
+typedef float f32;
+typedef double f64;
+
 typedef int8_t int8;
 typedef int16_t int16;
 typedef int32_t int32;
@@ -31,9 +34,6 @@ typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
-
-typedef float real32;
-typedef double real64;
 
 typedef int8_t  bool8;
 typedef int16_t bool16;
@@ -49,11 +49,6 @@ typedef int8   i8;
 typedef int16  i16;
 typedef int32  i32;
 typedef int64  i64;
-
-typedef int8   s8;
-typedef int16  s16;
-typedef int32  s32;
-typedef int64  s64;
 
 typedef uint8   u8;
 typedef uint16  u16;
@@ -73,10 +68,7 @@ typedef struct { u64 _pad[2]; } uint128;
 
 #endif // __x86_64__
 
-typedef int128 s128;
+typedef int128 i128;
 typedef uint128 u128;
-
-typedef real32 r32;
-typedef real64 r64;
 
 #endif
