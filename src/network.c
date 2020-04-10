@@ -72,13 +72,13 @@ do { \
 internal int32 \
 Send##func_msg_type##Message() \
 { \
-INIT_MSG_VARIABLES(msg_val, struct_type, msg); \
-\
-print_func(&msg, 0); \
-\
-SEND_MSG_TO_QUEUE(msg);\
+    INIT_MSG_VARIABLES(msg_val, struct_type, msg); \
+    \
+    print_func(&msg, 0); \
+    \
+    SEND_MSG_TO_QUEUE(msg);\
 }
- 
+
 internal void
 reset_message_buffer()
 {
@@ -293,8 +293,8 @@ GetNextMessage()
         } break;
         //case MESSAGE_REQUEST_PORT:
         //{
-            //COPY_MSG(struct _request_port_msg, new_msg, msg);
-            //print_request_port_msg((struct _request_port_msg *)msg, 1);
+        //COPY_MSG(struct _request_port_msg, new_msg, msg);
+        //print_request_port_msg((struct _request_port_msg *)msg, 1);
         //} break;
         case MESSAGE_FINISH_INIT:
         {
@@ -388,7 +388,7 @@ GetPartnerIPStr(char **buffer)
     if(*buffer)
         custom_free(*buffer);
     *buffer = custom_malloc(256);
-
+    
     IPaddress *temp_ip = SDLNet_TCP_GetPeerAddress(partner);
     destination_IP ip = {};
     
@@ -401,12 +401,12 @@ GetPartnerIPStr(char **buffer)
     IPToStr(*buffer, ip);
 }
 
-internal void
-GetPartnerIPInt(uint32 *buffer)
+internal uint32
+GetPartnerIPInt()
 {
     IPaddress *temp_ip = SDLNet_TCP_GetPeerAddress(partner);
     
-    *buffer = temp_ip->host;//SDLNet_Read32(&temp_ip->host);
+    return temp_ip->host;
 }
 
 internal int32

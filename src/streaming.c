@@ -30,9 +30,11 @@ static char* host_parameters      = "?listen";
 internal int32
 Streaming_Client_Initialize(decoder_info *decoder)
 {
+    wlog(LOG_INFO, "Streaming_Client_Initialize()");
+    
     avformat_network_init();
     
-        RETURN(UNKNOWN_ERROR);
+    RETURN(UNKNOWN_ERROR);
 }
 
 not_used internal AVStream *
@@ -66,13 +68,13 @@ copy_stream_to_output(AVFormatContext *output_fmt_context, AVStream *input_strea
     out_stream = avformat_new_stream(output_fmt_context, NULL);
     if (!out_stream) {
         dbg_error("Failed allocating output stream\n");
-        return NULL;
+        return -1;
     }
     
     ret = avcodec_parameters_copy(out_stream->codecpar, input_params);
     if (ret < 0) {
         dbg_error("Failed to copy codec parameters\n");
-        return NULL;
+        return -1;
     }
     out_stream->codecpar->codec_tag = 0;
     
@@ -82,8 +84,9 @@ copy_stream_to_output(AVFormatContext *output_fmt_context, AVStream *input_strea
 internal int32
 Streaming_Host_Initialize(decoder_info *decoder, open_file_info *file, char *my_ip)
 {
-    avformat_network_init();
+    wlog(LOG_INFO, "Streamin_Host_Initialize()");
     
+    avformat_network_init();
     
     int ret = 0;
     char video_address[256];
@@ -100,12 +103,13 @@ Streaming_Host_Initialize(decoder_info *decoder, open_file_info *file, char *my_
     decoder->stream_mapping = av_mallocz_array(decoder->stream_mapping_size, sizeof(*decoder->stream_mapping));
     for(int i = 0; i < decoder->format_context->nb_streams; i++)
     {
-        decoder->stream_mapping[i] = copy_stream_to_output(decoder->output_context, decoder->format_context->streams[i]);
+        int temp = copy_stream_to_output(decoder->output_context, decoder->format_context->streams[i]);
+        decoder->stream_mapping[i] = temp >= 0 ? temp : -1;
     }
     
     av_dump_format(decoder->output_context, 0, video_address, 1);
     if (!(decoder->output_context->oformat->flags & AVFMT_NOFILE)) {
-        ret = avio_open(&decoder->output_context->pb, video_address, AVIO_FLAG_WRITE);
+        ret = avio_open(&decoder->output_context->pb, video_address, AVIO_FLAG_WRITE | AVIO_FLAG_NONBLOCK);
         if (ret < 0) {
             dbg_error("Could not open output file '%s'\n", video_address);
             RETURN(UNKNOWN_ERROR);
@@ -133,15 +137,17 @@ Streaming_Host_Accept(decoder_info *decoder)
 {
     //if(Streaming_Host_Is_Initialized(decoder))
     //{
-        //
+    //
     //}
     
-    return (NOT_YET_IMPLEMENTED);
+    RETURN(NOT_YET_IMPLEMENTED);
 }
 
 internal int32
 Streaming_Host_Close(decoder_info *decoder)
 {
+    wlog(LOG_INFO, "Streaming_Host_Close()");
+    
     //av_write_trailer(output_fmt_context);
     
     if(decoder->output_context && !(decoder->output_context->oformat->flags & AVFMT_NOFILE))
@@ -152,13 +158,15 @@ Streaming_Host_Close(decoder_info *decoder)
 }
 
 internal int32
-Streaming_Accept_Client()
+Streaming_Client_Close(decoder_info *decoder)
 {
-    RETURN(UNKNOWN_ERROR);
+    wlog(LOG_INFO, "Streaming_Client_Close()");
+    
+    RETURN(NOT_YET_IMPLEMENTED);
 }
 
 internal int32
-Streaming_Client_Close()
+Streaming_Accept_Client()
 {
     RETURN(UNKNOWN_ERROR);
 }
@@ -231,34 +239,36 @@ Streaming_Host_SendPacket(decoder_info *decoder, AVPacket *packet)
     output_stream = decoder->output_context->streams[decoder->stream_mapping[pkt->stream_index]];
     pkt->stream_index = decoder->stream_mapping[pkt->stream_index];
     
-    if(packet->pts & AV_NOPTS_VALUE ||
-       packet->dts & AV_NOPTS_VALUE ||
-       packet->duration & AV_NOPTS_VALUE)
+    if(pkt->stream_index != -1)
     {
-        dbg_info("Packet timestamps AV_NOPTS_VALUE");
-        AVRational time_base1 = decoder->video_stream->time_base;
-        //Duration between 2 frames (us)
-        int64_t calc_duration=(double)AV_TIME_BASE/av_q2d(decoder->video_stream->r_frame_rate);
-        //Parameters
-        pkt->pts = (double)(decoder->frames_sent*calc_duration)/(double)(av_q2d(time_base1)*AV_TIME_BASE);
-        pkt->dts = pkt->pts;
-        pkt->duration = (double)calc_duration/(double)(av_q2d(time_base1)*AV_TIME_BASE);
+        if(packet->pts & AV_NOPTS_VALUE ||
+           packet->dts & AV_NOPTS_VALUE ||
+           packet->duration & AV_NOPTS_VALUE)
+        {
+            dbg_info("Packet timestamps AV_NOPTS_VALUE");
+            AVRational time_base1 = decoder->video_stream->time_base;
+            //Duration between 2 frames (us)
+            int64_t calc_duration=(double)AV_TIME_BASE/av_q2d(decoder->video_stream->r_frame_rate);
+            //Parameters
+            pkt->pts = (double)(decoder->frames_sent*calc_duration)/(double)(av_q2d(time_base1)*AV_TIME_BASE);
+            pkt->dts = pkt->pts;
+            pkt->duration = (double)calc_duration/(double)(av_q2d(time_base1)*AV_TIME_BASE);
+            
+            //pkt->pts = decoder->frames_sent;
+            //pkt->dts = decoder->frames_sent;
+            decoder->frames_sent++;
+        }
         
-        //pkt->pts = decoder->frames_sent;
-        //pkt->dts = decoder->frames_sent;
-        decoder->frames_sent++;
+        pkt->pts = av_rescale_q_rnd(pkt->pts, input_stream->time_base, output_stream->time_base, AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX);
+        pkt->dts = av_rescale_q_rnd(pkt->dts, input_stream->time_base, output_stream->time_base, AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX);
+        pkt->duration = av_rescale_q(pkt->duration, input_stream->time_base, output_stream->time_base);
+        pkt->pos = -1;
+        
+        //ret = avformat_write_header(output_video_context, NULL);
+        
+        ret = av_interleaved_write_frame(decoder->output_context, pkt);
+        FF_Test(ret);
     }
-    
-    pkt->pts = av_rescale_q_rnd(pkt->pts, input_stream->time_base, output_stream->time_base, AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX);
-    pkt->dts = av_rescale_q_rnd(pkt->dts, input_stream->time_base, output_stream->time_base, AV_ROUND_NEAR_INF|AV_ROUND_PASS_MINMAX);
-    pkt->duration = av_rescale_q(pkt->duration, input_stream->time_base, output_stream->time_base);
-    pkt->pos = -1;
-    
-    //ret = avformat_write_header(output_video_context, NULL);
-    
-    ret = av_interleaved_write_frame(decoder->output_context, pkt);
-    FF_Test(ret);
-    
     //ret = av_write_trailer(output_video_context);
     //FF_Test(ret);
     
@@ -278,4 +288,3 @@ Streaming_SendControlPacket()
 {
     RETURN(NOT_YET_IMPLEMENTED);
 }
- 

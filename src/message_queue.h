@@ -29,6 +29,7 @@ https://github.com/EverCursed
 #define MSG_CONNECT_TO_SERVER  13
 #define MSG_DISCONNECT         14
 #define MSG_START_CLIENT       15
+#define MSG_TOGGLE_MENU        16
 
 typedef struct _arg {
     union {

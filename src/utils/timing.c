@@ -45,6 +45,7 @@ GetHighPrecisionTime(real64 *ptr)
 internal void
 StartTimer(char* name_c)
 {
+    #ifdef DEBUG
     if(__dbgtimdat.n == __dbgtimdat.max_marks)
     {
         __dbgtimdat.inst =
@@ -55,12 +56,15 @@ StartTimer(char* name_c)
     __dbgtimdat.inst[__dbgtimdat.n].name = name_c;
     GetHighPrecisionTime(&__dbgtimdat.inst[__dbgtimdat.n].time);
     __dbgtimdat.n++;
-    
+#else
+    return;
+    #endif
 }
 
 internal void
 EndTimer()
 {
+    #ifdef DEBUG
     if(__dbgtimdat.n == __dbgtimdat.max_marks)
     {
         __dbgtimdat.inst = custom_realloc(__dbgtimdat.inst, sizeof(timing_instance)*(__dbgtimdat.max_marks + MAX_EVENTS));
@@ -69,11 +73,15 @@ EndTimer()
     __dbgtimdat.inst[__dbgtimdat.n].name = NULL;
     GetHighPrecisionTime(&__dbgtimdat.inst[__dbgtimdat.n].time);
     __dbgtimdat.n++;
+#else
+    return;
+    #endif
 }
 
 internal void
 DumpTimingFrame()
 {
+    #ifdef DEBUG
     int32 n = 0; 
     struct _timing_queue queue = {};
     __dbgtimdat.dump = custom_malloc(__dbgtimdat.n * DEBUG_LINE_WIDTH);
@@ -101,11 +109,15 @@ DumpTimingFrame()
         }
     }
     __dbgtimdat.dump_length += n;
+#else
+    return;
+    #endif
 }
 
 internal void
 InitializeTimingSystem(char *name)
 {
+    #ifdef DEBUG
     InitPlatformTimingData(); 
     
     __dbgtimdat.inst = custom_malloc(sizeof(timing_instance) * MAX_EVENTS);
@@ -115,11 +127,15 @@ InitializeTimingSystem(char *name)
     GetHighPrecisionTime(&__dbgtimdat.start_time);
     __dbgtimdat.n = 0;
     __dbgtimdat.max_marks = MAX_EVENTS;
+#else
+    return;
+    #endif
 }
 
 internal void
 FinishTiming()
 {
+    #ifdef DEBUG
     DumpTimingFrame();
     char filename[256];
     sprintf(filename, "debug/%s-thread.txt", __dbgtimdat.thread_name);
@@ -128,5 +144,8 @@ FinishTiming()
     fclose(f);
     free(__dbgtimdat.inst);
     free(__dbgtimdat.dump);
+#else
+    return;
+    #endif
 }
  

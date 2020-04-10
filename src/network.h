@@ -75,8 +75,8 @@ typedef struct _message_type {
 
 #define MSG_HEADER \
 union { \
-net_message msg; \
-int32 type; \
+    net_message msg; \
+    int32 type; \
 }
 
 struct align(MESSAGE_DATA_ALIGNMENT) _request_init_msg {
@@ -111,7 +111,7 @@ struct align(MESSAGE_DATA_ALIGNMENT) _request_info_msg {
 
 struct align(MESSAGE_DATA_ALIGNMENT) _pause_msg {
     MSG_HEADER;
-     real64 time;
+    real64 time;
 };
 
 struct align(MESSAGE_DATA_ALIGNMENT) _play_msg {
@@ -218,7 +218,7 @@ print_disconnect_msg(struct _disconnect_msg *msg, bool32 received)
              "\tMESSAGE_DISCONNECT\n",
              received ? "Receiving" : "Sending");
 }
- 
+
 internal int32 StartServer();
 internal int32 StartClient();
 internal int32 CloseServer();
@@ -238,6 +238,6 @@ internal int32 SendSeekMessage(real64);
 internal int32 SendDisconnectMessage();
 internal int32 CloseConnection();
 internal void GetPartnerIPStr(char **buffer);
-internal void GetPartnerIPInt(uint32 *buffer);
+internal u32  GetPartnerIPInt();
 
 #endif

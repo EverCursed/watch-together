@@ -16,8 +16,8 @@ Compiler attributes. GCC only for now.
 #define align(v)           __attribute__ ((aligned(v)))
 
 // branch prediction
-#define likely(x)          __builtin_expect((x),1)
-#define unlikely(x)        __builtin_expect((x),0)
+#define likely(x)          __builtin_expect((x ? 1 : 0),1)
+#define unlikely(x)        __builtin_expect((x ? 1 : 0),0)
 #define pct_likely(x, pct) __builtin_expect_with_probability((x),1,pct)
 
 #endif // ATTRIBUTES_H

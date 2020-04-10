@@ -14,14 +14,16 @@ Timestamp queue header.
 #include "attributes.h"
 #include "platform.h"
 
-#define MAX_FRAMES 30 
+#define FQ_MAX_FRAMES 30 
 
-#define AVFQ_ORDERED_ENTRY 0x1
-#define AVFQ_ORDERED_PTS   0x2
+#define FQ_ORDERED_ENTRY 0x1
+#define FQ_ORDERED_PTS   0x2
+
+#define FQ_NO_MORE_FRAMES -10000000.0f
 
 typedef struct _avframe_queue {
-    AVFrame *frames[MAX_FRAMES];
-    real64 pts[MAX_FRAMES];
+    AVFrame **frames;
+    real64 *pts;
     platform_mutex mutex;
     int32 max;
     int32 n;
@@ -29,45 +31,45 @@ typedef struct _avframe_queue {
 } avframe_queue;
 
 warn_unused internal inline bool32
-avframe_queue_full(avframe_queue *queue) 
+FQFull(avframe_queue *queue) 
 {
     return (queue->n == queue->max);
 }
 
 warn_unused internal inline bool32
-avframe_queue_empty(avframe_queue *queue)
+FQEmpty(avframe_queue *queue)
 {
     return (queue->n == 0);
 }
 
 warn_unused internal inline real64
-avframe_queue_next_pts(avframe_queue *queue)
+FQNextTimestamp(avframe_queue *queue)
 {
-    return queue->pts[0];
+    return queue->n > 0 ? queue->pts[0] : FQ_NO_MORE_FRAMES;
 }
 
 warn_unused internal inline bool32
-avframe_queue_initialized(avframe_queue *queue)
+FQInitialized(avframe_queue *queue)
 {
     return (queue->max == 0);
 }
 
 internal int32
-avframe_queue_init(avframe_queue *queue, int32 flags);
+FQInit(avframe_queue *queue, int32 flags);
 
-internal int32
-avframe_queue_deinit(avframe_queue *queue);
-
-warn_unused internal int32
-avframe_queue_dequeue(avframe_queue *queue, AVFrame **frame, real64 *pts);
+internal void
+FQClose(avframe_queue **queue);
 
 warn_unused internal int32
-avframe_queue_enqueue(avframe_queue *queue, AVFrame *frame, real64 pts);
+FQDequeue(avframe_queue *queue, AVFrame **frame, real64 *pts);
 
 warn_unused internal int32
-avframe_queue_remove(avframe_queue *queue, real64 pts);
+FQEnqueue(avframe_queue *queue, AVFrame *frame, real64 pts);
 
 warn_unused internal int32
-avframe_queue_clear(avframe_queue *queue);
+FQRemoveUpTo(avframe_queue *queue, real64 pts);
+
+warn_unused internal int32
+FQClear(avframe_queue *queue);
 
 #endif // AVFRAME_QUEUE_PTS_ORDERED

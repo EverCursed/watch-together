@@ -46,6 +46,18 @@ should_skip(playback_data *playback, real64 video_ts);
 internal int32
 start_playback(playback_data *p, real64 time);
 
+internal void
+playback_start_pause(playback_data *p)
+{
+    p->pause_started = *p->current_frame_time;
+}
+
+internal void
+playback_end_pause(playback_data *p)
+{
+    p->aggregated_pause_time += (*p->current_frame_time - p->pause_started);
+}
+
 internal inline real64
 get_playback_time(playback_data *p)
 {
@@ -67,7 +79,8 @@ get_future_playback_time(playback_data *playback)
 internal inline bool32
 should_display(playback_data *playback, real64 video_ts)
 {
-    return (video_ts < get_next_playback_time(playback));
+    r32 playback_time = get_next_playback_time(playback);
+    return (video_ts < playback_time);
 }
 
 internal inline bool32

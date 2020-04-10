@@ -21,26 +21,16 @@ Header for the entire application state.
 #include "decoding.h"
 #include "encoding.h"
 #include "kbkeys.h"
-
-// must be above video, audio, and subtitles
-#include "avframe_pts_ordered_queue.h"
+#include "avframe_pts_ordered_queue.h" // must be above video, audio, and subtitles 
 #include "video.h"
 #include "audio.h"
+#include "ui.h"
 
 #include "utils.h"
 #include "media_processing.h"
 #include "network.h"
 #include "file_data.h"
 #include "attributes.h"
-
-#define KNRM  "\x1B[0m"
-#define KRED  "\x1B[31m"
-#define KGRN  "\x1B[32m"
-#define KYEL  "\x1B[33m"
-#define KBLU  "\x1B[34m"
-#define KMAG  "\x1B[35m"
-#define KCYN  "\x1B[36m"
-#define KWHT  "\x1B[37m"
 
 // -----------------------------------------------
 
@@ -130,9 +120,9 @@ typedef struct _hardware_info {
 } hardware_info;
 
 typedef struct _client_info {
-    uint32 output_width;
-    uint32 output_height;
-    uint32 bytes_per_pixel;
+    int32 output_width;
+    int32 output_height;
+    int32 bytes_per_pixel;
     bool32 fullscreen;
     
     real64 start_time;
@@ -172,7 +162,7 @@ typedef struct _avpacket_queue avpacket_queue;
 typedef struct _playback_data playback_data;
 typedef struct _message_queue message_queue;
 
-typedef struct _program_data {
+typedef struct _program_data2 {
     input_struct input;
     client_info client;
     output_audio audio;
@@ -185,44 +175,194 @@ typedef struct _program_data {
     hardware_info hardware;
     message_queue messages;
     
-    //avpacket_queue *pq_main;
-    //avpacket_queue *pq_playback;
-    //avpacket_queue *pq_stream;
-    //avpacket_queue *pq_video;
-    //avpacket_queue *pq_audio;
-    
     // TODO(Val): remove this or make it more organized. 
-    real32 volume;
-    uint32 audio_format;
-    uint32 tick;
-    
     bool32 is_fullscreen;
-    bool32 connected;
     
     bool32 running;
-    bool32 playing;
-    bool32 paused;
-    bool32 start_playback;
-    bool32 playback_finished;
     
-    bool32 is_host;
-    bool32 is_partner;
+    b32 is_host;
+    b32 is_partner;
+    b32 connected;
     
+    b32 start_playback_flag;
+    b32 started_playback;
+    b32 finished_playback;
+    
+    b32 paused;
+} program_data2;
+
+
+typedef struct _program_data {
+    input_struct input;
+    client_info client;
+    output_audio audio;
+    output_video video;
+    open_file_info file;
+    threads_info_all threads;
+    decoder_info decoder;
+    encoder_info encoder;
+    playback_data playback;
+    hardware_info hardware;
+    message_queue messages;
+    Menu *menu;
+    
+    b32 running;
+    b32 full_screen;
+    
+    b32 host;
+    b32 partner;
+    b32 connected;
+    
+    b32 playback_started;
+    b32 playback_finished;
+    b32 playing;
+    
+    i32 flags;
+    
+    // TODO(Val): Reorganize these
     char* server_address;
     destination_IP address_storage;
 } program_data;
- 
+
 internal int32 MainThread(program_data *);
 internal int32 MainLoop(program_data  *);
 
-not_used internal bool32 WaitingForPlaybackStart(program_data *pdata)
+
+#define START_PLAYBACK_FLAG 0x1
+
+internal inline b32 ReceivingFile(program_data *pdata);
+internal inline b32 HostingFile(program_data *pdata);
+
+internal inline b32
+PlaybackPlaying(program_data *pdata)
 {
-    return (pdata->is_host || pdata->is_partner) ? !pdata->connected : 0;
+    return (pdata->playback_started && pdata->playing);
 }
 
-not_used internal bool32 Connected(program_data *pdata)
+internal inline b32
+PlaybackStarted(program_data *pdata)
+{
+    return pdata->playback_started;
+}
+
+internal inline void
+SetPlaybackStartFlag(program_data *pdata, b32 on)
+{
+    pdata->flags = 
+        on ? pdata->flags | START_PLAYBACK_FLAG : pdata->flags & ~START_PLAYBACK_FLAG;
+}
+
+internal inline void
+PlaybackStart(program_data *pdata)
+{
+    SetPlaybackStartFlag(pdata, 0);
+    
+    pdata->playback_started = 1;
+}
+
+internal inline b32
+PlaybackStartFlagged(program_data *pdata)
+{
+    return !!(pdata->flags & START_PLAYBACK_FLAG);
+}
+
+internal inline void
+SetPlaybackStarted(program_data *pdata)
+{
+    if(!PlaybackStarted(pdata))
+        PlaybackStart(pdata);
+}
+
+internal inline void
+SetPlaybackUnpaused(program_data *pdata)
+{
+    if(pdata->playback_started)
+        pdata->playing = 1;
+}
+
+internal inline b32
+PlaybackPaused(program_data *pdata)
+{
+    return (pdata->playback_started && !pdata->playing);
+}
+
+internal inline void
+SetPlaybackPaused(program_data *pdata)
+{
+    if(pdata->playback_started)
+        pdata->playing = 0;
+}
+
+internal inline b32
+PlaybackFinished(program_data *pdata)
+{
+    return pdata->playback_finished;
+}
+
+internal inline b32
+Connected(program_data *pdata)
 {
     return pdata->connected;
+}
+
+internal inline void
+SetDisconnected(program_data *pdata)
+{
+    pdata->connected = pdata->partner = pdata->host = 0;
+}
+
+internal inline b32
+PlaybackNetworked(program_data *pdata)
+{
+    return pdata->host || pdata->partner;
+}
+
+internal inline b32
+HostingFile(program_data *pdata)
+{
+    return pdata->host;
+}
+
+internal inline void
+SetHosting(program_data *pdata)
+{
+    if(!ReceivingFile(pdata))
+        pdata->host = 1;
+}
+
+internal inline b32
+ReceivingFile(program_data *pdata)
+{
+    return pdata->partner;
+}
+
+internal inline void
+SetReceiving(program_data *pdata)
+{
+    if(!HostingFile(pdata))
+        pdata->partner = 1;
+}
+
+internal b32
+PlaybackWaitingConnection(program_data *pdata)
+{
+    return PlaybackNetworked(pdata) ? !pdata->connected : 0;
+}
+
+internal b32
+Fullscreen(program_data *pdata)
+{
+    return pdata->full_screen;
+}
+
+internal b32
+ToggleFullscreen(program_data *pdata)
+{
+    pdata->full_screen = !pdata->full_screen;
+    
+    PlatformChangeFullscreenState(!Fullscreen(pdata));
+    
+    return pdata->full_screen;
 }
 
 #endif

@@ -10,33 +10,58 @@ This is a queue that stores AVFrames by their timestamp.
 #include "platform.h"
 #include "errors.h"
 
-internal int32
-avframe_queue_init(avframe_queue *queue, int32 flags)
+internal avframe_queue *
+FQInitialize(int32 flags)
 {
+    avframe_queue *queue = custom_malloc(sizeof(avframe_queue));
+    if(!queue) goto alloc_fail;
+    
+    queue->frames = custom_malloc(FQ_MAX_FRAMES * sizeof(AVFrame *));
+    if(!queue->frames) goto alloc_fail_inner;
+    
+    queue->pts = custom_malloc(FQ_MAX_FRAMES * sizeof(real64));
+    if(!queue->pts) goto alloc_fail_inner;
+    
     queue->mutex = PlatformCreateMutex();
-    queue->max = MAX_FRAMES;
+    queue->max = FQ_MAX_FRAMES;
     queue->n = 0;
     queue->flags = flags;
     
-    RETURN(SUCCESS);
-}
-
-internal int32
-avframe_queue_deinit(avframe_queue *queue)
-{
-    PlatformDestroyMutex(&queue->mutex);
-    queue->max = 0;
-    queue->n = 0;
+    return queue;
     
-    RETURN(SUCCESS);
+    
+    
+    
+    alloc_fail_inner:
+    
+    custom_free(queue->pts);
+    custom_free(queue->frames);
+    
+    alloc_fail:
+    
+    custom_free(queue);
+    
+    return NULL;
+}
+
+internal void
+FQClose(avframe_queue **queue)
+{
+    PlatformDestroyMutex(&(*queue)->mutex);
+    
+    custom_free((*queue)->pts);
+    custom_free((*queue)->frames);
+    custom_free(*queue);
+    
+    *queue = NULL;
 }
 
 internal int32
-avframe_queue_enqueue(avframe_queue *queue, AVFrame *frame, real64 pts)
+FQEnqueue(avframe_queue *queue, AVFrame *frame, real64 pts)
 {
-    if(avframe_queue_initialized(queue))
+    if(FQInitialized(queue))
         RETURN(NOT_INITIALIZED);
-    if(avframe_queue_full(queue))
+    if(FQFull(queue))
         RETURN(CONTAINER_FULL);
     
     PlatformLockMutex(&queue->mutex);
@@ -46,7 +71,7 @@ avframe_queue_enqueue(avframe_queue *queue, AVFrame *frame, real64 pts)
     int i = queue->n;
     queue->frames[i] = frame;
     
-    if(queue->flags & AVFQ_ORDERED_PTS)
+    if(queue->flags & FQ_ORDERED_PTS)
     {
         queue->pts[i] = pts;
         
@@ -59,19 +84,7 @@ avframe_queue_enqueue(avframe_queue *queue, AVFrame *frame, real64 pts)
             i--;
         }
     }
-    /*
-    dbg_info("frame queued:\n"
-             "\tformat:  %d\n"
-             "\tpointer: %p\n"
-             "\twidth:   %d\n"
-             "\theight:  %d\n"
-             "\tsamples: %d\n",
-             frame->format,
-             frame->data[0],
-             frame->width,
-             frame->height,
-             frame->nb_samples);
-    */
+    
     queue->n++;
     
     PlatformUnlockMutex(&queue->mutex);
@@ -81,11 +94,11 @@ avframe_queue_enqueue(avframe_queue *queue, AVFrame *frame, real64 pts)
 
 // TODO(Val): This should also check if we don't provide a pointer to pts
 internal int32
-avframe_queue_dequeue(avframe_queue *queue, AVFrame **frame, real64 *pts)
+FQDequeue(avframe_queue *queue, AVFrame **frame, real64 *pts)
 {
-    if(avframe_queue_initialized(queue))
+    if(FQInitialized(queue))
         RETURN(NOT_INITIALIZED);
-    if(avframe_queue_empty(queue))
+    if(FQEmpty(queue))
         RETURN(CONTAINER_EMPTY);
     
     PlatformLockMutex(&queue->mutex);
@@ -97,7 +110,7 @@ avframe_queue_dequeue(avframe_queue *queue, AVFrame **frame, real64 *pts)
         queue->frames[i] = queue->frames[i+1];
     queue->frames[i] = NULL;
     
-    if(queue->flags & AVFQ_ORDERED_PTS) // TODO(Val): Do this flag differently
+    if(queue->flags & FQ_ORDERED_PTS) // TODO(Val): Do this flag differently
     {
         if(pts != NULL)
             *pts = queue->pts[0];
@@ -108,33 +121,19 @@ avframe_queue_dequeue(avframe_queue *queue, AVFrame **frame, real64 *pts)
     }
     PlatformUnlockMutex(&queue->mutex);
     
-    /*
-    dbg_info("frame dequeued:\n"
-             "\tformat:  %d\n"
-             "\tpointer: %p\n"
-             "\twidth:   %d\n"
-             "\theight:  %d\n"
-             "\tsamples: %d\n",
-             (temp_frame)->format,
-             (temp_frame)->data[0],
-             (temp_frame)->width,
-             (temp_frame)->height,
-             (temp_frame)->nb_samples);
-    */
-    
     queue->n--;
     
     RETURN(SUCCESS);
 }
 
 internal int32
-avframe_queue_remove(avframe_queue *queue, real64 pts)
+FQRemove(avframe_queue *queue, real64 pts)
 {
     RETURN(NOT_YET_IMPLEMENTED);
 }
 
 internal int32
-avframe_queue_clear(avframe_queue *queue)
+FQClear(avframe_queue *queue)
 {
     RETURN(NOT_YET_IMPLEMENTED);
 }

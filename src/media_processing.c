@@ -74,7 +74,6 @@ interleave_audio_frame(AVFrame *dst_frame, AVFrame *src_frame)
         {
             for(int b = 0; b < bytes_per_sample; b++)
             {
-                // TODO(Val): Check if this is correct
                 *(data + s*bytes_per_sample*channels + bytes_per_sample*c + b) = *(src_frame->data[c] + s*bytes_per_sample + b);
             }
         }
@@ -99,19 +98,11 @@ process_audio_frame(AVFrame **frame, output_audio *audio, decoder_info *decoder)
         if(av_sample_fmt_is_planar((*frame)->format))
         {
             StartTimer("Interleaving Audio");
-            
             interleave_audio_frame(new_frame, *frame);
-            
-            //new_frame->linesize[0] = 
-            
-            //dbg_print("Audio size: %d/%d\n", audio->size, audio->max_buffer_size);
-            
             EndTimer();
-            
         }
         else
         {
-            // TODO(Val): Test this somehow
             memcpy(new_frame->data[0], (*frame)->data[0], new_frame->linesize[0]);
         }
     }
@@ -148,19 +139,20 @@ process_video_frame(AVFrame **frame, output_video *video, decoder_info *decoder)
                                             new_frame->format,
                                             SWS_BILINEAR, //SWS_BILINEAR | SWS_ACCURATE_RND,
                                             NULL, NULL, NULL);
-        /*
-        uint8_t *ptrs[1] = {
-            video->video_frame,//frame_Y,
-            //pdata->video.video_frame_sup1,//frame_U,
-            //pdata->video.video_frame_sup2,//frame_V
-        };
         
-        int stride[1] = {
-            video->pitch, //pitch_Y,
-            //pdata->video.pitch_sup1, //pitch_U,
-            //pdata->video.pitch_sup2, //pitch_V
-        };
-        */
+        /*
+                uint8_t *ptrs[1] = {
+                    video->video_frame,//frame_Y,
+                    //pdata->video.video_frame_sup1,//frame_U,
+                    //pdata->video.video_frame_sup2,//frame_V
+                };
+                  
+                int stride[1] = {
+                    video->pitch, //pitch_Y,
+                    //pdata->video.pitch_sup1, //pitch_U,
+                    //pdata->video.pitch_sup2, //pitch_V
+                };
+                */
         StartTimer("sws_scale()");
         sws_scale(modifContext,
                   (uint8 const* const*)(*frame)->data,
@@ -213,14 +205,14 @@ ProcessPacket(AVFrame **frame, int32 *type, AVPacket *packet, decoder_info *deco
     else if(is_subtitle(packet, decoder))
     {
         // TODO(Val): handle this
-        // *type = SUBTITLE;
     }
     else
     {
         dbg_error("Unknown type of packet.\n");
     }
     
-    ret = DecodePacket(frame, packet, codec_context);
+    if(*type == VIDEO || *type == AUDIO)
+        ret = DecodePacket(frame, packet, codec_context);
     
     if(ret == NEED_DATA)
         RETURN(NEED_DATA);
@@ -238,7 +230,8 @@ MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder, ou
     dbg_print("avformat version: %d - %d\n", LIBAVFORMAT_VERSION_INT, avformat_version());
     
     // initializing all per-media modules
-    decoder->queue = init_avpacket_queue(PACKET_BUFFER);
+    decoder->queue = PQInit(PACKET_BUFFER);
+    if(!decoder->queue) RETURN(NO_MEMORY);
     
     // Open video file
     dbg_info("Opening file: %s\n", file->filename);
@@ -433,8 +426,8 @@ internal int32
 MediaClose(open_file_info *file, decoder_info *decoder, encoder_info *encoder, output_audio *audio, output_video *video)
 {
     // TODO(Val): Should we also stop running the current file?
-    avframe_queue_deinit(&audio->queue);
-    avframe_queue_deinit(&video->queue);
+    FQClose(&audio->queue);
+    FQClose(&video->queue);
     
     avformat_free_context(decoder->format_context);
     
@@ -444,72 +437,79 @@ MediaClose(open_file_info *file, decoder_info *decoder, encoder_info *encoder, o
     decoder->audio_codec = NULL;
     decoder->video_codec = NULL;
     
-    close_avpacket_queue(&decoder->queue);
+    PQClose(&decoder->queue);
     
     RETURN(SUCCESS);
 }
 
 internal void
-ProcessEverything(decoder_info *decoder, output_video *video, output_audio *audio)
+ProcessAllPacketsAndFillFrameBuffers(decoder_info *decoder, output_video *video, output_audio *audio)
 {
     StartTimer("ProcessEverything()");
+    wlog(LOG_TRACE, "ProcessEverything(): Processing packs and queueing frames");
     
-    int ret = 0;
-    
-    AVFrame *frame = av_frame_alloc(); 
-    AVPacket *packet;
-    
-    load_another_packet:
-    ret = dequeue_packet(decoder->queue, &packet);
-    if(ret == FILE_EOF)
+    while(!PQEmpty(decoder->queue) &&
+          !FQFull(video->queue) &&
+          !FQFull(audio->queue)) // TODO(Val): Add check to see if file has already been fully read
     {
-        // TODO(Val): Mark file as fully read
-    }
-    else if(fail(ret))
-    {
-        return;
-        // TODO(Val): make this more foolproof
-        //dbg_print
-    }
-    
-    int32 media_type = 0;
-    ret = ProcessPacket(&frame, &media_type, packet, decoder);
-    if(ret == NEED_DATA)
-    {
+        int ret = 0;
+        
+        AVPacket *packet;
+        
+        load_another_packet:
+        ret = PQDequeue(decoder->queue, &packet);
+        if(ret == FILE_EOF)
+        {
+            // TODO(Val): Mark file as fully read
+        }
+        else if(fail(ret))
+        {
+            return;
+            // TODO(Val): make this more foolproof
+            //dbg_print
+        }
+        
+        int32 media_type = 0;
+        AVFrame *frame = av_frame_alloc(); 
+        
+        ret = ProcessPacket(&frame, &media_type, packet, decoder);
+        if(ret == NEED_DATA)
+        {
+            av_packet_unref(packet);
+            goto load_another_packet;
+        }
+        
+        if(media_type == VIDEO)
+        {
+            process_video_frame(&frame, video, decoder);
+            real64 time = frame->pts * av_q2d(decoder->video_time_base);
+            //dbg_info("Video frame pts: %lf\n", time);
+            if(FQEnqueue(video->queue, frame, time))
+            {
+                dbg_error("Frame queue full.\n");
+            }
+        }
+        else if(media_type == AUDIO)
+        {
+            process_audio_frame(&frame, audio, decoder);
+            real64 time = frame->pts / av_q2d(decoder->audio_time_base);
+            //dbg_info("Audio frame pts: %lf\n", time);
+            if(FQEnqueue(audio->queue, frame, time))
+            {
+                dbg_error("Frame queue full.\n");
+            }
+        }
+        else if(media_type == SUBTITLE)
+        {
+            // TODO(Val): handle this
+        }
+        else 
+        {
+            wlog(LOG_WARNING, "ProcessEverything(): Unknown packet type received");
+        }
+        
         av_packet_unref(packet);
-        goto load_another_packet;
     }
-    
-    if(media_type == VIDEO)
-    {
-        process_video_frame(&frame, video, decoder);
-        real64 time = frame->pts * av_q2d(decoder->video_time_base);
-        dbg_info("Video frame pts: %lf\n", time);
-        if(avframe_queue_enqueue(&video->queue, frame, time))
-        {
-            dbg_error("Frame queue full.\n");
-        }
-    }
-    else if(media_type == AUDIO)
-    {
-        process_audio_frame(&frame, audio, decoder);
-        real64 time = frame->pts / av_q2d(decoder->audio_time_base);
-        dbg_info("Audio frame pts: %lf\n", time);
-        if(avframe_queue_enqueue(&audio->queue, frame, time))
-        {
-            dbg_error("Frame queue full.\n");
-        }
-    }
-    else if(media_type == SUBTITLE)
-    {
-        // TODO(Val): handle this
-    }
-    else 
-    {
-        // TODO(Val): unknown type
-    }
-    
-    av_packet_unref(packet);
     
     EndTimer();
 }
@@ -548,17 +548,16 @@ EnoughDurations(output_audio *audio, open_file_info *file, output_video *video, 
 internal int32
 RefillPackets(decoder_info *decoder, bool32 is_host)
 {
-    while(!pq_is_full(decoder->queue) && !decoder->file_fully_loaded)
+    while(!PQFull(decoder->queue) && !decoder->file_fully_loaded)
     {
         AVPacket *packet;
         LoadPacket(decoder, &packet);
         
-        enqueue_packet(decoder->queue, packet);
+        PQEnqueue(decoder->queue, packet);
         
         if(is_host)
             Streaming_Host_SendPacket(decoder, packet);
     }
-    
     RETURN(SUCCESS);
 }
 
@@ -567,13 +566,15 @@ MediaThreadStart(void *arg)
 {
     InitializeTimingSystem("media");
     
+    wlog(LOG_INFO, "MediaThreadStart(): Media processing thread started");
+    
     program_data *pdata = arg;
     open_file_info *file = &pdata->file;
     decoder_info *decoder = &pdata->decoder;
     //encoder_info *encoder = &pdata->encoder;
     playback_data *playback = &pdata->playback;
     
-    if(pdata->is_host)
+    if(HostingFile(pdata))
     {
         char address[16];
         IPToStr(address, pdata->address_storage);
@@ -583,71 +584,39 @@ MediaThreadStart(void *arg)
         PlatformConditionWait(&decoder->start_streaming);
     }
     
-    //if(pdata->is_partner)
-        //Streaming_Client_Initialize(decoder);
-    
-    
-    
     int ret = 0;
     
     bool32 start_notified = 0;
     
-    while(pdata->running && !pdata->playback_finished)
+    wlog(LOG_INFO, "MediaThreadStart(): Start media processing loop");
+    while(pdata->running && !PlaybackFinished(pdata))
     {
-        StartTimer("Start processing loop");
-        //while(!EnoughDurations(&pdata->audio, &pdata->file, &pdata->video, playback))
-        //{
+        StartTimer("Start media processing loop");
         
-        StartTimer("Waiting");
-        //else
-        //PlatformSleep(0.016);
-        EndTimer();
-        
-        while(!avframe_queue_full(&pdata->video.queue) &&
-              !avframe_queue_full(&pdata->audio.queue)
-              && !WaitingForPlaybackStart(pdata))
-        {
-            RefillPackets(decoder, pdata->is_host);
-            ProcessEverything(decoder, &pdata->video, &pdata->audio);
-        }
-        
+        wlog(LOG_TRACE, "Refilling packets");
+        // TODO(Val): if not finished reading packets
+        RefillPackets(decoder, HostingFile(pdata));
+        ProcessAllPacketsAndFillFrameBuffers(decoder, &pdata->video, &pdata->audio);
         
         EndTimer();
-        /*
-        dbg_print("Playback start check:\n"
-                  "\tstart_notified:  %s\n"
-                  "\tfile.has_audio:  %s\n"
-                  "\taudio.not_empty:  %s\n"
-                  "\tfile.has_video:  %s\n"
-                  "\tvideo.not_empty:  %s\n",
-                  b2str(start_notified),
-                  b2str(pdata->file.has_audio),
-                  b2str(!avframe_queue_empty(&pdata->audio.queue)),
-                  b2str(pdata->file.has_video),
-                  b2str(!avframe_queue_empty(&pdata->video.queue)));
-        */
-        if(!start_notified &&
-           !avframe_queue_empty(&pdata->video.queue) &&
-           !avframe_queue_empty(&pdata->audio.queue))
-            //(!pdata->file.has_audio || pdata->audio.is_ready) &&
-            //(!pdata->file.has_video || pdata->video.is_ready))
+        
+        if(unlikely(!start_notified) &&
+           !FQEmpty(pdata->video.queue) &&
+           !FQEmpty(pdata->audio.queue))
         {
+            wlog(LOG_INFO, "Playback marked ready to start.\n");
+            
+            SetPlaybackStartFlag(pdata, 1);
             start_notified = 1;
-            pdata->start_playback = 1;
         }
         
-        
+        wlog(LOG_TRACE, "MediaThreadStart(): Sleeping until new frames needed");
         PlatformConditionWait(&decoder->condition);
-        
-        //StartTimer("RefillPackets()");
-        //if(!decoder->file_fully_loaded)
-        //RefillPackets(decoder, pdata->is_host);
-        //EndTimer();
-        
     }
+    wlog(LOG_INFO, "Exiting media processing loop");
     EndTimer();
     
-    if(pdata->is_host)
+    if(HostingFile(pdata))
         Streaming_Host_Close(decoder);
     
     FinishTiming();

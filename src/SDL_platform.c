@@ -11,12 +11,16 @@ https://github.com/EverCursed
 #include <time.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_net.h>
+#include <SDL2/SDL_ttf.h>
 #include <assert.h>
 #include <libavutil/frame.h>
 
 #include "watchtogether.h"
 #include "utils/timing.h"
 #include "utils.h"
+#include "logging.h"
+
+#include "config.h"
 
 #if 0
 #ifdef _WIN32
@@ -44,7 +48,10 @@ global SDL_Renderer *renderer = NULL;
 //global SDL_Texture *ui_texture;
 global SDL_Texture *final_texture = NULL;
 global SDL_Texture *video_texture = NULL;
+global SDL_Texture *ui_background_texture = NULL;
 global SDL_Texture *ui_texture = NULL;
+
+global SDL_Rect video_output_rect = {};
 
 global program_data *pdata;
 
@@ -55,11 +62,6 @@ PlatformQueueAudio(AVFrame *frame)
 {
     //output_audio *audio = &pdata->audio;
     int32 size = frame->nb_samples * frame->channels * av_get_bytes_per_sample(frame->format);
-    dbg_info("Audio frame:\n"
-             "\tframe->data[0]: %p\n"
-             "\tsize:           %d\n",
-             frame->data[0],
-             size);
     
     int ret = SDL_QueueAudio(AudioID,
                              frame->data[0],
@@ -67,7 +69,7 @@ PlatformQueueAudio(AVFrame *frame)
     
     if(ret < 0)
     {
-        dbg_error("%s\n", SDL_GetError());
+        wlog(LOG_ERROR, "Failed to queue audio samples");
         RETURN(UNKNOWN_ERROR);
     }
     
@@ -78,10 +80,6 @@ internal int32
 PlatformInitAudio(open_file_info *file)
 {
     output_audio *audio = &pdata->audio;
-    //dbg_info("PlatformInitAudio called.\n");
-    
-    //open_file_info *file = &pdata->file;
-    //output_audio *output = &pdata->audio;
     
     SDL_AudioSpec DesiredAudioSpec = {};
     SDL_AudioSpec ReceivedAudioSpec = {};
@@ -108,7 +106,7 @@ PlatformInitAudio(open_file_info *file)
     }
     else
     {
-        dbg_error("An unhandled audio format was passed.\n");
+        wlog(LOG_ERROR, "The file has an unknown audio format");
         RETURN(UNKNOWN_FORMAT);
     }
     
@@ -139,13 +137,14 @@ PlatformInitAudio(open_file_info *file)
         audio->bytes_per_sample = bytes_per_sample;
         audio->sample_format = file->sample_format;
         
-        pdata->audio_format = ReceivedAudioSpec.format;
+        pdata->audio.audio_format = ReceivedAudioSpec.format;
         
         //SDL_PauseAudioDevice(AudioID, 0);
     }
     else
     {
         dbg_error("SDL_OpenAudioDevice() failed.\n");
+        wlog(LOG_ERROR, "SDL_OpenAudioDevice() failed");
         
         RETURN(UNKNOWN_ERROR);
     }
@@ -165,7 +164,6 @@ PlatformPauseAudio(bool32 b)
 {
     SDL_PauseAudioDevice(AudioID, b);
 }
-
 
 /// Platform create thread
 internal thread_info
@@ -203,13 +201,14 @@ PlatformConditionWait(cond_info *c)
     if(SDL_LockMutex(c->mutex))
         RETURN(UNKNOWN_ERROR);
     
+    wlog(LOG_TRACE, "Waiting for condition variable");
     while(!c->test && pdata->running)
     {
         SDL_CondWait(c->cond, c->mutex);
     }
     c->test = 0;
+    wlog(LOG_TRACE, "Finished waiting");
     SDL_UnlockMutex(c->mutex);
-    
     
     //while(!c->test && pdata->running)
     //{
@@ -222,6 +221,8 @@ PlatformConditionWait(cond_info *c)
 internal int32
 PlatformConditionSignal(cond_info *c)
 {
+    wlog(LOG_TRACE, "Signaling condition variable");
+    
     if(SDL_LockMutex(c->mutex))
         RETURN(UNKNOWN_ERROR);
     
@@ -259,7 +260,7 @@ PlatformLockMutex(platform_mutex *m)
         RETURN(SUCCESS);
     else
     {
-        dbg_error("%s\n", SDL_GetError());
+        wlog(LOG_ERROR, "Failed to lock mutex");
         RETURN(UNKNOWN_ERROR);
     }
 }
@@ -268,9 +269,15 @@ internal int32
 PlatformUnlockMutex(platform_mutex *m)
 {
     if(!SDL_UnlockMutex(m->mutex))
+    {
         RETURN(SUCCESS);
+    }
     else
+    {
+        wlog(LOG_ERROR, "Failed to unlock mutex");
+        
         RETURN(UNKNOWN_ERROR);
+    }
 }
 
 internal void
@@ -349,6 +356,7 @@ PlatformRender()
     int ret = 0;
     
     StartTimer("SDL_RenderClear()");
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
     ret = SDL_RenderClear(renderer);
     SDL_Test(ret);
     EndTimer();
@@ -358,16 +366,47 @@ PlatformRender()
         ret = SDL_RenderCopy(renderer,
                              video_texture,
                              NULL,
-                             NULL);
+                             &video_output_rect);
     SDL_Test(ret);
     EndTimer();
     
-    //StartTimer("SDL_RenderCopy(ui_texture)");
-    //ret = SDL_RenderCopy(renderer,
-    //ui_texture,
-    //NULL,
-    //NULL);
-    //EndTimer();
+    if(ui_texture)
+    {
+        SDL_DestroyTexture(ui_texture);
+    }
+    
+    // TODO(Val): Have some kind of flag to check if menu changed
+    
+    Menu *m = pdata->menu;
+    MenuScreen *s;
+    if(s = GetTopmostMenuScreen(m))
+    {
+        i32 width, height;
+        SDL_GetRendererOutputSize(renderer, &width, &height);
+        
+        RenderMenu(m, width, height);
+        
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 128);
+        SDL_RenderFillRect(renderer, NULL);
+        
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 64);
+        SDL_RenderFillRects(renderer, m->rects, m->rects_count);
+        
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_RenderDrawRects(renderer, m->rects, m->rects_count);
+        
+        for(int i = 0; i < m->text_count; i++)
+        {
+            SDL_RenderCopy(renderer,
+                           m->textures[i],
+                           NULL,
+                           &m->text_rects[i]);
+        }
+        
+        custom_free(m->textures);
+        custom_free(m->rects);
+        custom_free(m->text_rects);
+    }
     
     EndTimer();
     RETURN(SUCCESS);
@@ -376,6 +415,8 @@ PlatformRender()
 internal int32
 PlatformFlipBuffers()
 {
+    wlog(LOG_TRACE, "Flipping pixel buffers");
+    
     StartTimer("PlatformFlipBuffers()");
     SDL_RenderPresent(renderer);
     EndTimer();
@@ -384,20 +425,23 @@ PlatformFlipBuffers()
 }
 
 internal void
-PlatformToggleFullscreen()
+PlatformChangeFullscreenState(b32 on)
 {
-    dbg_success("TOGGLING FULLSCREEN\n");
-    int ret = SDL_SetWindowFullscreen(window, pdata->is_fullscreen ? 0 : SDL_WINDOW_FULLSCREEN_DESKTOP);
+    wlog(LOG_INFO, "Toggling fullscreen");
+    
+    int ret = 
+        SDL_SetWindowFullscreen(window, on * SDL_WINDOW_FULLSCREEN_DESKTOP);
+    
     SDL_Test(ret);
-    pdata->is_fullscreen = !pdata->is_fullscreen;
 }
 
-internal inline void add_key(input_struct *input,
-                           uint32 key,
-                           bool32 shift,
-                           bool32 ctrl,
-                           bool32 alt,
-                           bool32 pressed)
+internal inline
+void add_key(input_struct *input,
+             uint32 key,
+             bool32 shift,
+             bool32 ctrl,
+             bool32 alt,
+             bool32 pressed)
 {
     if(input->keyboard.n < MAX_KEYS)
     {
@@ -413,7 +457,7 @@ internal inline void add_key(input_struct *input,
 
 #ifdef _WIN32
 internal int resize_filter(void *userdata,
-                  SDL_Event *event)
+                           SDL_Event *event)
 {
     /*
     if(event->window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
@@ -458,68 +502,55 @@ internal int resize_filter(void *userdata,
 }
 #endif
 
-internal int32
-PlatformResizeClientArea(open_file_info *file, int x, int y)
+internal SDL_Rect
+GetVideoOutputRect(open_file_info *file, int screen_width, int screen_height)
 {
-    StartTimer("ResizeScreen()");
-    int ret = 0;
-    
-    if(!x || !y)
-    {
-        int32 win_width, win_height;
-        SDL_GetWindowSize(window, &win_width, &win_height);
-        if(!x)
-            x = win_width;
-        if(!y)
-            y = win_height;
-    }
-    
-    int new_width = x;
-    int new_height = y;
-    
     SDL_Rect rect = {};
     
-    real32 width_ratio = (real32)new_width/file->width;
-    real32 height_ratio = (real32)new_height/file->height;
+    int video_width = file->width;
+    int video_height = file->height;
     
-    real32 ratio = (real32)file->width / (real32)file->height;
-    real32 new_ratio = (real32)new_width / (real32)new_height;
+    float screen_ratio = (float)screen_width/(float)screen_height;
+    float video_ratio = (float)video_width/(float)video_height;
     
-    if(new_ratio >= ratio)
+    if(screen_ratio < video_ratio)
     {
-        rect.h = new_height;
-        rect.w = (real32)file->width * height_ratio;
+        // screen wider than video
+        
+        rect.x = 0;
+        rect.y = (screen_height - screen_width/video_ratio)/2;
+        rect.w = screen_width;
+        rect.h = screen_width/video_ratio;
     }
     else
     {
-        rect.w = new_width;
-        rect.h = (real32)file->height * width_ratio;
+        // video wider than screen
+        
+        rect.x = (screen_width - screen_height*video_ratio)/2;
+        rect.y = 0;
+        rect.w = screen_height*video_ratio;
+        rect.h = screen_height;
     }
     
-    rect.x = (new_width - rect.w)/2;
-    rect.y = (new_height - rect.h)/2;
-    
-    ret = SDL_RenderSetViewport(renderer,
-                                &rect);
-    SDL_Test(ret);
-    
-    EndTimer();
-    
-    RETURN(SUCCESS);
+    return rect;
 }
 
 internal void
 PlatformInitVideo(open_file_info *file)
 {
+    if(video_texture) SDL_DestroyTexture(video_texture);
+    
     video_texture = SDL_CreateTexture(renderer,
                                       SDL_PIXELFORMAT_BGRA32,
                                       SDL_TEXTUREACCESS_STREAMING,
                                       file->width,
                                       file->height);
     
-    if(!video_texture) SDL_PrintError();
+    int w, h;
+    SDL_GetWindowSize(window, &w, &h);
+    video_output_rect = GetVideoOutputRect(file, w, h);
     
-    PlatformResizeClientArea(file, 0, 0);
+    if(!video_texture) SDL_PrintError();
 }
 
 internal int32
@@ -538,12 +569,12 @@ PlatformGetInput()
           SDL_PollEvent(&event))
     {
         EndTimer();
-        //dbg_info("Event received.\n");
+        
         switch(event.type)
         {
             case SDL_QUIT:
             {
-                dbg_error("SDL_QUIT\n");
+                wlog(LOG_INFO, "SDL_QUIT message received");
                 pdata->running = 0;
                 RETURN(SUCCESS);
             } break;
@@ -554,26 +585,15 @@ PlatformGetInput()
                     case SDL_WINDOWEVENT_SIZE_CHANGED:
                     case SDL_WINDOWEVENT_RESIZED:
                     {
-                        dbg_error("SDL_WINDOWEVENT_RESIZED fired.\n");
+                        wlog(LOG_INFO, "SDL_WINDOWEVENT_RESIZED received");
                         
-                        PlatformResizeClientArea(&pdata->file, event.window.data1, event.window.data2);
-                        /*
-                        int width = pdata->vq_data.video_queue_width;
-                        int height = pdata->vq_data.video_queue_height;
+                        int width = event.window.data1;
+                        int height = event.window.data2;
                         
-                        SDL_RenderGetViewport(renderer, &rect);
+                        video_output_rect = GetVideoOutputRect(&pdata->file, width, height);
                         
-                        */
-                        
-                        //Deb_ResizePixelBuffer(renderer);
-                        
-                        
-                        //dbg_print("Texture width: %d\theight: %d\n", texture_width, texture_height);
-                        //dbg_print("Scale x: %f\t y: %f\n", scaleX, scaleY);
-                        
-                        
-                        //SDL_FreeSurface(surface);
-                        //surface = Deb_ResizePixelBuffer(window);
+                        pdata->client.output_width = width;
+                        pdata->client.output_height = height;
                     } break;
                     default:
                     {
@@ -589,52 +609,34 @@ PlatformGetInput()
                 bool32 alt_down = event.key.keysym.mod & KMOD_ALT;
                 bool32 pressed = event.key.state == SDL_PRESSED ? 1 : 0;
                 
-                if(event.key.keysym.sym == KB_F4 && alt_down)
-                {
-                    PlatformToggleFullscreen(pdata);
-                    //PlatformFlipBuffers(pdata);
-                }
-                else
-                {
-                    add_key(input, event.key.keysym.sym, shift_down, ctrl_down, alt_down, pressed);
-                }
-            } break;
-            case SDL_MOUSEMOTION:
-            {
-                input->mouse.old_x = input->mouse.x;
-                input->mouse.old_y = input->mouse.y;
-                
-                input->mouse.x = event.motion.x;
-                input->mouse.y = event.motion.y;
-            } break;
-            case SDL_MOUSEBUTTONDOWN:
-            case SDL_MOUSEBUTTONUP:
-            {
-                if(event.button.button == SDL_BUTTON_LEFT)
-                {
-                    input->mouse.left_button_was_pressed = input->mouse.left_button_is_pressed;
-                    input->mouse.left_button_is_pressed = event.button.state == SDL_PRESSED ? 1 : 0;
-                }
-                else if(event.button.button == SDL_BUTTON_RIGHT)
-                {
-                    input->mouse.right_button_was_pressed = input->mouse.right_button_is_pressed;
-                    input->mouse.right_button_is_pressed = event.button.state == SDL_PRESSED ? 1 : 0;
-                }
-                else if(event.button.button == SDL_BUTTON_MIDDLE)
-                {
-                    input->mouse.middle_button_was_pressed = input->mouse.middle_button_is_pressed;
-                    input->mouse.middle_button_is_pressed = event.button.state == SDL_PRESSED ? 1 : 0;
-                }
-                else
-                {
-                    dbg_info("Unhandled mouse button input.\n");
-                }
+                add_key(input, event.key.keysym.sym, shift_down, ctrl_down, alt_down, pressed);
             } break;
         }
         
         StartTimer("SDL_WaitEventTimeout()");
     }
     EndTimer();
+    
+    {
+        // NOTE(Val): Get mouse state
+        
+        i32 x, y;
+        u32 buttons = SDL_GetMouseState(&x, &y);
+        
+        input->mouse.old_x = input->mouse.x;
+        input->mouse.old_y = input->mouse.y;
+        
+        input->mouse.x = x;
+        input->mouse.y = y;
+        
+        input->mouse.left_button_was_pressed = input->mouse.left_button_is_pressed;
+        input->mouse.right_button_was_pressed = input->mouse.right_button_is_pressed;
+        input->mouse.middle_button_was_pressed = input->mouse.middle_button_is_pressed;
+        
+        input->mouse.left_button_is_pressed = buttons & SDL_BUTTON(SDL_BUTTON_LEFT);
+        input->mouse.right_button_is_pressed = buttons & SDL_BUTTON(SDL_BUTTON_RIGHT);
+        input->mouse.middle_button_is_pressed = buttons & SDL_BUTTON(SDL_BUTTON_MIDDLE);
+    }
     
     EndTimer();
     EndTimer();
@@ -650,8 +652,12 @@ PlatformGetThreadID()
 internal int32
 InitializeTextures()
 {
+    wlog(LOG_INFO, "InitializeTextures(): Initializing SDL textures");
+    
     int32 width;
     int32 height;
+    
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     
     SDL_GetWindowSize(window,
                       &width,
@@ -673,20 +679,39 @@ InitializeTextures()
     RETURN(SUCCESS);
 }
 
+internal SDL_Texture *
+PlatformConvertSurfaceToTexture(SDL_Surface *surface)
+{
+    return SDL_CreateTextureFromSurface(renderer, surface);
+}
+
+static inline void
+print_usage()
+{
+    printf("usage: %s -i input_file [-s] [-p ip]\n "
+           "\t-s:    use this machine as a streaming server\n"
+           "\t-r ip: use this machine as a partner and connect to the server on the provided ip\n",
+#if defined(_WIN32)
+           "watchtogether.exe"
+#elif defined(__linux__)
+           "watchtogether"
+#endif
+           );
+}
+
 #ifdef _WIN32
 #undef main         // workaround on windows where main is redefined by SDL
 #endif
 
 int main(int argc, char *argv[])
 {
+    InitializeLogger(CONFIG_LOGGING_LEVEL, "debug/log.txt");
+    
     int ret = 0;
     // initialize all the necessary SDL stuff
     if(argc == 1)
     {
-        printf("usage: %s -i input_file [-s] [-p ip]\n "
-               "\t-s:    use this machine as a streaming server\n"
-               "\t-p ip: use this machine as a partner and connect to the server on the provided ip\n",
-               argv[0]);
+        print_usage();
         return 0;
     }
     
@@ -694,11 +719,22 @@ int main(int argc, char *argv[])
     
     if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0)
     {
+        wlog(LOG_FATAL, "Failed to initialize SDL.");
+        
         RETURN(FAILED_TO_INIT);
     }
     
     if(SDLNet_Init() != 0)
     {
+        wlog(LOG_FATAL, "Failed to initialize SDLNet");
+        
+        RETURN(FAILED_TO_INIT);
+    }
+    
+    if(TTF_Init())
+    {
+        wlog(LOG_FATAL, "Failed to initialize TTF");
+        
         RETURN(FAILED_TO_INIT);
     }
     
@@ -718,35 +754,41 @@ int main(int argc, char *argv[])
              ver2.patch);
     
 #ifdef _WIN32
-    dbg_info("SDL_FilterEvents\n");
     SDL_SetEventFilter(resize_filter, NULL);
+    wlog(LOG_INFO, "Setting input event filter.");
 #endif
     
-    // TODO(Val): Check if this actually gives us the proper client area
     ret = SDL_CreateWindowAndRenderer(1280,
                                       720,
                                       0,//SDL_WINDOW_RESIZABLE,
                                       &window,
                                       &renderer);
     SDL_Test(ret);
-     
+    
     if(window == NULL)
     {
-        dbg_error("Creating window failed!\n");
+        wlog(LOG_FATAL, "Failed to create a window.");
+        
         SDL_Quit();
         return -1;
     }
     
     SDL_SetWindowTitle(window,
                        WT_WINDOW_TITLE);
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY,
+                "linear");
+    
     
     SDL_ShowWindow(window);
+    wlog(LOG_INFO, "Displaying window.");
     
     pdata = calloc(sizeof(program_data), 1);
     pdata->running = 1;
     
-    if(InitializeTextures())
+    if(InitializeTextures()) {
+        wlog(LOG_FATAL, "Failed initializing textures.");
         RETURN(UNKNOWN_ERROR);
+    }
     
     int argi = 1;
     while(argi < argc)
@@ -757,33 +799,41 @@ int main(int argc, char *argv[])
         }
         else if(!strcmp(argv[argi], "-s") || !strcmp(argv[argi], "--server"))
         {
-            if(!pdata->is_partner)
+            if(!ReceivingFile(pdata))
             {
-                pdata->is_host = 1;
+                SetHosting(pdata);
             }
             else
             {
-                // TODO(Val): Warning 
+                printf("You cannot both host and connect to a host.\n\n");
+                print_usage();
             }
         }
-        else if(!strcmp(argv[argi], "-p") || !strcmp(argv[argi], "--partner"))
+        else if(!strcmp(argv[argi], "-r") || !strcmp(argv[argi], "--receiver"))
         {
-            if(!pdata->is_host)
+            if(!HostingFile(pdata))
             {
                 //pdata->file.filename = (char *)argv[++argi];
                 pdata->server_address = (char *)argv[++argi];
-                pdata->is_partner = 1;
+                
+                SetReceiving(pdata);
             }
             else
             {
-                // TODO(Val): Warning
+                printf("You cannot both host and connect to a host.\n\n");
+                print_usage();
             }
+        }
+        else if(!strcmp(argv[argi], "-h"))
+        {
+            print_usage();
+            goto main_end;
         }
         
         argi++;
     }
     
-    assert(!(pdata->is_host && pdata->is_partner));
+    assert(!(HostingFile(pdata) && ReceivingFile(pdata)));
     
     SDL_DisplayMode display_info;
     // TODO(Val): For now this just picks 0th monitor. Make this better.
@@ -792,17 +842,25 @@ int main(int argc, char *argv[])
     pdata->hardware.monitor_width = display_info.w;
     pdata->hardware.monitor_height = display_info.h;
     
+    wlog(LOG_INFO, "Starting main loop.");
     MainThread(pdata);
+    wlog(LOG_INFO, "Exiting main loop");
     
-    dbg_info("Cleaning up.\n");
+    wlog(LOG_INFO, "Closing textures and window");
     
+    main_end: 
     SDL_DestroyTexture(video_texture);
     SDL_DestroyTexture(ui_texture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     
+    wlog(LOG_INFO, "Closing audio");
     SDL_CloseAudioDevice(AudioID);
     
+    wlog(LOG_INFO, "Finishing logging");
+    CloseLogger();
+    
+    TTF_Quit();
     SDL_Quit();
     return 0;
 }

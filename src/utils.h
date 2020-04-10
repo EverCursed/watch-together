@@ -37,6 +37,7 @@ internal inline int round_up_align(int v)
 #define maxdouble(a,b) ({double _a = (a), _b = (b); _a > _b ? _a : _b; })
 
 #define SDL_PrintError() dbg_error("%s\n", SDL_GetError())
+// TODO(Val): Maybe these aren't actually necessary?
 #define SDL_Test(ret) do { if(ret) SDL_PrintError(); } while(0)
 #define FF_PrintError(ret) av_err2str(ret)
 #define FF_Test(ret) do { if(ret) FF_PrintError(ret); } while(0)

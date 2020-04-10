@@ -21,10 +21,17 @@ This holds a queue of AVPacket structs. This is a buffer for
 #include "defines.h"
 
 internal avpacket_queue*
-init_avpacket_queue(int32 n)
+PQInit(int32 n)
 {
-    avpacket_queue *queue = custom_malloc(sizeof(avpacket_queue));
-    queue->array = custom_malloc(sizeof(AVPacket *)*n);
+    avpacket_queue *queue;
+    queue = custom_malloc(sizeof(avpacket_queue));
+    if(!queue) return NULL;
+    
+    queue->array = custom_malloc(n * sizeof(AVPacket *));
+    if(!queue->array) {
+        custom_free(queue);
+        return NULL;
+    }
     
     queue->n = 0;
     queue->maxn = n;
@@ -37,11 +44,11 @@ init_avpacket_queue(int32 n)
 }
 
 internal int32
-enqueue_packet(avpacket_queue *queue, AVPacket *packet)
+PQEnqueue(avpacket_queue *queue, AVPacket *packet)
 {
-    if(!pq_initialized(queue))
+    if(!PQInitialized(queue))
     {
-    RETURN(UNINITIALIZED);
+        RETURN(UNINITIALIZED);
     }
     
     if(queue->n == queue->maxn)
@@ -67,9 +74,9 @@ enqueue_packet(avpacket_queue *queue, AVPacket *packet)
 }
 
 internal int32
-dequeue_packet(avpacket_queue *queue, AVPacket **packet)
+PQDequeue(avpacket_queue *queue, AVPacket **packet)
 {
-    if(!pq_initialized(queue))
+    if(!PQInitialized(queue))
     {
         RETURN(UNINITIALIZED);
     }
@@ -86,9 +93,6 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
         queue->n--;
         queue->next = (queue->next + 1) % queue->maxn;
         
-        //dbg_info("Dequeueing packet.\n");
-        //dbg_packet((*packet));
-        
         PlatformUnlockMutex(&queue->mutex);
         RETURN(SUCCESS);
     }
@@ -100,10 +104,10 @@ dequeue_packet(avpacket_queue *queue, AVPacket **packet)
 }
 
 internal int32
-peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)
+PQPeek(avpacket_queue *queue, AVPacket **packet, int nth)
 {
-     //check if nth packet is queued up
-    if(!pq_initialized(queue))
+    //check if nth packet is queued up
+    if(!PQInitialized(queue))
     {
         RETURN(UNINITIALIZED);
     }
@@ -122,7 +126,7 @@ peek_packet(avpacket_queue *queue, AVPacket **packet, int nth)
 }
 
 internal int32
-clear_avpacket_queue(avpacket_queue *queue)
+PQClear(avpacket_queue *queue)
 {
     PlatformLockMutex(&queue->mutex);
     
@@ -130,18 +134,26 @@ clear_avpacket_queue(avpacket_queue *queue)
     queue->next = 0;
     queue->end = 0;
     
+    PlatformUnlockMutex(&queue->mutex);
+    
     RETURN(SUCCESS);
 }
 
 internal int32
-close_avpacket_queue(avpacket_queue **queue)
+PQClose(avpacket_queue **queue)
 {
-    clear_avpacket_queue(*queue);
+    // TODO(Val): Should this also free all the packets queued up?
     
-    if((*queue)->array)
-        custom_free((*queue)->array);
+    avpacket_queue *q = *queue;
     
-    custom_free(*queue);
+    q->maxn = 0;
+    PQClear(*queue); 
+    PlatformDestroyMutex(&q->mutex);
+    
+    if(q->array)
+        custom_free(q->array);
+    
+    custom_free(q);
     *queue = NULL;
     
     RETURN(SUCCESS);

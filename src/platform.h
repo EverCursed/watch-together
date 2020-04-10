@@ -10,6 +10,7 @@ https://github.com/EverCursed
 #define WT_PLATFORM
 
 #include <libavutil/frame.h>
+#include <SDL2/SDL.h>
 #include "SDL_Platform.h"
 #include "file_data.h"
 
@@ -78,10 +79,10 @@ internal void
 PlatformInitVideo(open_file_info *);
 
 internal void
-PlatformToggleFullscreen();
+PlatformChangeFullscreenState(b32 on);
 
-internal int32
-PlatformResizeClientArea(open_file_info *, int32, int32);
+//internal int32
+//PlatformResizeClientArea(open_file_info *, int32, int32);
 
 internal int32
 PlatformQueueAudio();
@@ -89,4 +90,6 @@ PlatformQueueAudio();
 internal int64
 PlatformGetThreadID();
 
+internal SDL_Texture *
+PlatformConvertSurfaceToTexture(SDL_Surface *surface);
 #endif

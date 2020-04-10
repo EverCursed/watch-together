@@ -14,16 +14,11 @@ https://github.com/EverCursed
 #define USEC (MSEC*1000.0)
 #define NSEC (USEC*1000.0)
 
-_Thread_local int64 init_time = 0;
-
 internal real64
 PlatformGetTime()
 {
     //StartTimer("PlatformGetTime()");
-    if(!init_time)
-        init_time = av_gettime_relative();
-    
-    real64 ret = ((real64)(av_gettime_relative() - init_time) / USEC);
+    real64 ret = ((real64)(av_gettime_relative()) / USEC);
     //EndTimer();
     return ret;
 }
@@ -42,16 +37,16 @@ PlatformSleep(real64 seconds)
 internal int32
 WaitUntil(real64 time, real64 permissible_buffer)
 {
-    real64 time_goal = time - permissible_buffer;
     real64 current_time = PlatformGetTime();
-    real64 time_diff = time_goal < current_time ? 0.0 : (time - current_time) - permissible_buffer;
+    real64 time_goal = time - permissible_buffer;
+    real64 time_diff = time_goal < current_time ? 0.0 : (time_goal - current_time);
     
     while(time_diff > permissible_buffer)
     {
         PlatformSleep(time_diff);
         
         current_time = PlatformGetTime();
-        time_diff = time < current_time ? 0.0 : time - current_time;
+        time_diff = time_goal < current_time ? 0.0 : (time_goal - current_time);
     }
     
     RETURN(SUCCESS);

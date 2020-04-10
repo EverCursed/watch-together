@@ -5,11 +5,12 @@ https://github.com/EverCursed
 
 The main runtime module that handles most of the application functionality.
 */
- 
-#include "attributes.h"
+
 #include "watchtogether.h"
+#include "attributes.h"
 
 #include "common/custom_malloc.c"
+#include "logging.h"
 
 #include "message_queue.c"
 #include "audio.c"
@@ -24,44 +25,87 @@ The main runtime module that handles most of the application functionality.
 //#include "encoding.c"
 #include "packet_queue.c"
 #include "playback.c"
+#include "ui.c"
 #include "platform.c"
+#include "logging.c"
+
 
 // TODO(Val): NAT-T implementation, see how it works
 // TODO(Val): Encryption
 
 #define MS_SAFETY_MARGIN 2.0
-
 #define PACKET_QUEUE_SIZE 60
+
+internal void
+LocalPause(program_data *pdata)
+{
+    wlog(LOG_INFO, "Pausing");
+    
+    playback_start_pause(&pdata->playback);
+    
+    SetPlaybackPaused(pdata);
+}
+
+internal void
+LocalUnpause(program_data *pdata)
+{
+    wlog(LOG_INFO, "Unpausing");
+    
+    playback_end_pause(&pdata->playback);
+    
+    SetPlaybackUnpaused(pdata);
+}
 
 internal void
 LocalTogglePlayback(program_data *pdata)
 {
-    if(!pdata->paused)
-    {
-        pdata->playback.pause_started = *pdata->playback.current_frame_time;
-    }
-    else
-    {
-        
-        real64 time = *pdata->playback.current_frame_time;
-        pdata->playback.aggregated_pause_time += (time - pdata->playback.pause_started);
-    }
+    wlog(LOG_INFO, "Toggling paused state");
     
-    pdata->paused = !pdata->paused;
-    PlatformPauseAudio(pdata->paused);
+    b32 paused = PlaybackPaused(pdata);
+    
+    if(paused)
+        LocalUnpause(pdata);
+    else
+        LocalPause(pdata);
+    
+    PlatformPauseAudio(PlaybackPaused(pdata));
 }
 
 internal void
 TogglePlayback(program_data *pdata)
 {
-    if(pdata->connected)
+    wlog(LOG_INFO, "Toggling paused state and sending network message");
+    
+    if(Connected(pdata))
     {
-        if(!pdata->paused)
-            SendPauseMessage();
-        else if(pdata->paused)
+        if(PlaybackPaused(pdata))
             SendPlayMessage();
+        else
+            SendPauseMessage();
     }
     LocalTogglePlayback(pdata);
+}
+
+internal void
+CloseMainMenu(void *ptr)
+{
+    program_data *pdata = ptr;
+    
+    PopMenuScreen(pdata->menu);
+}
+
+internal void
+MarkExit(void *ptr)
+{
+    program_data *pdata = ptr;
+    pdata->running = 0;
+}
+
+internal void
+ShowOptionsScreen(void *ptr)
+{
+    program_data *pdata = ptr;
+    PushMenuScreen(pdata->menu, pdata->menu->options_screen);
 }
 
 internal int32
@@ -70,8 +114,9 @@ ProcessInput(program_data *pdata)
     // Get input
     // TODO(Val): Introduce some kind of timing system to see how long keys are held
     //if(pdata->running)
-    
     // Process input
+    wlog(LOG_TRACE, "ProcessInput(): Starting input processing");
+    
     StartTimer("Input processing");
     int keys = pdata->input.keyboard.n;
     for(int i = 0; i < keys && pdata->running; i++)
@@ -92,7 +137,7 @@ ProcessInput(program_data *pdata)
             {
                 if(e.pressed)
                     AddMessage0(&pdata->messages,
-                                MSG_CLOSE,
+                                MSG_TOGGLE_MENU,
                                 pdata->client.current_frame_time);
             } break;
             case KB_UP:
@@ -140,9 +185,34 @@ ProcessInput(program_data *pdata)
     return 0;
 }
 
+internal i32
+ProcessMouse(program_data *pdata)
+{
+    Menu *m = pdata->menu;
+    mouse_info *mouse = &pdata->input.mouse;
+    
+    if(mouse->left_button_was_pressed && !mouse->left_button_is_pressed)
+    {
+        int x = mouse->x;
+        int y = mouse->y;
+        int screen_x = pdata->client.output_width;
+        int screen_y = pdata->client.output_height;
+        fptr function = MenuGetClickedButton(m, x, y, screen_x, screen_y);
+        
+        if(function)
+        {
+            function(pdata);
+        }
+    }
+    
+    return 0;
+}
+
 internal int32
 AllocateBuffers(program_data *pdata)
 {
+    wlog(LOG_INFO, "AllocateBuffers(): Allocating audio and video buffers");
+    
     // NOTE(Val): Allocate audio buffer
     int32 bytes_per_sample = pdata->file.bytes_per_sample;
     int32 sample_rate = pdata->file.sample_rate;
@@ -151,17 +221,10 @@ AllocateBuffers(program_data *pdata)
     int32 seconds = 1;
     
     pdata->audio.max_buffer_size = bytes_per_sample*sample_rate*channels*seconds;
-    pdata->audio.buffer = custom_malloc(pdata->audio.max_buffer_size);
     
     // NOTE(Val): Allocate video buffers
     pdata->video.pitch = round_up_align(pdata->file.width * 4);
-    //pdata->video.pitch_sup1 = round_up_align((pdata->file.width+1)/2);
-    //pdata->video.pitch_sup2 = round_up_align((pdata->file.width+1)/2);
-    
     pdata->video.video_frame = custom_malloc(pdata->video.pitch * pdata->file.height);
-    //pdata->video.video_frame_sup1 = malloc(pdata->video.pitch_sup1 * (pdata->file.height+1)/2);
-    //pdata->video.video_frame_sup2 = malloc(pdata->video.pitch_sup2 * (pdata->file.height+1)/2);
-    
     pdata->video.width = pdata->file.width;
     pdata->video.height = pdata->file.height;
     
@@ -171,61 +234,69 @@ AllocateBuffers(program_data *pdata)
 internal int32
 DeallocateBuffers(program_data *pdata)
 {
-    free(pdata->audio.buffer);
-    
-    pdata->audio.buffer = NULL;
+    wlog(LOG_INFO, "DeallocateBuffers(): Deallocating audio and video buffers");
     
     free(pdata->video.video_frame);
-    //free(pdata->video.video_frame_sup1);
-    //free(pdata->video.video_frame_sup2);
-    
     
     pdata->video.video_frame = NULL;
-    //pdata->video.video_frame_sup1 = NULL;
-    //pdata->video.video_frame_sup2 = NULL;
     
     RETURN(SUCCESS);
+}
+
+internal void inline
+InitializePointers(program_data *pdata)
+{
+    pdata->playback.current_frame_time = &pdata->client.current_frame_time;
+    pdata->playback.next_frame_time = &pdata->client.next_refresh_time;
+    pdata->playback.refresh_target = &pdata->client.refresh_target;
+}
+
+internal void
+InitializeMenus(program_data *pdata)
+{
+    Menu *m = CreateMenuMenu();
+    if(!m)
+        return;
+    
+    // TODO(Val): maybe store the pointers to these somewhere else as well?
+    MenuScreen *main_menu_screen = CreateMenuScreen(m);
+    MenuScreen *options_screen   = CreateMenuScreen(m);
+    MenuScreen *debug_screen     = CreateMenuScreen(m);
+    
+    // TODO(Val): Add functions to these
+    CreateMenuButton(main_menu_screen, 0.375f, 0.125f, 0.25f, 0.05f, "Close Menu", &CloseMainMenu);
+    CreateMenuButton(main_menu_screen, 0.375f, 0.2f, 0.25f, 0.05f, "Options", &ShowOptionsScreen);
+    CreateMenuButton(main_menu_screen, 0.375f, 0.275f, 0.25f, 0.05f, "Turn On Debug Screen", NULL);
+    CreateMenuButton(main_menu_screen, 0.375f, 0.825f, 0.25f, 0.05f, "Quit", &MarkExit);
+    
+#ifdef DEBUG
+    CreateMenuTextBox(main_menu_screen, 0.0f, 0.0f, 0.15f, 0.05f, 1.0f, "DEBUG MODE");
+#endif
+    
+    CreateMenuTextBox(debug_screen, 0.0f, 0.0f, 0.5f, 0.01f, 1.0f, "DEBUG SCREEN");
+    
+    CreateMenuTextBox(options_screen, 0.40f, 0.45f, 0.20f, 0.10f, 1.0f, "Not yet implemented.");
+    
+    pdata->menu = m;
+    m->main_menu_screen = main_menu_screen;
+    m->options_screen = options_screen;
+    m->debug_screen = debug_screen;
 }
 
 internal int32
 InitializeApplication(program_data *pdata)
 {
+    wlog(LOG_INFO, "InitializeApplication(): Initializing application data");
+    
     InitMessageQueue(&pdata->messages);
+    InitializePointers(pdata);
     
-    RETURN(SUCCESS);
-}
-
-internal int32
-InitQueues(program_data *pdata)
-{
-#if 0
-    pdata->pq_main = init_avpacket_queue(PACKET_QUEUE_SIZE);
+    Client_SetRefreshTime(&pdata->client, 1.0 / (real64)pdata->hardware.monitor_refresh_rate);
     
-    if(pdata->file.has_video)
-    {
-        pdata->pq_video = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
-        if(pdata->pq_video == NULL)
-            RETURN(NO_MEMORY);
-    }
+    InitializeMenus(pdata);
+    if(!pdata->menu)
+        RETURN(UNKNOWN_ERROR);
     
-    if(pdata->file.has_audio)
-    {
-        pdata->pq_audio = init_avpacket_queue(PACKET_QUEUE_SIZE/2);
-        if(pdata->pq_audio == NULL)
-            RETURN(NO_MEMORY);
-    }
-#endif 
-    RETURN(SUCCESS);
-}
-
-internal int32
-TerminateQueues(program_data *pdata)
-{
-#if 0
-    close_avpacket_queue(pdata->pq_audio);
-    close_avpacket_queue(pdata->pq_video);
-    close_avpacket_queue(pdata->pq_main);
-#endif 
     RETURN(SUCCESS);
 }
 
@@ -236,28 +307,31 @@ FileOpen_LoadData(program_data *pdata)
     
     if(!ret)
     {
-        InitQueues(pdata);
+        if(pdata->file.has_audio)
+        {
+            pdata->audio.mutex = PlatformCreateMutex();
+            PlatformInitAudio(&pdata->file);
+            pdata->audio.queue = FQInitialize(FQ_ORDERED_PTS);
+            
+            //PlatformResizeClientArea(&pdata->file, 0, 0);
+        }
+        if(pdata->file.has_video)
+        {
+            pdata->video.frame_duration = pdata->file.target_time;
+            PlatformInitVideo(&pdata->file);
+            pdata->video.queue = FQInitialize(FQ_ORDERED_PTS);
+        }
         
-    if(pdata->file.has_audio)
-    {
-        pdata->audio.mutex = PlatformCreateMutex();
-        PlatformInitAudio(&pdata->file);
-        avframe_queue_init(&pdata->video.queue, AVFQ_ORDERED_PTS);
-        
-        PlatformResizeClientArea(&pdata->file, 0, 0);
+        RETURN(SUCCESS);
     }
-    if(pdata->file.has_video)
-    {
-        pdata->video.frame_duration = pdata->file.target_time;
-        PlatformInitVideo(&pdata->file);
-        avframe_queue_init(&pdata->audio.queue, AVFQ_ORDERED_PTS);
-    }
-    
-    RETURN(SUCCESS);
-}
     else
+    {
+        wlog(LOG_ERROR, "Failed to open media file");
+        
         RETURN(UNKNOWN_ERROR);
+    }
 }
+
 internal int32
 FileOpen_StartThread(program_data *pdata)
 {
@@ -268,10 +342,12 @@ FileOpen_StartThread(program_data *pdata)
     
     pdata->threads.media_thread =
         PlatformCreateThread(MediaThreadStart, pdata, "media");
+    wlog(LOG_INFO, "Started new thread.");
     
     pdata->file.file_ready = 1;
-    pdata->playing = 0;
-    pdata->paused = 0;
+    
+    // TODO(Val): Maybe start this playing?
+    SetPlaybackPaused(pdata);
     
     RETURN(SUCCESS);
 }
@@ -299,8 +375,9 @@ internal bool32
 FileClose(program_data *pdata)
 {
     pdata->file.file_ready = 0;
-    //pdata->playing = 0;
-    pdata->paused = 0;
+    
+    // TODO(Val): This needs to be shut down more properly
+    SetPlaybackPaused(pdata);
     
     PlatformConditionSignal(&pdata->decoder.condition);
     PlatformWaitThread(pdata->threads.media_thread, NULL);
@@ -311,8 +388,6 @@ FileClose(program_data *pdata)
     DeallocateBuffers(pdata);
     
     PlatformCloseAudio(pdata);
-    
-    TerminateQueues(pdata);
     
     RETURN(SUCCESS);
 }
@@ -332,11 +407,12 @@ ProcessMessages(program_data *pdata)
         {
             case MSG_NO_MORE_MESSAGES:
             {
-                dbg_error("No message returned. Check message queue bookkeeping.\n");
+                wlog(LOG_WARNING, "Empty message returned, check message queue bookkeeping");
             } break;
             case MSG_TOGGLE_FULLSCREEN:
             {
-                PlatformToggleFullscreen(pdata);
+                wlog(LOG_INFO, "MSG_TOGGLE_FULLSCREEN");
+                ToggleFullscreen(pdata);
                 PlatformFlipBuffers(pdata);
             } break;
             case MSG_START_PLAYBACK:
@@ -349,6 +425,7 @@ ProcessMessages(program_data *pdata)
             } break;
             case MSG_PAUSE:
             {
+                wlog(LOG_INFO, "MSG_PAUSE");
                 TogglePlayback(pdata);
             } break;
             case MSG_SEEK:
@@ -365,31 +442,19 @@ ProcessMessages(program_data *pdata)
             } break;
             case MSG_CLOSE:
             {
+                wlog(LOG_INFO, "MSG_CLOSE");
                 pdata->running = 0;
             } break;
             case MSG_VOLUME_CHANGE:
             {
-                if(m.args[0].f < 0.0)
-                {
-                    if(pdata->volume > 0.0) 
-                    {
-                        pdata->volume += m.args[0].f;
-                        if(pdata->volume < 0)
-                            pdata->volume = 0.0;
-                    }
-                }
-                else if(m.args[0].f > 0.0)
-                {
-                    if(pdata->volume < 1.0) 
-                    {
-                        pdata->volume += m.args[0].f;
-                        if(pdata->volume > 1)
-                            pdata->volume = 1.0;
-                    }
-                }
+                wlog(LOG_INFO, "MSG_VOLUME_CHANGE");
+                
+                IncreaseVolume(&pdata->audio, m.args[0].f);
             } break;
             case MSG_FILE_OPEN:
             {
+                wlog(LOG_INFO, "MSG_FILE_OPEN");
+                
                 FileOpen(pdata);
             } break;
             case MSG_FILE_CLOSE:
@@ -408,19 +473,33 @@ ProcessMessages(program_data *pdata)
             {
                 if(!ConnectToIP(pdata->server_address))
                 {
-                    dbg_info("Connecting to server... Success.\n");
+                    wlog(LOG_INFO, "MSG_CONNECT_TO_SERVER: Connected to server successfully");
                     pdata->connected = 1;
                 }
                 else
-                    dbg_info("Connecting to server... Failure.\n");
+                    wlog(LOG_ERROR, "MSG_CONNECT_TO_SERVER: Failed to connect to server");
             } break;
             case MSG_DISCONNECT:
             {
+                wlog(LOG_INFO, "MSG_DISCONNECT");
                 CloseConnection();
                 pdata->connected = 0;
-            }
+            } break;
+            case MSG_TOGGLE_MENU:
+            {
+                MenuScreen *s;
+                if(s = GetTopmostMenuScreen(pdata->menu))
+                {
+                    PopMenuScreen(pdata->menu);
+                }
+                else
+                {
+                    PushMenuScreen(pdata->menu, pdata->menu->main_menu_screen);
+                }
+            } break;
             default:
             {
+                wlog(LOG_ERROR, "Uknown message in message queue");
                 dbg_warn("Unknown message in message queue: %d\n", m.msg);
             }
         }
@@ -439,7 +518,7 @@ ProcessAudio(program_data *pdata)
     //PlatformLockMutex(&pdata->audio.mutex);
     
     AVFrame *frame = NULL;
-    if(!avframe_queue_dequeue(&pdata->audio.queue, &frame, NULL))
+    if(!FQDequeue(pdata->audio.queue, &frame, NULL))
     {
         PlatformQueueAudio(frame);
         
@@ -456,7 +535,7 @@ ProcessAudio(program_data *pdata)
     }
     else
     {
-        dbg_warn("There were no frames in queue.\n");
+        wlog(LOG_ERROR, "No frames in queue");
     }
 }
 
@@ -466,7 +545,7 @@ ProcessVideo(program_data *pdata)
     StartTimer("ProcessVideo()");
     
     AVFrame *frame = NULL;
-    if(!avframe_queue_dequeue(&pdata->video.queue, &frame, NULL))
+    if(!FQDequeue(pdata->video.queue, &frame, NULL))
     {
         PlatformUpdateVideoFrame(frame);
         
@@ -501,11 +580,15 @@ ProcessPlayback(program_data *pdata)
     bool32 need_video = 0;
     bool32 need_audio = 0;
     
-    if(pdata->file.has_video && !avframe_queue_empty(&pdata->video.queue))
+    // TODO(Val): There is a bug here when there are no more frames in frame queues. Getting next frame pts when there is no frame is undefined (I guess?)
+    
+    if(should_display(playback, FQNextTimestamp(video->queue)))
     {
-        if(should_display(playback, avframe_queue_next_pts(&video->queue)))
+        if(!FQEmpty(pdata->video.queue))
         {
             StartTimer("Processing video");
+            
+            wlog(LOG_TRACE, "ProcessVideo()");
             
             ProcessVideo(pdata);
             need_video = 1;
@@ -514,45 +597,33 @@ ProcessPlayback(program_data *pdata)
         }
         else
         {
-            dbg_print("Not time to display yet.\n");
+            wlog(LOG_ERROR, "Video frames were not ready in time");
         }
     } 
     else
     {
-        dbg_warn("Video was not ready.\n");
-        
+        wlog(LOG_TRACE, "Not time to display next video frame");
     }
     
-    if(pdata->file.has_audio && !avframe_queue_empty(&pdata->audio.queue))
+    if(should_queue(playback, FQNextTimestamp(pdata->audio.queue)) || !playback->started_playing)
     {
-        StartTimer("Processing audio");
-        if(should_queue(playback, avframe_queue_next_pts(&pdata->audio.queue)) || !playback->started_playing)
+        if(!FQEmpty(pdata->audio.queue))
         {
-            ProcessAudio(pdata);
+            StartTimer("Processing audio");
             
+            wlog(LOG_TRACE, "ProcessAudio()");
+            
+            ProcessAudio(pdata);
             need_audio = 1;
+            
+            EndTimer();
         }
-        //else if(pdata->audio.is_ready &&
-        //(should_skip(playback, playback->audio_total_queued)))
-        //{
-        //dbg_error("Audio is not ready or not time to play.\n");
-        //pdata->audio.is_ready = 0;
-        //need_audio = 1;
-        //}
-        //else
-        //{
-        //dbg_info("Just waiting as it's not yet time to queue.\n");
-        //}
-        EndTimer();
     }
     
     if(need_audio || need_video)
     {
-        dbg_warn("Video or audio needed.\n");
-        
         PlatformConditionSignal(&pdata->decoder.condition);
     }
-    
     RETURN(SUCCESS);
 }
 
@@ -564,7 +635,7 @@ ProcessNetwork(program_data *pdata)
 {
     StartTimer("ProcessNetwork()");
     
-    if(unlikely(pdata->is_host && !pdata->connected))
+    if(unlikely(HostingFile(pdata) && !Connected(pdata)))
     {
         // NOTE(Val): Need to accept a client
         if(AcceptConnection() == CONNECTED)
@@ -579,7 +650,7 @@ ProcessNetwork(program_data *pdata)
         int ret = ReceiveControlMessages();
         if(ret == DISCONNECTED)
             goto Disconnected;
-            else if(ret == UNKNOWN_ERROR)
+        else if(ret == UNKNOWN_ERROR)
         {
             EndTimer();
             RETURN(UNKNOWN_ERROR);
@@ -595,10 +666,10 @@ ProcessNetwork(program_data *pdata)
                 {
                     // NOTE(Val): Server responds to the init request by sending the required information  
                     
-                    SETUP_MSG_PROCESSING(struct _request_init_msg, msg, msg_r)
+                    SETUP_MSG_PROCESSING(struct _request_init_msg, msg, msg_r);
                     
                     destination_IP ip = {};
-                    GetPartnerIPInt(&ip.v4.ip);
+                    ip.v4.ip = GetPartnerIPInt();
                     
                     SendInitMessage(0.0,
                                     0.0,
@@ -610,12 +681,10 @@ ProcessNetwork(program_data *pdata)
                 {
                     // NOTE(Val): Client replies by sending the server its own IP address
                     
-                    SETUP_MSG_PROCESSING(struct _init_msg, msg, msg_r)
-                    
-                    //Streaming_GetFileName(pdata->file.filename, pdata->server_address, msg_p->port, NULL);
+                    SETUP_MSG_PROCESSING(struct _init_msg, msg, msg_r);
                     
                     destination_IP ip = {};
-                    GetPartnerIPInt(&ip.v4.ip);
+                    ip.v4.ip = GetPartnerIPInt();
                     SendFinishInitMessage(ip);
                 } break;
                 case MESSAGE_FINISH_INIT:
@@ -640,7 +709,7 @@ ProcessNetwork(program_data *pdata)
                     
                     
                     Streaming_GetFileName(pdata->file.filename, pdata->server_address, Streaming_Get_Port(), NULL);
-                                          
+                    
                     AddMessage0(&pdata->messages, MSG_FILE_OPEN, PlatformGetTime());
                 } break;
                 
@@ -658,31 +727,33 @@ ProcessNetwork(program_data *pdata)
                 } break;
                 case MESSAGE_PAUSE:
                 {
-                    SETUP_MSG_PROCESSING(struct _pause_msg, msg, msg_r)
-                        
-                    LocalTogglePlayback(pdata);
+                    SETUP_MSG_PROCESSING(struct _pause_msg, msg, msg_r);
+                    
+                    wlog(LOG_INFO, "Processing pause client message");
+                    
+                    LocalPause(pdata);
                 } break;
                 case MESSAGE_PLAY:
                 {
-                    SETUP_MSG_PROCESSING(struct _play_msg, msg, msg_r)
-                        
-                        LocalTogglePlayback(pdata);
+                    SETUP_MSG_PROCESSING(struct _play_msg, msg, msg_r);
+                    
+                    LocalUnpause(pdata);
                 } break;
                 case MESSAGE_SEEK:
                 {
-                    SETUP_MSG_PROCESSING(struct _seek_msg, msg, msg_r)
-                        
-                        
+                    SETUP_MSG_PROCESSING(struct _seek_msg, msg, msg_r);
+                    
+                    
                 } break;
                 case MESSAGE_DISCONNECT:
                 {
-                    SETUP_MSG_PROCESSING(struct _disconnect_msg, msg, msg_r)
-                        
-                        
+                    SETUP_MSG_PROCESSING(struct _disconnect_msg, msg, msg_r);
+                    
+                    
                 } break;
                 default:
                 {
-                    dbg_error("Unknown network message received.\n");
+                    wlog(LOG_ERROR, "Unknown client message received");
                 } break;
             }
             
@@ -703,10 +774,9 @@ ProcessNetwork(program_data *pdata)
     Disconnected:
     
     CloseConnection();
-    pdata->connected = 0;
-    pdata->is_partner = 0;
-    pdata->is_host = 0;
-    dbg_success("Disconnected\n");
+    SetDisconnected(pdata);
+    
+    wlog(LOG_INFO, "Client disconnected");
     
     RETURN(DISCONNECTED);
 }
@@ -738,16 +808,9 @@ StartPlayback(program_data *pdata)
     StartTimer("Starting Playback");
     start_playback(&pdata->playback, *pdata->playback.current_frame_time + 0.3);
     
-    pdata->start_playback = 0;
-    pdata->playing = 1;
+    PlaybackStart(pdata);
     
-    //ProcessVideo(pdata);
-    //ProcessAudio(pdata);
-    
-    PlatformConditionSignal(&pdata->decoder.condition);
-    
-    //TogglePlayback(pdata);
-    dbg_info("Playback started!\n");
+    wlog(LOG_INFO, "Playback started");
     EndTimer();
 }
 
@@ -759,13 +822,14 @@ MainLoopThread(void *arg)
     program_data *pdata = arg;
     playback_data *playback = &pdata->playback;
     client_info *client = &pdata->client;
-    
-    //client->start_time = PlatformGetTime();
-    //client->next_refresh_time = (client->start_time + client->refresh_target);
+    client->start_time = PlatformGetTime();
+    client->next_refresh_time = (client->start_time + client->refresh_target);
     
     // now start main loop
     StartTimer("Main loop");
-    while(pdata->running)
+    
+    wlog(LOG_INFO, "Starting main loop");
+    while(likely(pdata->running))
     {
         StartTimer("Loop");
         
@@ -774,25 +838,28 @@ MainLoopThread(void *arg)
         PlatformGetInput(pdata);
         
         ProcessInput(pdata);
+        ProcessMouse(pdata);
         ProcessMessages(pdata);
         
         StartTimer("ProcessNetwork()");
-        if(pdata->is_host || pdata->is_partner)
+        if(PlaybackNetworked(pdata))
             ProcessNetwork(pdata);
         EndTimer();
         
         if(!pdata->file.open_failed)
         {
-            if(pdata->start_playback)
+            if(PlaybackStartFlagged(pdata))
             {
-                StartPlayback(pdata);
+                dbg_success("Starting playback.\n");
+                PlaybackStart(pdata);
                 
-                if(Connected(pdata))
-                    SendPlayMessage();
+                //if(Connected(pdata))
+                //SendPlayMessage();
             }
         }
         else 
         {
+            wlog(LOG_WARNING, "Failed to open file");
             //pdata->file.open_failed = 0;
             
             // TODO(Val): Opening file failed.
@@ -800,7 +867,7 @@ MainLoopThread(void *arg)
             dbg_warn("Opening file failed.\n");
         }
         
-        if(pdata->playing && !pdata->paused)
+        if(PlaybackPlaying(pdata))
         {
             StartTimer("ProcessPlayback()");
             ProcessPlayback(pdata);
@@ -847,7 +914,7 @@ MainLoopThread(void *arg)
         EndTimer();
     }
     
-    if(pdata->is_host || pdata->is_partner)
+    if(PlaybackNetworked(pdata))
     {
         if(pdata->connected)
         {
@@ -855,7 +922,7 @@ MainLoopThread(void *arg)
             SendControlMessages();
         }
         
-        if(pdata->is_host)
+        if(HostingFile(pdata))
             CloseServer();
         
         CloseConnection();
@@ -868,35 +935,26 @@ MainLoopThread(void *arg)
     RETURN(SUCCESS);
 }
 
-internal void inline
-InitializePointers(program_data *pdata)
-{
-    pdata->playback.current_frame_time = &pdata->client.current_frame_time;
-    pdata->playback.next_frame_time = &pdata->client.next_refresh_time;
-    pdata->playback.refresh_target = &pdata->client.refresh_target;
-}
-
 internal int32
 MainThread(program_data *pdata)
 {
     // NOTE(Val): Initialize things here that will last the entire runtime of the application
-    InitializeApplication(pdata);
+    if(InitializeApplication(pdata) < 0)
+        return -1;
     
-    Client_SetRefreshTime(&pdata->client, 1.0 / (real64)pdata->hardware.monitor_refresh_rate);
-    InitializePointers(pdata);
-    
-    if(pdata->is_host)
+    if(HostingFile(pdata))
     {
         AddMessage0(&pdata->messages, MSG_START_SERVER, PlatformGetTime());
         //AddMessage0(&pdata->messages, MSG_FILE_OPEN, PlatformGetTime());
     }
-    else if(pdata->is_partner)
+    else if(ReceivingFile(pdata))
     {
         AddMessage0(&pdata->messages, MSG_START_CLIENT, PlatformGetTime());
         AddMessage0(&pdata->messages, MSG_CONNECT_TO_SERVER, PlatformGetTime());
     }
     else
     {
+        wlog(LOG_INFO, "Adding file open message");
         AddMessage0(&pdata->messages, MSG_FILE_OPEN, PlatformGetTime());
     }
     

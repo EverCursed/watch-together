@@ -44,6 +44,14 @@ c_malloc(size_t size, char *file, int line)
 }
 
 internal void *
+c_malloc_expanded(size_t size, int round_up_to, char *file, int line)
+{
+    
+    int size_rounded = (size + (round_up_to-1)) & ~(round_up_to-1);
+    return c_malloc(size_rounded, file, line);
+}
+
+internal void *
 c_realloc(void *ptr, size_t size)
 {
     for(int i = 0; i < MAX_ALLOCS; i++)
@@ -63,7 +71,7 @@ c_realloc(void *ptr, size_t size)
     
     return NULL;
 }
- 
+
 internal void
 assert_memory_bounds()
 {
@@ -80,6 +88,8 @@ assert_memory_bounds()
 internal void
 c_free(void *mem)
 {
+    if(unlikely(!mem)) return;
+    
     for(int i = 0; i < MAX_ALLOCS; i++)
     {
         if(allocations[i] == mem)

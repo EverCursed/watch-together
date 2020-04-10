@@ -25,24 +25,6 @@ increment_audio_times(playback_data *playback, real64 duration)
     
     RETURN(SUCCESS);
 }
-/*
-internal void
-update_playback_time(playback_data *playback)
-{
-dbg_print("update_playback_time:\n"
-"\tcurrent_frame_time: %lf\n"
-"\taggregated_pause_time: %lf\n"
-"\tplayback_start: %lf\n",
-*playback->current_frame_time,
-playback->aggregated_pause_time,
-playback->playback_start);
-
-playback->playback_time = 
-*playback->current_frame_time -
-playback->aggregated_pause_time -
-playback->playback_start;
-}
-*/
 
 internal real64
 get_next_frame_time(playback_data *p)
