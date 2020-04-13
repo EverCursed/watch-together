@@ -21,55 +21,55 @@ typedef struct _platform_mutex platform_mutex;
 typedef struct _output_audio output_audio;
 typedef struct _output_video output_video;
 
-internal int32
+internal i32
 PlatformFlipBuffers();
 
 internal int
 PlatformGetInput();
 
 internal void
-PlatformPauseAudio(bool32);
+PlatformPauseAudio(b32);
 
-internal int32
+internal i32
 PlatformUpdateVideoFrame(AVFrame *frame);
 
-internal int32
+internal i32
 PlatformRender();
 
 
 // Threads 
 
 internal thread_info
-PlatformCreateThread(int32 (*f)(void *), void *, char *);
+PlatformCreateThread(i32 (*f)(void *), void *, char *);
 
 internal void
-PlatformWaitThread(thread_info, int32 *);
+PlatformWaitThread(thread_info, i32 *);
 
 internal cond_info
 PlatformCreateConditionVar();
 
-internal int32
+internal i32
 PlatformConditionWait(cond_info *);
 
-internal int32
+internal i32
 PlatformConditionSignal(cond_info *);
 
-internal bool32
+internal b32
 PlatformConditionDestroy(cond_info *);
 
 internal platform_mutex
 PlatformCreateMutex();
 
-internal int32
+internal i32
 PlatformLockMutex(platform_mutex *);
 
-internal int32
+internal i32
 PlatformUnlockMutex(platform_mutex *);
 
 internal void
 PlatformDestroyMutex(platform_mutex *);
 
-internal int32
+internal i32
 PlatformInitAudio(open_file_info *);
 
 internal void
@@ -81,13 +81,13 @@ PlatformInitVideo(open_file_info *);
 internal void
 PlatformChangeFullscreenState(b32 on);
 
-//internal int32
-//PlatformResizeClientArea(open_file_info *, int32, int32);
+//internal i32
+//PlatformResizeClientArea(open_file_info *, i32, i32);
 
-internal int32
+internal i32
 PlatformQueueAudio();
 
-internal int64
+internal i64
 PlatformGetThreadID();
 
 internal SDL_Texture *

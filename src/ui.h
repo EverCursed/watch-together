@@ -17,7 +17,7 @@
 #define BUTTON_TEXT_HEIGHT_FRACTION 0.75f
 
 typedef i32 button_id;
-typedef void (*fptr)(void *);
+typedef void (*func)(void *);
 
 typedef struct MenuButtons {
     i32 nbuttons;
@@ -94,7 +94,7 @@ internal void CreateMenuTextBox(MenuScreen *s, f32 x, f32 y, f32 w, f32 h, f32 s
 internal void PushMenuScreen(Menu *m, MenuScreen *s);
 internal MenuScreen* PopMenuScreen(Menu *m);
 
-internal fptr
+internal func
 MenuGetClickedButtonAction(Menu *m, i32 x, i32 y, i32 screen_x, i32 screen_y);
 
 

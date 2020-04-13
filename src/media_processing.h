@@ -15,8 +15,8 @@ https://github.com/EverCursed
 #include "audio.h"
 #include "video.h"
 
-internal int32 MediaThreadStart(void *);
-internal int32 MediaOpen(open_file_info *, decoder_info *, encoder_info *, output_audio *, output_video *);
-internal int32 MediaClose(open_file_info *, decoder_info *, encoder_info *, output_audio *, output_video *);
+internal i32 MediaThreadStart(void *);
+internal i32 MediaOpen(open_file_info *, decoder_info *, encoder_info *, output_audio *, output_video *);
+internal i32 MediaClose(open_file_info *, decoder_info *, encoder_info *, output_audio *, output_video *);
 
 #endif // MEDIA_PROCESSING_H

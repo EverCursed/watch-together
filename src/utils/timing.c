@@ -36,7 +36,7 @@ internal void
 GetHighPrecisionTime(f64 *ptr)
 {
 #if defined( _WIN32)
-    uint64 time;
+    u64 time;
     QueryPerformanceCounter((LARGE_INTEGER *)&time);
     *ptr = ((f64)time / (f64)__dbgtimdat.dat.freq) - __dbgtimdat.start_time;
 #endif
@@ -82,7 +82,7 @@ internal void
 DumpTimingFrame()
 {
 #ifdef DEBUG
-    int32 n = 0; 
+    i32 n = 0; 
     struct _timing_queue queue = {};
     __dbgtimdat.dump = custom_malloc(__dbgtimdat.n * DEBUG_LINE_WIDTH);
     for(int i = 0; i < __dbgtimdat.n; i++)

@@ -19,7 +19,7 @@ extern _Thread_local struct _timing_data __dbgtimdat;
 
 struct platform_timing_data {
 #ifdef _WIN32
-    uint64 freq;
+    u64 freq;
 #elif defined(__linux__)
     
 #endif
@@ -32,7 +32,7 @@ typedef struct _timing_instance {
 
 struct _timing_queue {
     timing_instance q[MAX_DEPTH];
-    int32           n;
+    i32           n;
 };
 
 struct _timing_data {
@@ -40,9 +40,9 @@ struct _timing_data {
     char *dump;
     char *thread_name;
     f64 start_time;
-    int32 dump_length;
-    int32 n;
-    int32 max_marks;
+    i32 dump_length;
+    i32 n;
+    i32 max_marks;
     struct platform_timing_data dat;
 };
 

@@ -11,7 +11,7 @@ This is a queue that stores AVFrames by their timestamp.
 #include "errors.h"
 
 internal avframe_queue *
-FQInitialize(int32 flags)
+FQInitialize(i32 flags)
 {
     avframe_queue *queue = custom_malloc(sizeof(avframe_queue));
     if(!queue) goto alloc_fail;
@@ -56,7 +56,7 @@ FQClose(avframe_queue **queue)
     *queue = NULL;
 }
 
-internal int32
+internal i32
 FQEnqueue(avframe_queue *queue, AVFrame *frame, f64 pts)
 {
     if(FQInitialized(queue))
@@ -93,7 +93,7 @@ FQEnqueue(avframe_queue *queue, AVFrame *frame, f64 pts)
 }
 
 // TODO(Val): This should also check if we don't provide a pointer to pts
-internal int32
+internal i32
 FQDequeue(avframe_queue *queue, AVFrame **frame, f64 *pts)
 {
     if(FQInitialized(queue))
@@ -126,13 +126,13 @@ FQDequeue(avframe_queue *queue, AVFrame **frame, f64 *pts)
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 FQRemove(avframe_queue *queue, f64 pts)
 {
     RETURN(NOT_YET_IMPLEMENTED);
 }
 
-internal int32
+internal i32
 FQClear(avframe_queue *queue)
 {
     RETURN(NOT_YET_IMPLEMENTED);

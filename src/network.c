@@ -14,8 +14,8 @@ https://github.com/EverCursed
 #include "common/custom_malloc.h"
 #include "utils/timing.h"
 
-static uint16 message_ports[4] = {8212, 8418, 23458, 28002};
-//static uint16 rtp_ports[4] = {9165, 9347, 18669, 21222};
+static u16 message_ports[4] = {8212, 8418, 23458, 28002};
+//static u16 rtp_ports[4] = {9165, 9347, 18669, 21222};
 
 /*
 
@@ -32,20 +32,20 @@ int SDLNet_TCP_Recv(TCPsocket sock, void *data, int maxlen)
 
 static SDLNet_SocketSet socket_set;
 
-static bool32 is_host = 0;
-static bool32 is_client = 0;
+static b32 is_host = 0;
+static b32 is_client = 0;
 
 static TCPsocket server = NULL;
 static TCPsocket partner = NULL;
 
 static void *temp_buffer = NULL;
 //static int8 temp_buffer[MAX_NETWORK_BUFFER_SIZE] = {};
-static int32 temp_buffer_used = 0;
+static i32 temp_buffer_used = 0;
 
 static void *recv_buffer = NULL;
 //static int8 recv_buffer[MAX_NETWORK_BUFFER_SIZE] = {};
-static int32 recv_buffer_used = 0;
-static int32 recv_buffer_size = 0;
+static i32 recv_buffer_used = 0;
+static i32 recv_buffer_size = 0;
 
 #define INIT_MSG_VARIABLES(msg_type, struct_type, var) \
 struct_type var; \
@@ -69,7 +69,7 @@ do { \
 } while(0)
 
 #define GENERATE_SEND_MESSAGE_FUNCTION(func_msg_type, struct_type, msg_val, print_func) \
-internal int32 \
+internal i32 \
 Send##func_msg_type##Message() \
 { \
     INIT_MSG_VARIABLES(msg_val, struct_type, msg); \
@@ -92,7 +92,7 @@ reset_recv_buffer()
     recv_buffer_size = 0;
 }
 
-internal bool32
+internal b32
 initialize_buffers()
 {
     recv_buffer = custom_malloc(MAX_NETWORK_BUFFER_SIZE);
@@ -108,7 +108,7 @@ terminate_buffers()
     custom_free(temp_buffer);
 }
 
-internal int32
+internal i32
 StartServer()
 {
     // this client is hosting the media file
@@ -131,7 +131,7 @@ StartServer()
         RETURN(NO_MEMORY);
 }
 
-internal int32
+internal i32
 StartClient()
 {
     socket_set = SDLNet_AllocSocketSet(1);
@@ -143,7 +143,7 @@ StartClient()
         RETURN(NO_MEMORY);
 }
 
-internal int32
+internal i32
 CloseServer()
 {
     if(server)
@@ -165,7 +165,7 @@ CloseServer()
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 CloseClient()
 {
     if(partner)
@@ -183,7 +183,7 @@ CloseClient()
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 AcceptConnection()
 {
     if((partner  = SDLNet_TCP_Accept(server)))
@@ -195,7 +195,7 @@ AcceptConnection()
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 ConnectToIP(const char *ip)
 {
     for(int i = 0; i < ArrayCount(message_ports) && partner==NULL; i++)
@@ -215,8 +215,8 @@ ConnectToIP(const char *ip)
     RETURN(SUCCESS);
 }
 
-internal int32
-QueueControlMessage(void *buffer, int32 size)
+internal i32
+QueueControlMessage(void *buffer, i32 size)
 {
     memcpy(temp_buffer+temp_buffer_used, buffer, size);
     temp_buffer_used += size;
@@ -224,7 +224,7 @@ QueueControlMessage(void *buffer, int32 size)
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 SendControlMessages()
 {
     if(temp_buffer_used == 0)
@@ -233,14 +233,14 @@ SendControlMessages()
     void *buffer = custom_malloc(MAX_NETWORK_BUFFER_SIZE);
     //int8 buffer[MAX_NETWORK_BUFFER_SIZE];
     
-    int32 temp;
+    i32 temp;
     SDLNet_Write32(temp_buffer_used, &temp);
     
     SDLNet_TCP_Send(partner, &temp, sizeof(temp));
     
     for(int i = 0; i < temp_buffer_used; i+=4)
     {
-        int temp = *((int32 *)(temp_buffer+i));
+        int temp = *((i32 *)(temp_buffer+i));
         SDLNet_Write32(temp, buffer+i);
     }
     
@@ -257,8 +257,8 @@ SendControlMessages()
               "\tConverted: %d\n",
               temp_buffer_used,
               temp,
-              *((int32 *)temp_buffer),
-              *((int32 *)buffer));
+              *((i32 *)temp_buffer),
+              *((i32 *)buffer));
     */
     
     custom_free(buffer);
@@ -339,7 +339,7 @@ GetNextMessage()
     return new_msg;
 }
 
-internal int32
+internal i32
 ReceiveControlMessages()
 {
     StartTimer("ReceiveControlMessages()");
@@ -352,8 +352,8 @@ ReceiveControlMessages()
             void *buffer = custom_malloc(MAX_NETWORK_BUFFER_SIZE);
             //int8 buffer[MAX_NETWORK_BUFFER_SIZE];
             
-            int32 temp;
-            int32 ret = SDLNet_TCP_Recv(partner, &temp, sizeof(temp));
+            i32 temp;
+            i32 ret = SDLNet_TCP_Recv(partner, &temp, sizeof(temp));
             if(ret <= 0)
                 RETURN(DISCONNECTED);
             
@@ -365,7 +365,7 @@ ReceiveControlMessages()
             for(int i = 0; i < recv_buffer_size; i+=4)
             {
                 int temp = SDLNet_Read32(buffer+i);
-                *((int32 *)(recv_buffer+i)) = temp;
+                *((i32 *)(recv_buffer+i)) = temp;
             }
         }
     }
@@ -401,7 +401,7 @@ GetPartnerIPStr(char **buffer)
     IPToStr(*buffer, ip);
 }
 
-internal uint32
+internal u32
 GetPartnerIPInt()
 {
     IPaddress *temp_ip = SDLNet_TCP_GetPeerAddress(partner);
@@ -409,10 +409,10 @@ GetPartnerIPInt()
     return temp_ip->host;
 }
 
-internal int32
+internal i32
 SendInitMessage(f64 start_timestamp,
                 f64 file_duration,
-                int32 flags)
+                i32 flags)
 {
     INIT_MSG_VARIABLES(MESSAGE_INIT, struct _init_msg, msg);
     
@@ -425,7 +425,7 @@ SendInitMessage(f64 start_timestamp,
     SEND_MSG_TO_QUEUE(msg);
 }
 
-internal int32
+internal i32
 SendFinishInitMessage(destination_IP ip)
 {
     INIT_MSG_VARIABLES(MESSAGE_FINISH_INIT, struct _finish_init_msg, msg);
@@ -437,7 +437,7 @@ SendFinishInitMessage(destination_IP ip)
     SEND_MSG_TO_QUEUE(msg);
 }
 
-internal int32
+internal i32
 SendRequestPortMessage()
 {
     INIT_MSG_VARIABLES(MESSAGE_REQUEST_PORT, struct _request_port_msg, msg);
@@ -445,7 +445,7 @@ SendRequestPortMessage()
     SEND_MSG_TO_QUEUE(msg);
 }
 
-internal int32
+internal i32
 SendSeekMessage(f64 timestamp)
 {
     INIT_MSG_VARIABLES(MESSAGE_SEEK, struct _seek_msg, msg);
@@ -482,7 +482,7 @@ GENERATE_SEND_MESSAGE_FUNCTION(Disconnect,
                                MESSAGE_DISCONNECT,
                                print_disconnect_msg)
 
-internal int32
+internal i32
 CloseConnection()
 {
     SDLNet_TCP_Close(partner);

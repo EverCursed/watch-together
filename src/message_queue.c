@@ -20,7 +20,7 @@ InitMessageQueue(message_queue *q)
 }
 
 internal void
-AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, f64 time)
+AddMessage(message_queue *q, i32 m, arg a1, arg a2, arg a3, arg a4, arg a5, f64 time)
 {
     if(!MessagesFull(q))
     {
@@ -41,7 +41,7 @@ AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, f6
     }
 }
 
-internal int32
+internal i32
 GetApplicationMessage(message_queue *q, message *m)
 {
     if(q->n > 0)

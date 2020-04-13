@@ -9,7 +9,7 @@ https://github.com/EverCursed
 //#include "video.h"
 #include "watchtogether.h"
 
-internal int32
+internal i32
 ClearVideoOutput(output_video *video)
 {
     //video->pitch = 0;

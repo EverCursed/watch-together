@@ -12,7 +12,6 @@ https://github.com/EverCursed
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_net.h>
 #include <SDL2/SDL_ttf.h>
-#include <assert.h>
 #include <libavutil/frame.h>
 
 #include "watchtogether.h"
@@ -41,7 +40,7 @@ __declspec(dllexport) unsigned long NvOptimusEnablement = 0x00000001;
  */
 
 global SDL_AudioDeviceID AudioID = -1;
-global bool32 audio_initialized = 0;
+global b32 audio_initialized = 0;
 global SDL_Window *window = NULL;
 global SDL_Renderer *renderer = NULL;
 //global SDL_Texture *background_texture;
@@ -57,11 +56,11 @@ global program_data *pdata;
 
 #define TESTING_FILE "data/video_test/video.mp4"
 
-internal int32
+internal i32
 PlatformQueueAudio(AVFrame *frame)
 {
     //output_audio *audio = &pdata->audio;
-    int32 size = frame->nb_samples * frame->channels * av_get_bytes_per_sample(frame->format);
+    i32 size = frame->nb_samples * frame->channels * av_get_bytes_per_sample(frame->format);
     
     int ret = SDL_QueueAudio(AudioID,
                              frame->data[0],
@@ -76,14 +75,14 @@ PlatformQueueAudio(AVFrame *frame)
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 PlatformInitAudio(open_file_info *file)
 {
     output_audio *audio = &pdata->audio;
     
     SDL_AudioSpec DesiredAudioSpec = {};
     SDL_AudioSpec ReceivedAudioSpec = {};
-    int32 bytes_per_sample = file->bytes_per_sample;
+    i32 bytes_per_sample = file->bytes_per_sample;
     
     DesiredAudioSpec.freq = file->sample_rate;
     
@@ -160,14 +159,14 @@ PlatformCloseAudio()
 }
 
 internal void
-PlatformPauseAudio(bool32 b)
+PlatformPauseAudio(b32 b)
 {
     SDL_PauseAudioDevice(AudioID, b);
 }
 
 /// Platform create thread
 internal thread_info
-PlatformCreateThread(int32 (*f)(void *), void *data, char* name)
+PlatformCreateThread(i32 (*f)(void *), void *data, char* name)
 {
     thread_info info = {};
     char* title = name == NULL ? "" : name;
@@ -180,7 +179,7 @@ PlatformCreateThread(int32 (*f)(void *), void *data, char* name)
 }
 
 internal void
-PlatformWaitThread(thread_info thread, int32 *ret)
+PlatformWaitThread(thread_info thread, i32 *ret)
 {
     SDL_WaitThread(thread.thread, ret);
 }
@@ -195,7 +194,7 @@ PlatformCreateConditionVar()
     return c;
 }
 
-internal int32
+internal i32
 PlatformConditionWait(cond_info *c)
 {
     if(SDL_LockMutex(c->mutex))
@@ -218,7 +217,7 @@ PlatformConditionWait(cond_info *c)
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 PlatformConditionSignal(cond_info *c)
 {
     wlog(LOG_TRACE, "Signaling condition variable");
@@ -234,7 +233,7 @@ PlatformConditionSignal(cond_info *c)
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 PlatformConditionDestroy(cond_info *c)
 {
     SDL_DestroyMutex(c->mutex);
@@ -253,7 +252,7 @@ PlatformCreateMutex()
     return m;
 }
 
-internal int32
+internal i32
 PlatformLockMutex(platform_mutex *m)
 {
     if(!SDL_LockMutex(m->mutex))
@@ -265,7 +264,7 @@ PlatformLockMutex(platform_mutex *m)
     }
 }
 
-internal int32
+internal i32
 PlatformUnlockMutex(platform_mutex *m)
 {
     if(!SDL_UnlockMutex(m->mutex))
@@ -286,7 +285,7 @@ PlatformDestroyMutex(platform_mutex *m)
     SDL_DestroyMutex(m->mutex);
 }
 
-internal int32
+internal i32
 PlatformUpdateVideoFrame(AVFrame *frame)
 {
     StartTimer("PlatformUpdateVideoFrame()");
@@ -348,7 +347,7 @@ EndTimer();
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 PlatformRender()
 {
     StartTimer("PlatformUpdateFrame");
@@ -412,7 +411,7 @@ PlatformRender()
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 PlatformFlipBuffers()
 {
     wlog(LOG_TRACE, "Flipping pixel buffers");
@@ -437,11 +436,11 @@ PlatformChangeFullscreenState(b32 on)
 
 internal inline
 void add_key(input_struct *input,
-             uint32 key,
-             bool32 shift,
-             bool32 ctrl,
-             bool32 alt,
-             bool32 pressed)
+             u32 key,
+             b32 shift,
+             b32 ctrl,
+             b32 alt,
+             b32 pressed)
 {
     if(input->keyboard.n < MAX_KEYS)
     {
@@ -553,7 +552,7 @@ PlatformInitVideo(open_file_info *file)
     if(!video_texture) SDL_PrintError();
 }
 
-internal int32
+internal i32
 PlatformGetInput()
 {
     StartTimer("PlatformGetInput()");
@@ -604,10 +603,10 @@ PlatformGetInput()
             case SDL_KEYDOWN:
             case SDL_KEYUP:
             {
-                bool32 shift_down = event.key.keysym.mod & KMOD_SHIFT;
-                bool32 ctrl_down = event.key.keysym.mod & KMOD_CTRL;
-                bool32 alt_down = event.key.keysym.mod & KMOD_ALT;
-                bool32 pressed = event.key.state == SDL_PRESSED ? 1 : 0;
+                b32 shift_down = event.key.keysym.mod & KMOD_SHIFT;
+                b32 ctrl_down = event.key.keysym.mod & KMOD_CTRL;
+                b32 alt_down = event.key.keysym.mod & KMOD_ALT;
+                b32 pressed = event.key.state == SDL_PRESSED ? 1 : 0;
                 
                 add_key(input, event.key.keysym.sym, shift_down, ctrl_down, alt_down, pressed);
             } break;
@@ -643,19 +642,19 @@ PlatformGetInput()
     RETURN(SUCCESS);
 }
 
-internal int64
+internal i64
 PlatformGetThreadID()
 {
     return SDL_ThreadID();
 }
 
-internal int32
+internal i32
 InitializeTextures()
 {
     wlog(LOG_INFO, "InitializeTextures(): Initializing SDL textures");
     
-    int32 width;
-    int32 height;
+    i32 width;
+    i32 height;
     
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
     
@@ -685,7 +684,7 @@ PlatformConvertSurfaceToTexture(SDL_Surface *surface)
     return SDL_CreateTextureFromSurface(renderer, surface);
 }
 
-static inline void
+internal inline void
 print_usage()
 {
     printf("usage: %s -i input_file [-s] [-p ip]\n "
@@ -862,5 +861,6 @@ int main(int argc, char *argv[])
     
     TTF_Quit();
     SDL_Quit();
+    
     return 0;
 }

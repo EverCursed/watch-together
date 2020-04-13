@@ -19,17 +19,17 @@ typedef struct _output_video {
     void *video_frame_sup1;
     void *video_frame_sup2;
     f64 frame_duration;
-    uint32 pitch;
-    uint32 pitch_sup1;
-    uint32 pitch_sup2;
-    uint32 width;
-    uint32 height;
-    int32 type;
-    bool32 is_ready;
+    u32 pitch;
+    u32 pitch_sup1;
+    u32 pitch_sup2;
+    u32 width;
+    u32 height;
+    i32 type;
+    b32 is_ready;
     f64 pts;
 } output_video;
 
-internal int32
+internal i32
 ClearVideoOutput(output_video *video);
 
 #endif

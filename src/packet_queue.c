@@ -21,7 +21,7 @@ This holds a queue of AVPacket structs. This is a buffer for
 #include "defines.h"
 
 internal avpacket_queue*
-PQInit(int32 n)
+PQInit(i32 n)
 {
     avpacket_queue *queue;
     queue = custom_malloc(sizeof(avpacket_queue));
@@ -43,7 +43,7 @@ PQInit(int32 n)
     return queue;
 }
 
-internal int32
+internal i32
 PQEnqueue(avpacket_queue *queue, AVPacket *packet)
 {
     if(!PQInitialized(queue))
@@ -73,7 +73,7 @@ PQEnqueue(avpacket_queue *queue, AVPacket *packet)
     }
 }
 
-internal int32
+internal i32
 PQDequeue(avpacket_queue *queue, AVPacket **packet)
 {
     if(!PQInitialized(queue))
@@ -103,7 +103,7 @@ PQDequeue(avpacket_queue *queue, AVPacket **packet)
     }
 }
 
-internal int32
+internal i32
 PQPeek(avpacket_queue *queue, AVPacket **packet, int nth)
 {
     //check if nth packet is queued up
@@ -125,7 +125,7 @@ PQPeek(avpacket_queue *queue, AVPacket **packet, int nth)
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 PQClear(avpacket_queue *queue)
 {
     PlatformLockMutex(&queue->mutex);
@@ -139,7 +139,7 @@ PQClear(avpacket_queue *queue)
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 PQClose(avpacket_queue **queue)
 {
     // TODO(Val): Should this also free all the packets queued up?
@@ -162,7 +162,7 @@ PQClose(avpacket_queue **queue)
 internal void
 print_packets(avpacket_queue *queue)
 {
-    int32 i = queue->next;
+    i32 i = queue->next;
     while(i != queue->end)
     {
         AVPacket *packet = queue->array[i];

@@ -17,17 +17,17 @@ typedef struct _output_audio {
     platform_mutex mutex;
     
     AVRational time_base;
-    uint32 sample_rate;
-    uint32 bytes_per_sample;
-    uint32 channels;
-    uint32 sample_format;
-    uint32 size;
-    uint32 max_buffer_size;
-    bool32 is_ready;
+    u32 sample_rate;
+    u32 bytes_per_sample;
+    u32 channels;
+    u32 sample_format;
+    u32 size;
+    u32 max_buffer_size;
+    b32 is_ready;
     f64 pts;
     f64 duration;
     
-    int32 audio_format;
+    i32 audio_format;
     
     f32 volume;
 } output_audio;

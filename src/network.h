@@ -17,20 +17,20 @@ https://github.com/EverCursed
 
 typedef union _IPv4 {
     struct {
-        uint8 a;
-        uint8 b;
-        uint8 c;
-        uint8 d;
+        u8 a;
+        u8 b;
+        u8 c;
+        u8 d;
     } no_padding;
     struct {
-        uint8 octet[4];
+        u8 octet[4];
     };
-    uint32 ip;
+    u32 ip;
 } IPv4;
 
 typedef union _IPv6 {
     struct {
-        uint16 block[8];
+        u16 block[8];
     };
     uint128 ip;
 } IPv6;
@@ -39,13 +39,13 @@ typedef struct _destination_IP {
     union {
         struct {
             IPv4 v4;
-            uint32 _pad[3];
+            u32 _pad[3];
         } no_padding;
         struct {
             IPv6 v6;
         };
     };
-    bool32 is_ipv6;
+    b32 is_ipv6;
 } destination_IP;
 
 not_used internal void
@@ -70,13 +70,13 @@ IPToStr(char* buffer, destination_IP ip)
 // ------------------- messages ----------------------
 
 typedef struct _message_type {
-    int32 type;
+    i32 type;
 } net_message;
 
 #define MSG_HEADER \
 union { \
     net_message msg; \
-    int32 type; \
+    i32 type; \
 }
 
 struct align(MESSAGE_DATA_ALIGNMENT) _request_init_msg {
@@ -85,15 +85,15 @@ struct align(MESSAGE_DATA_ALIGNMENT) _request_init_msg {
 
 struct align(MESSAGE_DATA_ALIGNMENT) _init_msg {
     MSG_HEADER;
-    int32 flags;
+    i32 flags;
     f64 start_time;
     f64 file_duration;
-    uint16 port;
+    u16 port;
 };
 
 struct align(MESSAGE_DATA_ALIGNMENT) _finish_init_msg {
     MSG_HEADER;
-    uint32 ip;
+    u32 ip;
 };
 
 struct align(MESSAGE_DATA_ALIGNMENT) _ready_playback_msg {
@@ -102,7 +102,7 @@ struct align(MESSAGE_DATA_ALIGNMENT) _ready_playback_msg {
 
 struct align(MESSAGE_DATA_ALIGNMENT) _request_port_msg {
     MSG_HEADER;
-    uint32 ip;
+    u32 ip;
 };
 
 struct align(MESSAGE_DATA_ALIGNMENT) _request_info_msg {
@@ -138,7 +138,7 @@ struct align(MESSAGE_DATA_ALIGNMENT) _reply_rtt {
 #undef MSG_HEADER
 
 not_used internal void
-print_request_init_msg(struct _request_init_msg *msg, bool32 received)
+print_request_init_msg(struct _request_init_msg *msg, b32 received)
 {
     dbg_info("%s:\n"
              "\tMESSAGE_REQUEST_INIT\n",
@@ -146,7 +146,7 @@ print_request_init_msg(struct _request_init_msg *msg, bool32 received)
 }
 
 not_used internal void
-print_init_msg(struct _init_msg *msg, bool32 received)
+print_init_msg(struct _init_msg *msg, b32 received)
 {
     dbg_info("%s:\n"
              "\tMESSAGE_INIT\n"
@@ -160,7 +160,7 @@ print_init_msg(struct _init_msg *msg, bool32 received)
 }
 
 not_used internal void
-print_ready_playback_msg(struct _ready_playback_msg *msg, bool32 received)
+print_ready_playback_msg(struct _ready_playback_msg *msg, b32 received)
 {
     dbg_info("%s:\n"
              "\tMESSAGE_READY_PLAYBACK\n",
@@ -168,7 +168,7 @@ print_ready_playback_msg(struct _ready_playback_msg *msg, bool32 received)
 }
 
 not_used internal void
-print_finish_init_msg(struct _finish_init_msg *msg, bool32 received)
+print_finish_init_msg(struct _finish_init_msg *msg, b32 received)
 {
     destination_IP ip = {};
     ip.v4.ip = msg->ip;
@@ -186,7 +186,7 @@ print_finish_init_msg(struct _finish_init_msg *msg, bool32 received)
 }
 
 not_used internal void
-print_play_msg(struct _play_msg *msg, bool32 received)
+print_play_msg(struct _play_msg *msg, b32 received)
 {
     dbg_info("%s:\n"
              "\tMESSAGE_PLAY\n",
@@ -194,7 +194,7 @@ print_play_msg(struct _play_msg *msg, bool32 received)
 }
 
 not_used internal void
-print_pause_msg(struct _pause_msg *msg, bool32 received)
+print_pause_msg(struct _pause_msg *msg, b32 received)
 {
     dbg_info("%s:\n"
              "\tMESSAGE_PAUSE\n",
@@ -202,7 +202,7 @@ print_pause_msg(struct _pause_msg *msg, bool32 received)
 }
 
 not_used internal void
-print_seek_msg(struct _seek_msg *msg, bool32 received)
+print_seek_msg(struct _seek_msg *msg, b32 received)
 {
     dbg_info("%s:\n"
              "\tMESSAGE_SEEK\n"
@@ -212,31 +212,31 @@ print_seek_msg(struct _seek_msg *msg, bool32 received)
 }
 
 not_used internal void
-print_disconnect_msg(struct _disconnect_msg *msg, bool32 received)
+print_disconnect_msg(struct _disconnect_msg *msg, b32 received)
 {
     dbg_info("%s:\n"
              "\tMESSAGE_DISCONNECT\n",
              received ? "Receiving" : "Sending");
 }
 
-internal int32 StartServer();
-internal int32 StartClient();
-internal int32 CloseServer();
-internal int32 AcceptConnection();
-internal int32 ConnectToIP(const char *);
-internal int32 SendControlMessages();
+internal i32 StartServer();
+internal i32 StartClient();
+internal i32 CloseServer();
+internal i32 AcceptConnection();
+internal i32 ConnectToIP(const char *);
+internal i32 SendControlMessages();
 internal net_message *GetNextMessage();
-internal int32 ReceiveControlMessages();
-internal int32 SendInitRequestMessage();
-internal int32 SendInitMessage(f64, f64, int32);
-internal int32 SendFinishInitMessage(destination_IP);
-internal int32 SendReadyPlaybackMessage();
-internal int32 SendRequestPortMessage();
-internal int32 SendPlayMessage();
-internal int32 SendPauseMessage();
-internal int32 SendSeekMessage(f64);
-internal int32 SendDisconnectMessage();
-internal int32 CloseConnection();
+internal i32 ReceiveControlMessages();
+internal i32 SendInitRequestMessage();
+internal i32 SendInitMessage(f64, f64, i32);
+internal i32 SendFinishInitMessage(destination_IP);
+internal i32 SendReadyPlaybackMessage();
+internal i32 SendRequestPortMessage();
+internal i32 SendPlayMessage();
+internal i32 SendPauseMessage();
+internal i32 SendSeekMessage(f64);
+internal i32 SendDisconnectMessage();
+internal i32 CloseConnection();
 internal void GetPartnerIPStr(char **buffer);
 internal u32  GetPartnerIPInt();
 

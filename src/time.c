@@ -23,18 +23,18 @@ PlatformGetTime()
     return ret;
 }
 
-internal int32
+internal i32
 PlatformSleep(f64 seconds)
 {
     if(seconds < 0.0)
         seconds = 0.0;
     
-    av_usleep((int32)(seconds * USEC));
+    av_usleep((i32)(seconds * USEC));
     
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 WaitUntil(f64 time, f64 permissible_buffer)
 {
     f64 current_time = PlatformGetTime();

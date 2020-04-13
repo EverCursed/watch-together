@@ -3,7 +3,6 @@
 #include "common/custom_malloc.h"
 #include "defines.h"
 #include <SDL2/SDL.h>
-#include <assert.h>
 
 /*
 bg_color =               { 0, 0, 0, 128 }; 
@@ -285,7 +284,7 @@ RenderMenu(Menu *m, i32 output_width, i32 output_height)
 
 ///////////////////////// MOUSE INPUT /////////////////////////////
 
-static fptr
+static func
 MenuGetClickedButtonAction(Menu *m, i32 x, i32 y, i32 screen_x, i32 screen_y)
 {
     v4 mouse_x = v4_set1_ps((float)x/(float)screen_x);

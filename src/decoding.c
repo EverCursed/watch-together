@@ -40,13 +40,13 @@ get_frame(avpacket_queue *queue, AVFrame **frame, AVCodecContext *dec_ctx)
 #define VIDEO_FRAME 2
 
 internal inline void
-copy_pixel_buffers(uint8 *dst,
-                   int32 pitch_dst,
-                   uint8 *src,
-                   int32 pitch_src,
-                   int32 height)
+copy_pixel_buffers(u8 *dst,
+                   i32 pitch_dst,
+                   u8 *src,
+                   i32 pitch_src,
+                   i32 height)
 {
-    int32 width = pitch_src < pitch_dst ? pitch_src : pitch_dst;
+    i32 width = pitch_src < pitch_dst ? pitch_src : pitch_dst;
     for(int i = 0; i < height; i++)
     {
         memcpy(dst + i*pitch_dst, src + i*pitch_src, width);
@@ -61,7 +61,7 @@ do {\
     }\
 } while(0)
 
-internal int32
+internal i32
 DecodePacket(AVFrame **frame, AVPacket *pkt, AVCodecContext *codec_context)
 {
     StartTimer("DecodePacket()");

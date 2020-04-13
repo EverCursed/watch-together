@@ -23,11 +23,11 @@ https://github.com/EverCursed
 
 static char* address_prefix  = "tcp";
 static char* output_format   = "mpegts";
-static int32 video_port      = 16336;
+static i32 video_port      = 16336;
 //static char* client_parameters      = "";
 static char* host_parameters      = "?listen";
 
-internal int32
+internal i32
 Streaming_Client_Initialize(decoder_info *decoder)
 {
     wlog(LOG_INFO, "Streaming_Client_Initialize()");
@@ -57,7 +57,7 @@ add_stream(decoder_info *decoder,
     return stream;
 }
 
-internal int32
+internal i32
 copy_stream_to_output(AVFormatContext *output_fmt_context, AVStream *input_stream)
 {
     int ret = 0;
@@ -81,7 +81,7 @@ copy_stream_to_output(AVFormatContext *output_fmt_context, AVStream *input_strea
     return out_stream->index;
 }
 
-internal int32
+internal i32
 Streaming_Host_Initialize(decoder_info *decoder, open_file_info *file, char *my_ip)
 {
     wlog(LOG_INFO, "Streamin_Host_Initialize()");
@@ -126,13 +126,13 @@ Streaming_Host_Initialize(decoder_info *decoder, open_file_info *file, char *my_
     RETURN(SUCCESS);
 }
 
-internal bool32
+internal b32
 Streaming_Host_Is_Initialized(decoder_info *decoder)
 {
     return !!decoder->output_context;
 }
 
-internal int32
+internal i32
 Streaming_Host_Accept(decoder_info *decoder)
 {
     //if(Streaming_Host_Is_Initialized(decoder))
@@ -143,7 +143,7 @@ Streaming_Host_Accept(decoder_info *decoder)
     RETURN(NOT_YET_IMPLEMENTED);
 }
 
-internal int32
+internal i32
 Streaming_Host_Close(decoder_info *decoder)
 {
     wlog(LOG_INFO, "Streaming_Host_Close()");
@@ -157,7 +157,7 @@ Streaming_Host_Close(decoder_info *decoder)
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 Streaming_Client_Close(decoder_info *decoder)
 {
     wlog(LOG_INFO, "Streaming_Client_Close()");
@@ -165,13 +165,13 @@ Streaming_Client_Close(decoder_info *decoder)
     RETURN(NOT_YET_IMPLEMENTED);
 }
 
-internal int32
+internal i32
 Streaming_Accept_Client()
 {
     RETURN(UNKNOWN_ERROR);
 }
 
-internal int32
+internal i32
 Streaming_Client_Connect(char* address)
 {
     /*
@@ -196,8 +196,8 @@ Streaming_Client_Connect(char* address)
     RETURN(NOT_YET_IMPLEMENTED);
 }
 
-internal int32
-Streaming_GetFileName(char *buffer, char *address, int32 video_port, char *parameters)
+internal i32
+Streaming_GetFileName(char *buffer, char *address, i32 video_port, char *parameters)
 {
     sprintf(buffer, "%s://%s:%d%s",
             address_prefix,
@@ -208,25 +208,25 @@ Streaming_GetFileName(char *buffer, char *address, int32 video_port, char *param
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 Streaming_Get_Port()
 {
     return video_port;
 }
 
-internal int32
+internal i32
 Streaming_Client_Disconnect()
 {
     RETURN(NOT_YET_IMPLEMENTED);
 }
 
-internal int32
+internal i32
 Streaming_Client_GetPacket()
 {
     RETURN(NOT_YET_IMPLEMENTED);
 }
 
-internal int32
+internal i32
 Streaming_Host_SendPacket(decoder_info *decoder, AVPacket *packet)
 {
     int ret = 0;
@@ -277,13 +277,13 @@ Streaming_Host_SendPacket(decoder_info *decoder, AVPacket *packet)
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 Streaming_GetControlPacket()
 {
     RETURN(NOT_YET_IMPLEMENTED);
 }
 
-internal int32
+internal i32
 Streaming_SendControlPacket()
 {
     RETURN(NOT_YET_IMPLEMENTED);

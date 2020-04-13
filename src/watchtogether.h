@@ -50,61 +50,63 @@ typedef struct _threads_info_all {
 typedef struct _socket_info {
     union {
         struct {
-            uint8 a;
-            uint8 b;
-            uint8 c;
-            uint8 d;
+            u8 a;
+            u8 b;
+            u8 c;
+            u8 d;
         };
-        uint32 ip;
+        u32 ip;
     }; 
     
-    uint16 port;
+    u16 port;
 } socket_info;
 
 typedef struct _decoder_info decoder_info;
 typedef struct _encoder_info encoder_info;
 
 typedef struct _key_event {
-    uint32 key;
-    bool32 pressed;
-    bool32 shift;
-    bool32 alt;
-    bool32 ctrl;
+    u32 key;
+    b32 pressed;
+    b32 shift;
+    b32 alt;
+    b32 ctrl;
 } key_event;
 
 #define MAX_KEYS 8
 typedef struct _keyboard_info {
     key_event events[MAX_KEYS];
-    uint32 n;
+    u32 n;
 } keyboard_info;
 
 typedef struct _mouse_info {
-    int32 old_x;
-    int32 old_y;
-    int32 x;
-    int32 y;
-    bool32 left_button_was_pressed;
-    bool32 right_button_was_pressed;
-    bool32 left_button_is_pressed;
-    bool32 right_button_is_pressed;
-    bool32 middle_button_was_pressed;
-    bool32 middle_button_is_pressed;
+    i32 old_x;
+    i32 old_y;
+    i32 x;
+    i32 y;
+    b32 left_button_was_pressed;
+    b32 right_button_was_pressed;
+    b32 left_button_is_pressed;
+    b32 right_button_is_pressed;
+    b32 middle_button_was_pressed;
+    b32 middle_button_is_pressed;
 } mouse_info;
 
-#define SAMPLE_U8      1
-#define SAMPLE_S16     2
-#define SAMPLE_S32     3
-#define SAMPLE_S64     4
-#define SAMPLE_FLOAT   5
-#define SAMPLE_DOUBLE  6
+enum {
+    SAMPLE_U8,
+    SAMPLE_S16,
+    SAMPLE_S32,
+    SAMPLE_S64,
+    SAMPLE_FLOAT,
+    SAMPLE_DOUBLE,
+};
 
 typedef struct _sound_sample {
     void *Data;
-    uint32 Size;
-    uint32 SampleCount;
-    uint32 Frequency;
-    uint16 Channels;
-    uint16 BitsPerSample;
+    u32 Size;
+    u32 SampleCount;
+    u32 Frequency;
+    u16 Channels;
+    u16 BitsPerSample;
 } sound_sample;
 
 typedef struct _input_struct {
@@ -113,17 +115,17 @@ typedef struct _input_struct {
 } input_struct;
 
 typedef struct _hardware_info {
-    int32 monitor_refresh_rate;
-    int32 monitor_width;
-    int32 monitor_height;
+    i32 monitor_refresh_rate;
+    i32 monitor_width;
+    i32 monitor_height;
     
 } hardware_info;
 
 typedef struct _client_info {
-    int32 output_width;
-    int32 output_height;
-    int32 bytes_per_pixel;
-    bool32 fullscreen;
+    i32 output_width;
+    i32 output_height;
+    i32 bytes_per_pixel;
+    b32 fullscreen;
     
     f64 start_time;
     f64 refresh_target;
@@ -176,9 +178,9 @@ typedef struct _program_data2 {
     message_queue messages;
     
     // TODO(Val): remove this or make it more organized. 
-    bool32 is_fullscreen;
+    b32 is_fullscreen;
     
-    bool32 running;
+    b32 running;
     
     b32 is_host;
     b32 is_partner;
@@ -224,8 +226,8 @@ typedef struct _program_data {
     destination_IP address_storage;
 } program_data;
 
-internal int32 MainThread(program_data *);
-internal int32 MainLoop(program_data  *);
+internal i32 MainThread(program_data *);
+internal i32 MainLoop(program_data  *);
 
 
 #define START_PLAYBACK_FLAG 0x1

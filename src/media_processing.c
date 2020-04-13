@@ -24,16 +24,16 @@ https://github.com/EverCursed
 #include "audio.h"
 #include "video.h"
 
-internal inline int32 is_video(AVPacket *packet, decoder_info *decoder)
+internal inline i32 is_video(AVPacket *packet, decoder_info *decoder)
 { return (packet->stream_index == decoder->video_stream->index); }
 
-internal inline int32 is_audio(AVPacket *packet, decoder_info *decoder)
+internal inline i32 is_audio(AVPacket *packet, decoder_info *decoder)
 { return (packet->stream_index == decoder->audio_stream->index); }
 
-internal inline int32 is_subtitle(AVPacket *packet, decoder_info *decoder)
+internal inline i32 is_subtitle(AVPacket *packet, decoder_info *decoder)
 { return (packet->stream_index == decoder->subtitle_stream->index); }
 
-internal int32
+internal i32
 LoadPacket(decoder_info *decoder, AVPacket **packet)
 {
     *packet = av_packet_alloc();
@@ -63,10 +63,10 @@ LoadPacket(decoder_info *decoder, AVPacket **packet)
 internal void
 interleave_audio_frame(AVFrame *dst_frame, AVFrame *src_frame)
 {
-    uint8 *data = dst_frame->data[0];
-    int32 channels = src_frame->channels;
-    int32 bytes_per_sample = av_get_bytes_per_sample(src_frame->format);
-    int32 samples = src_frame->nb_samples;
+    u8 *data = dst_frame->data[0];
+    i32 channels = src_frame->channels;
+    i32 bytes_per_sample = av_get_bytes_per_sample(src_frame->format);
+    i32 samples = src_frame->nb_samples;
     
     for(int s = 0; s < samples; s++)
     {
@@ -81,7 +81,7 @@ interleave_audio_frame(AVFrame *dst_frame, AVFrame *src_frame)
 }
 
 // TODO(Val): Check for failed allocations
-internal int32
+internal i32
 process_audio_frame(AVFrame **frame, output_audio *audio, decoder_info *decoder)
 {
     StartTimer("process_audio_frame");
@@ -117,7 +117,7 @@ process_audio_frame(AVFrame **frame, output_audio *audio, decoder_info *decoder)
 global struct SwsContext* modifContext = NULL;
 
 // TODO(Val): Handle all allocation failures
-internal int32
+internal i32
 process_video_frame(AVFrame **frame, output_video *video, decoder_info *decoder)
 {
     StartTimer("process_video_frame");
@@ -141,7 +141,7 @@ process_video_frame(AVFrame **frame, output_video *video, decoder_info *decoder)
                                             NULL, NULL, NULL);
         
         /*
-                uint8_t *ptrs[1] = {
+                u8_t *ptrs[1] = {
                     video->video_frame,//frame_Y,
                     //pdata->video.video_frame_sup1,//frame_U,
                     //pdata->video.video_frame_sup2,//frame_V
@@ -155,11 +155,11 @@ process_video_frame(AVFrame **frame, output_video *video, decoder_info *decoder)
                 */
         StartTimer("sws_scale()");
         sws_scale(modifContext,
-                  (uint8 const* const*)(*frame)->data,
+                  (u8 const* const*)(*frame)->data,
                   (*frame)->linesize,
                   0,
                   new_frame->height,
-                  (uint8* const* const)new_frame->data,
+                  (u8* const* const)new_frame->data,
                   new_frame->linesize);
         EndTimer();
         
@@ -185,8 +185,8 @@ process_video_frame(AVFrame **frame, output_video *video, decoder_info *decoder)
 #define AUDIO    2
 #define SUBTITLE 3
 
-internal int32
-ProcessPacket(AVFrame **frame, int32 *type, AVPacket *packet, decoder_info *decoder)
+internal i32
+ProcessPacket(AVFrame **frame, i32 *type, AVPacket *packet, decoder_info *decoder)
 {
     StartTimer("ProcessPacket()");
     int ret = 0;
@@ -224,7 +224,7 @@ ProcessPacket(AVFrame **frame, int32 *type, AVPacket *packet, decoder_info *deco
 #define PACKET_BUFFER 30
 
 // TODO(Val): Need to change this so if anything fails during opening, everything is deallocated appropriately
-internal int32
+internal i32
 MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder, output_audio *audio, output_video *video)
 {
     dbg_print("avformat version: %d - %d\n", LIBAVFORMAT_VERSION_INT, avformat_version());
@@ -372,8 +372,8 @@ MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder, ou
             RETURN(UNKNOWN_ERROR);
         }
         
-        uint32 sample_fmt = decoder->audio_codec_context->sample_fmt;
-        uint32 fmt = 0;
+        u32 sample_fmt = decoder->audio_codec_context->sample_fmt;
+        u32 fmt = 0;
         if(sample_fmt == AV_SAMPLE_FMT_U8 ||
            sample_fmt == AV_SAMPLE_FMT_U8P)
         {
@@ -422,7 +422,7 @@ MediaOpen(open_file_info *file, decoder_info *decoder, encoder_info *encoder, ou
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 MediaClose(open_file_info *file, decoder_info *decoder, encoder_info *encoder, output_audio *audio, output_video *video)
 {
     // TODO(Val): Should we also stop running the current file?
@@ -469,7 +469,7 @@ ProcessAllPacketsAndFillFrameBuffers(decoder_info *decoder, output_video *video,
             //dbg_print
         }
         
-        int32 media_type = 0;
+        i32 media_type = 0;
         AVFrame *frame = av_frame_alloc(); 
         
         ret = ProcessPacket(&frame, &media_type, packet, decoder);
@@ -514,7 +514,7 @@ ProcessAllPacketsAndFillFrameBuffers(decoder_info *decoder, output_video *video,
     EndTimer();
 }
 
-not_used internal bool32
+not_used internal b32
 EnoughDurations(output_audio *audio, open_file_info *file, output_video *video, playback_data *playback)
 {
     StartTimer("EnoughDurations()");
@@ -525,11 +525,11 @@ EnoughDurations(output_audio *audio, open_file_info *file, output_video *video, 
     f64 refresh_time = *playback->refresh_target;
     f64 next_time = get_future_playback_time(playback);
     
-    bool32 audio_enough =
+    b32 audio_enough =
         !file->has_audio ||
         (audio->is_ready && ((playback->audio_total_queued + audio->duration) >= next_time)) ||
         (playback->audio_total_queued >= next_time);
-    bool32 video_enough = !file->has_video || (video->is_ready && ((video->pts + video->frame_duration) >= next_time));
+    b32 video_enough = !file->has_video || (video->is_ready && ((video->pts + video->frame_duration) >= next_time));
     
     dbg_print("EnoughDurations():\n"
               "\taudio_enough: %s\taudio time: %lf\n"
@@ -545,8 +545,8 @@ EnoughDurations(output_audio *audio, open_file_info *file, output_video *video, 
     return audio_enough && video_enough;
 }
 
-internal int32
-RefillPackets(decoder_info *decoder, bool32 is_host)
+internal i32
+RefillPackets(decoder_info *decoder, b32 is_host)
 {
     while(!PQFull(decoder->queue) && !decoder->file_fully_loaded)
     {
@@ -561,7 +561,7 @@ RefillPackets(decoder_info *decoder, bool32 is_host)
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 MediaThreadStart(void *arg)
 {
     InitializeTimingSystem("media");
@@ -586,7 +586,7 @@ MediaThreadStart(void *arg)
     
     int ret = 0;
     
-    bool32 start_notified = 0;
+    b32 start_notified = 0;
     
     wlog(LOG_INFO, "MediaThreadStart(): Start media processing loop");
     while(pdata->running && !PlaybackFinished(pdata))

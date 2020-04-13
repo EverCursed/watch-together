@@ -25,18 +25,18 @@ typedef struct _avframe_queue {
     AVFrame **frames;
     f64 *pts;
     platform_mutex mutex;
-    int32 max;
-    int32 n;
-    int32 flags;
+    i32 max;
+    i32 n;
+    i32 flags;
 } avframe_queue;
 
-warn_unused internal inline bool32
+warn_unused internal inline b32
 FQFull(avframe_queue *queue) 
 {
     return (queue->n == queue->max);
 }
 
-warn_unused internal inline bool32
+warn_unused internal inline b32
 FQEmpty(avframe_queue *queue)
 {
     return (queue->n == 0);
@@ -48,28 +48,28 @@ FQNextTimestamp(avframe_queue *queue)
     return queue->n > 0 ? queue->pts[0] : FQ_NO_MORE_FRAMES;
 }
 
-warn_unused internal inline bool32
+warn_unused internal inline b32
 FQInitialized(avframe_queue *queue)
 {
     return (queue->max == 0);
 }
 
-internal int32
-FQInit(avframe_queue *queue, int32 flags);
+internal i32
+FQInit(avframe_queue *queue, i32 flags);
 
 internal void
 FQClose(avframe_queue **queue);
 
-warn_unused internal int32
+warn_unused internal i32
 FQDequeue(avframe_queue *queue, AVFrame **frame, f64 *pts);
 
-warn_unused internal int32
+warn_unused internal i32
 FQEnqueue(avframe_queue *queue, AVFrame *frame, f64 pts);
 
-warn_unused internal int32
+warn_unused internal i32
 FQRemoveUpTo(avframe_queue *queue, f64 pts);
 
-warn_unused internal int32
+warn_unused internal i32
 FQClear(avframe_queue *queue);
 
 #endif // AVFRAME_QUEUE_PTS_ORDERED

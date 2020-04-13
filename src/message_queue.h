@@ -43,7 +43,7 @@ typedef struct _arg {
 static arg NO_ARG = { .s = 0 };
 
 typedef struct _message {
-    int32 msg;
+    i32 msg;
     arg args[5];
     f64 time;
 } message;
@@ -51,10 +51,10 @@ typedef struct _message {
 typedef struct _message_queue {
     message queue[MSG_QUEUE_SIZE];
     
-    int32 start;
-    int32 end;
-    int32 n;
-    int32 max;
+    i32 start;
+    i32 end;
+    i32 n;
+    i32 max;
 } message_queue;
 
 #define AddMessage0(q,m,t) AddMessage(q, m, NO_ARG, NO_ARG, NO_ARG, NO_ARG, NO_ARG, t)
@@ -64,21 +64,21 @@ typedef struct _message_queue {
 #define AddMessage4(q,m,a,b,c,d,t) AddMessage(q, m, a, b, c, d, NO_ARG, t)
 #define AddMessage5(q,m,a,b,c,d,e,t) AddMessage(q, m, a, b, c, d, e, t)
 
-internal inline bool32
+internal inline b32
 MessagesEmpty(message_queue *q)
 {
     return (q->n == 0);
 }
 
-internal inline bool32
+internal inline b32
 MessagesFull(message_queue *q)
 {
     return (q->n >= q->max);
 }
 
 internal void InitMessageQueue(message_queue *q);
-internal void AddMessage(message_queue *q, int32 m, arg a1, arg a2, arg a3, arg a4, arg a5, f64 time);
-internal int32 GetApplicationMessage(message_queue *q, message *m);
+internal void AddMessage(message_queue *q, i32 m, arg a1, arg a2, arg a3, arg a4, arg a5, f64 time);
+internal i32 GetApplicationMessage(message_queue *q, message *m);
 internal void ClearMessages(message_queue *q);
 
 #endif

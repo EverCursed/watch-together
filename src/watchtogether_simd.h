@@ -37,7 +37,7 @@ typedef struct v4x4 {
     };
 } v4x4;
 
-static void v4_print(v4 a)
+internal void v4_print(v4 a)
 {
     printf("vector = {\n"
            "\t.f = {\n"
@@ -57,22 +57,22 @@ static void v4_print(v4 a)
            a.I32[0], a.I32[1], a.I32[2], a.I32[3]);
 }
 
-static v4 v4_set1_ps(f32 a)
+internal v4 v4_set1_ps(f32 a)
 {
     return (v4){ .PS = _mm_set1_ps(a) };
 }
 
-static v4 v4_set_ps(f32 a, f32 b, f32 c, f32 d)
+internal v4 v4_set_ps(f32 a, f32 b, f32 c, f32 d)
 {
     return (v4){ .PS = _mm_set_ps(a, b, c, d) };
 }
 
-static v4 v4_add_ps(v4 a, v4 b)
+internal v4 v4_add_ps(v4 a, v4 b)
 {
     return (v4){ .PS = _mm_add_ps(a.PS, b.PS) };
 }
 
-static v4 v4_sub_ps(v4 a, v4 b)
+internal v4 v4_sub_ps(v4 a, v4 b)
 {
     v4 temp;
     
@@ -81,7 +81,7 @@ static v4 v4_sub_ps(v4 a, v4 b)
     return temp;
 }
 
-static v4 v4_mul_ps(v4 a, v4 b)
+internal v4 v4_mul_ps(v4 a, v4 b)
 {
     v4 temp;
     
@@ -90,7 +90,7 @@ static v4 v4_mul_ps(v4 a, v4 b)
     return temp;
 }
 
-static v4 v4_div_ps(v4 a, v4 b)
+internal v4 v4_div_ps(v4 a, v4 b)
 {
     v4 temp;
     
@@ -99,28 +99,28 @@ static v4 v4_div_ps(v4 a, v4 b)
     return temp;
 }
 
-static v4 v4_cmpge_ps(v4 a, v4 b)
+internal v4 v4_cmpge_ps(v4 a, v4 b)
 {
     v4 temp;
     temp.PS = _mm_cmpge_ps(a.PS, b.PS);
     return temp;
 }
 
-static v4 v4_cmple_ps(v4 a, v4 b)
+internal v4 v4_cmple_ps(v4 a, v4 b)
 {
     v4 temp;
     temp.PS = _mm_cmple_ps(a.PS, b.PS);
     return temp;
 }
 
-static v4 v4_and_ps(v4 a, v4 b)
+internal v4 v4_and_ps(v4 a, v4 b)
 {
     v4 temp;
     temp.PS = _mm_and_ps(a.PS, b.PS);
     return temp;
 }
 
-static v4 v4_add_epi32(v4 a, v4 b)
+internal v4 v4_add_epi32(v4 a, v4 b)
 {
     v4 temp;
     
@@ -129,7 +129,7 @@ static v4 v4_add_epi32(v4 a, v4 b)
     return temp;
 }
 
-static v4 v4_cvtps_epi32(v4 a)
+internal v4 v4_cvtps_epi32(v4 a)
 {
     v4 temp;
     

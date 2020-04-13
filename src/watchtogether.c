@@ -9,6 +9,7 @@ The main runtime module that handles most of the application functionality.
 #include "watchtogether.h"
 #include "attributes.h"
 
+#include "common/vector.c"
 #include "common/custom_malloc.c"
 #include "logging.h"
 
@@ -108,7 +109,7 @@ ShowOptionsScreen(void *ptr)
     PushMenuScreen(pdata->menu, pdata->menu->options_screen);
 }
 
-internal int32
+internal i32
 ProcessInput(program_data *pdata)
 {
     // Get input
@@ -198,7 +199,7 @@ ProcessMouse(program_data *pdata)
         int screen_x = pdata->client.output_width;
         int screen_y = pdata->client.output_height;
         
-        fptr function = MenuGetClickedButtonAction(m, x, y, screen_x, screen_y);
+        func function = MenuGetClickedButtonAction(m, x, y, screen_x, screen_y);
         
         if(function)
         {
@@ -209,17 +210,17 @@ ProcessMouse(program_data *pdata)
     return 0;
 }
 
-internal int32
+internal i32
 AllocateBuffers(program_data *pdata)
 {
     wlog(LOG_INFO, "AllocateBuffers(): Allocating audio and video buffers");
     
     // NOTE(Val): Allocate audio buffer
-    int32 bytes_per_sample = pdata->file.bytes_per_sample;
-    int32 sample_rate = pdata->file.sample_rate;
-    int32 channels = pdata->file.channels;
+    i32 bytes_per_sample = pdata->file.bytes_per_sample;
+    i32 sample_rate = pdata->file.sample_rate;
+    i32 channels = pdata->file.channels;
     
-    int32 seconds = 1;
+    i32 seconds = 1;
     
     pdata->audio.max_buffer_size = bytes_per_sample*sample_rate*channels*seconds;
     
@@ -232,7 +233,7 @@ AllocateBuffers(program_data *pdata)
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 DeallocateBuffers(program_data *pdata)
 {
     wlog(LOG_INFO, "DeallocateBuffers(): Deallocating audio and video buffers");
@@ -284,7 +285,7 @@ InitializeMenus(program_data *pdata)
     m->debug_screen = debug_screen;
 }
 
-internal int32
+internal i32
 InitializeApplication(program_data *pdata)
 {
     wlog(LOG_INFO, "InitializeApplication(): Initializing application data");
@@ -301,7 +302,7 @@ InitializeApplication(program_data *pdata)
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 FileOpen_LoadData(program_data *pdata)
 {
     int ret = MediaOpen(&pdata->file, &pdata->decoder, &pdata->encoder, &pdata->audio, &pdata->video);
@@ -333,7 +334,7 @@ FileOpen_LoadData(program_data *pdata)
     }
 }
 
-internal int32
+internal i32
 FileOpen_StartThread(program_data *pdata)
 {
     AllocateBuffers(pdata);
@@ -353,10 +354,10 @@ FileOpen_StartThread(program_data *pdata)
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 FileOpen(program_data *pdata)
 {
-    int32 ret = 0;
+    i32 ret = 0;
     ret = FileOpen_LoadData(pdata);
     
     if(!ret)
@@ -372,7 +373,7 @@ FileOpen(program_data *pdata)
     RETURN(SUCCESS);
 }
 
-internal bool32
+internal b32
 FileClose(program_data *pdata)
 {
     pdata->file.file_ready = 0;
@@ -570,7 +571,7 @@ SkipVideoFrame(program_data *pdata)
     pdata->video.is_ready = 0;
 }
 
-internal int32
+internal i32
 ProcessPlayback(program_data *pdata)
 {
     playback_data *playback = &pdata->playback;
@@ -578,8 +579,8 @@ ProcessPlayback(program_data *pdata)
     output_audio *audio = &pdata->audio;
     output_video *video = &pdata->video;
     
-    bool32 need_video = 0;
-    bool32 need_audio = 0;
+    b32 need_video = 0;
+    b32 need_audio = 0;
     
     // TODO(Val): There is a bug here when there are no more frames in frame queues. Getting next frame pts when there is no frame is undefined (I guess?)
     
@@ -631,7 +632,7 @@ ProcessPlayback(program_data *pdata)
 #define SETUP_MSG_PROCESSING(type, var, message) \
 type *var = (type *)message;
 
-internal int32
+internal i32
 ProcessNetwork(program_data *pdata)
 {
     StartTimer("ProcessNetwork()");
@@ -784,7 +785,7 @@ ProcessNetwork(program_data *pdata)
 
 #undef SETUP_MSG_PROCESSING
 
-internal int32
+internal i32
 InputLoopThread(void *arg)
 {
     InitializeTimingSystem("input");
@@ -815,7 +816,7 @@ StartPlayback(program_data *pdata)
     EndTimer();
 }
 
-internal int32
+internal i32
 MainLoopThread(void *arg)
 {
     InitializeTimingSystem("main");
@@ -936,7 +937,7 @@ MainLoopThread(void *arg)
     RETURN(SUCCESS);
 }
 
-internal int32
+internal i32
 MainThread(program_data *pdata)
 {
     // NOTE(Val): Initialize things here that will last the entire runtime of the application

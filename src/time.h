@@ -12,7 +12,7 @@ https://github.com/EverCursed
 #include "defines.h"
 
 internal f64 PlatformGetTime();
-internal int32 PlatformSleep(f64);
-internal int32 WaitUntil(f64 time, f64 permissible_buffer);
+internal i32 PlatformSleep(f64);
+internal i32 WaitUntil(f64 time, f64 permissible_buffer);
 
 #endif // TIME_H

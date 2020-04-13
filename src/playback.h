@@ -13,7 +13,7 @@ https://github.com/EverCursed
 #include "debug.h"
 
 typedef struct _playback_data {
-    bool32 started_playing;
+    b32 started_playing;
     
     f64 playback_start;            // platform time when playback was started
     
@@ -34,16 +34,16 @@ typedef struct _playback_data {
     f64 *current_frame_time;
 } playback_data;
 
-internal int32
+internal i32
 increment_video_times(playback_data *playback, f64 video_time_base);
 
-internal int32
+internal i32
 increment_audio_times(playback_data *playback, f64 duration);
 
-internal bool32
+internal b32
 should_skip(playback_data *playback, f64 video_ts);
 
-internal int32
+internal i32
 start_playback(playback_data *p, f64 time);
 
 internal void
@@ -76,14 +76,14 @@ get_future_playback_time(playback_data *playback)
     return (get_next_playback_time(playback) + *playback->refresh_target);
 }
 
-internal inline bool32
+internal inline b32
 should_display(playback_data *playback, f64 video_ts)
 {
     f32 playback_time = get_next_playback_time(playback);
     return (video_ts < playback_time);
 }
 
-internal inline bool32
+internal inline b32
 should_queue(playback_data *playback, f64 audio_ts)
 {
     f64 following_time =  get_future_playback_time(playback);
@@ -92,7 +92,7 @@ should_queue(playback_data *playback, f64 audio_ts)
     //return (playback->audio_total_queued < get_future_playback_time(playback));
 }
 
-internal inline bool32
+internal inline b32
 enough_audio(playback_data *playback)
 {
     return (playback->audio_total_queued >= get_next_playback_time(playback));

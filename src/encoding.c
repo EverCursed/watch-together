@@ -9,7 +9,6 @@ Encoding module. Currently unused.
 #include <libavcodec/avcodec.h>
 #include <libavutil/opt.h>
 #include <libavformat/avformat.h>
-#include <assert.h>
 
 //#include "decoding.h"
 #include "encoding.h"

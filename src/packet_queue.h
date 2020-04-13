@@ -26,27 +26,27 @@ typedef struct _avpacket_queue {
     //AVPacket *buffer;
     AVPacket **array;
     platform_mutex mutex;
-    int32 maxn;  // max number of packets
-    int32 n;     // total number of packets
-    int32 next;  // the packet that will be dequeued/peeked next
-    int32 end;   // the where the next packet will be enqueued
+    i32 maxn;  // max number of packets
+    i32 n;     // total number of packets
+    i32 next;  // the packet that will be dequeued/peeked next
+    i32 end;   // the where the next packet will be enqueued
 } avpacket_queue;
 
-internal avpacket_queue* PQInit(int32 n);
-internal int32 PQEnqueue(avpacket_queue *queue, AVPacket *packet);
-internal int32 PQDequeue(avpacket_queue *queue, AVPacket **packet);
-internal int32 PQPeek(avpacket_queue *queue, AVPacket **packet, int nth);
-internal int32 PQClear(avpacket_queue *queue);
-internal int32 PQClose(avpacket_queue **queue);
+internal avpacket_queue* PQInit(i32 n);
+internal i32 PQEnqueue(avpacket_queue *queue, AVPacket *packet);
+internal i32 PQDequeue(avpacket_queue *queue, AVPacket **packet);
+internal i32 PQPeek(avpacket_queue *queue, AVPacket **packet, int nth);
+internal i32 PQClear(avpacket_queue *queue);
+internal i32 PQClose(avpacket_queue **queue);
 
 internal void print_packets(avpacket_queue *queue);
 
-internal inline bool32 PQFull(avpacket_queue *queue)
+internal inline b32 PQFull(avpacket_queue *queue)
 {
     return (queue->n == queue->maxn);
 }
 
-internal inline bool32 PQEmpty(avpacket_queue *queue)
+internal inline b32 PQEmpty(avpacket_queue *queue)
 {
     return (queue->n == 0);
 }

@@ -49,12 +49,12 @@ typedef struct _decoder_info {
     AVStream *output_audio_stream;
     AVStream *output_subtitle_stream;
     
-    int32 video_stream_index;
-    int32 audio_stream_index;
-    int32 subtitle_stream_index;
+    i32 video_stream_index;
+    i32 audio_stream_index;
+    i32 subtitle_stream_index;
     
-    int32 stream_mapping_size;
-    int32 *stream_mapping;
+    i32 stream_mapping_size;
+    i32 *stream_mapping;
     
     const char *filename;
     
@@ -62,13 +62,13 @@ typedef struct _decoder_info {
     cond_info condition;
     cond_info start_streaming;
     avpacket_queue *queue;
-    int32 frames_sent;
+    i32 frames_sent;
     
-    bool32 file_fully_loaded;
+    b32 file_fully_loaded;
 } decoder_info;
 
 
-internal int32 DecodingThreadStart(void *);
-internal int32 DecodePacket(AVFrame **, AVPacket *, AVCodecContext *);
+internal i32 DecodingThreadStart(void *);
+internal i32 DecodePacket(AVFrame **, AVPacket *, AVCodecContext *);
 
 #endif

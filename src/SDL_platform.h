@@ -5,7 +5,7 @@ https://github.com/EverCursed
 
 
 */
- 
+
 #ifndef DEB_WT
 #define DEB_WT
 
@@ -23,7 +23,7 @@ typedef struct _thread_info {
 typedef struct _cond_info {
     SDL_cond *cond;
     SDL_mutex *mutex;
-    bool32 test;
+    b32 test;
 } cond_info;
 
 typedef struct _platform_mutex {
