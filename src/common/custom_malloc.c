@@ -6,37 +6,75 @@ https://github.com/EverCursed
 A wrapping for malloc to more easily detect buffer overflows.
 */
 
+
 #include "custom_malloc.h"
 
+#include "../defines.h"
 #include <stdlib.h>
 #include "../debug.h"
 
 #define MAX_ALLOCS 256
 
+static void* generated_allocations[MAX_ALLOCS];
 static void* allocations[MAX_ALLOCS];
 static int   sizes[MAX_ALLOCS];
 static char* files[MAX_ALLOCS];
 static int lines[MAX_ALLOCS];
 
+static int  allocations_count = 0;
 static char* canary = "END";
 static const int canary_size = 4;
 
 internal void *
 c_malloc(size_t size, char *file, int line)
 {
-    void* mem = malloc(size + canary_size);
+    assert(allocations_count != MAX_ALLOCS);
+    
+    void* mem;
+    if(!(mem = malloc(size + canary_size))) return NULL;
+    
     *((int *)(mem + size)) = *((int *)(canary));
     
-    for(int i = 0; i < MAX_ALLOCS; i++)
+    int i = allocations_count++;
+    allocations[i] = mem;
+    generated_allocations[i] = mem;
+    sizes[i] = size;
+    files[i] = file;
+    lines[i] = line;
+    
+    return mem;
+}
+
+internal void *
+c_malloc_expanded(size_t size, i32 round_up_to, char *file, int line)
+{
+    void *mem = c_malloc(size + round_up_to, file, line);
+    
+    void *mem_offset = (mem+round_up_to-1) - (((u64)mem + (round_up_to-1))%round_up_to);
+    generated_allocations[allocations_count - 1] = mem_offset;
+    
+    return mem_offset;
+}
+
+internal void *
+c_realloc(void *ptr, size_t size, char *file, int line)
+{
+    for(int i = 0; i < allocations_count; i++)
     {
-        if(allocations[i] == NULL)
+        if(generated_allocations[i] == ptr)
         {
-            allocations[i] = mem;
+            generated_allocations[i] = allocations[i] = realloc(ptr, size+canary_size);
+            
             sizes[i] = size;
+            
+            *((int *)(allocations[i] + size)) = *((int *)(canary));
+            
+            dbg_success("Reallocated memory (%s:%d)\n", files[i], lines[i]);
+            
             files[i] = file;
             lines[i] = line;
             
-            return mem;
+            return allocations[i];
         }
     }
     
@@ -44,28 +82,31 @@ c_malloc(size_t size, char *file, int line)
 }
 
 internal void *
-c_malloc_expanded(size_t size, int round_up_to, char *file, int line)
+c_realloc_expanded(void *ptr, size_t size, i32 alignment, char *file, int line)
 {
-    
-    int size_rounded = (size + (round_up_to-1)) & ~(round_up_to-1);
-    return c_malloc(size_rounded, file, line);
-}
-
-internal void *
-c_realloc(void *ptr, size_t size)
-{
-    for(int i = 0; i < MAX_ALLOCS; i++)
+    for(int i = 0; i < allocations_count; i++)
     {
-        if(allocations[i] == ptr)
+        if(size > sizes[i] && generated_allocations[i] == ptr)
         {
-            allocations[i] = realloc(ptr, size+canary_size);
+            void *remove = allocations[i];
+            void *old_mem = generated_allocations[i];
+            int old_size = sizes[i];
             sizes[i] = size;
+            
+            allocations[i] = malloc(size+alignment+canary_size);
+            generated_allocations[i] = (void *)(((u64)allocations[i] + (alignment - 1)) & (~(alignment - 1)));
+            
+            memcpy(generated_allocations[i], old_mem, old_size);
+            free(remove);
             
             *((int *)(allocations[i] + size)) = *((int *)(canary));
             
             dbg_success("Reallocated memory (%s:%d)\n", files[i], lines[i]);
             
-            return allocations[i];
+            files[i] = file;
+            lines[i] = line;
+            
+            return generated_allocations[i];
         }
     }
     
@@ -97,6 +138,7 @@ c_free(void *mem)
             sizes[i] = lines[i] = 0;
             allocations[i] = files[i] = NULL;
             free(mem);
+            allocations_count--;
         }
     }
 }
