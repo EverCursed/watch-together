@@ -56,4 +56,26 @@ typedef struct { u64 _pad[2]; } uint128;
 typedef int128 i128;
 typedef uint128 u128;
 
+
+/////////////////////////////////// assert ////////////////////////////////////
+
+#if defined(__clang__) || defined(__GNUC__)
+#define HARDWARE_INTERRUPT() asm("int $3")
+#elif defined(_MSC_VER)
+#define HARDWARE_INTERRUPT() __debugbreak()
+#endif
+
+#define assert(t) \
+if(t) {} \
+else \
+{ \
+    print_assertion_failure_message(#t, __FILE__, __LINE__); \
+                                    HARDWARE_INTERRUPT(); \
+}
+
+void static print_assertion_failure_message(char *code, char *file, int line)
+{
+    printf("Assertion condition failed - %s : %s:%d\n", code, file, line);
+}
+
 #endif
